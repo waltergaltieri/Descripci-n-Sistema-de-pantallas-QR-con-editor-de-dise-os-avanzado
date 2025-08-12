@@ -1,0 +1,290 @@
+/* Estilos personalizados para GrapesJS Editor */
+
+/* Contenedor principal del editor */
+.gjs-editor {
+  height: 100%;
+  width: 100%;
+}
+
+/* Canvas del editor */
+.gjs-cv-canvas {
+  background: #f5f5f5;
+}
+
+/* Paneles laterales */
+.gjs-pn-panel {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+}
+
+/* Bloques/elementos */
+.gjs-block {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  margin: 8px;
+  padding: 12px;
+  background: #ffffff;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.gjs-block:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+.gjs-block-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  margin-top: 8px;
+}
+
+/* Categorías de bloques */
+.gjs-block-category {
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 12px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #374151;
+}
+
+/* Toolbar */
+.gjs-pn-commands {
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 8px;
+}
+
+.gjs-pn-btn {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin: 0 4px;
+  color: #374151;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.gjs-pn-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.gjs-pn-btn.gjs-pn-active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+/* Selector de dispositivos */
+.gjs-pn-devices-c {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.gjs-pn-device {
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.gjs-pn-device:hover {
+  border-color: #3b82f6;
+}
+
+.gjs-pn-device.gjs-pn-active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+/* Panel de estilos */
+.gjs-sm-sector {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.gjs-sm-title {
+  background: #f9fafb;
+  padding: 12px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+  cursor: pointer;
+}
+
+.gjs-sm-properties {
+  padding: 16px;
+}
+
+.gjs-sm-property {
+  margin-bottom: 12px;
+}
+
+.gjs-sm-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.gjs-field {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 13px;
+  background: #ffffff;
+  transition: border-color 0.2s ease;
+}
+
+.gjs-field:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Panel de capas */
+.gjs-lm-layer {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.gjs-lm-layer:hover {
+  background: #f9fafb;
+}
+
+.gjs-lm-layer.gjs-lm-selected {
+  background: #eff6ff;
+  border-left: 3px solid #3b82f6;
+}
+
+.gjs-lm-name {
+  font-size: 13px;
+  color: #374151;
+}
+
+/* Panel de traits/propiedades */
+.gjs-trt-trait {
+  margin-bottom: 12px;
+  padding: 0 16px;
+}
+
+.gjs-trt-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 4px;
+  display: block;
+}
+
+/* Elementos seleccionados en el canvas */
+.gjs-selected {
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: 1px;
+}
+
+/* Hover en elementos del canvas */
+.gjs-hovered {
+  outline: 1px dashed #6b7280 !important;
+  outline-offset: 1px;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .gjs-pn-panel {
+    width: 250px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .gjs-pn-panel {
+    width: 200px !important;
+  }
+  
+  .gjs-block {
+    margin: 4px;
+    padding: 8px;
+  }
+  
+  .gjs-block-label {
+    font-size: 11px;
+  }
+}
+
+/* Scrollbars personalizados */
+.gjs-blocks-c::-webkit-scrollbar,
+.gjs-sm-sectors::-webkit-scrollbar,
+.gjs-lm-layers::-webkit-scrollbar {
+  width: 6px;
+}
+
+.gjs-blocks-c::-webkit-scrollbar-track,
+.gjs-sm-sectors::-webkit-scrollbar-track,
+.gjs-lm-layers::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+
+.gjs-blocks-c::-webkit-scrollbar-thumb,
+.gjs-sm-sectors::-webkit-scrollbar-thumb,
+.gjs-lm-layers::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+.gjs-blocks-c::-webkit-scrollbar-thumb:hover,
+.gjs-sm-sectors::-webkit-scrollbar-thumb:hover,
+.gjs-lm-layers::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Animaciones */
+.gjs-block,
+.gjs-pn-btn,
+.gjs-pn-device,
+.gjs-lm-layer {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Estados de carga */
+.gjs-editor-loading {
+  position: relative;
+}
+
+.gjs-editor-loading::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.gjs-editor-loading::after {
+  content: 'Cargando editor...';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 14px;
+  color: #6b7280;
+  z-index: 1001;
+}
