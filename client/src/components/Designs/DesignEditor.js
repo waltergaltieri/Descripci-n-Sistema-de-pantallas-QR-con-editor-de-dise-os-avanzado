@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { designsService } from '../../services/api';
 import { useSocket } from '../../contexts/SocketContext';
-import GrapesJSEditor from './Editor/GrapesJSEditor';
+import PuckEditor from './Editor/EasyblocksEditor';
 import DesignSettingsModal from './Editor/DesignSettingsModal';
 import DesignPreconfigModal from './Editor/DesignPreconfigModal';
 import toast from 'react-hot-toast';
@@ -29,6 +29,7 @@ const DesignEditor = () => {
   const [design, setDesign] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [currentEditorData, setCurrentEditorData] = useState(null);
   
   // Estados de modales
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
@@ -132,6 +133,10 @@ const DesignEditor = () => {
     navigate('/designs');
   };
 
+  const handleEditorDataChange = (newData) => {
+    setCurrentEditorData(newData);
+  };
+
   const handleSave = async (editorData, isAutoSave = false) => {
     if (!design) return;
     
@@ -140,12 +145,7 @@ const DesignEditor = () => {
       
       const designData = {
         ...design,
-        content: {
-          ...design.content,
-          html: editorData?.html || design.content.html,
-          css: editorData?.css || design.content.css,
-          components: editorData?.components || design.content.components
-        }
+        content: editorData?.content || design.content
       };
 
       let response;
@@ -292,7 +292,7 @@ const DesignEditor = () => {
 
             {/* Guardar */}
             <button
-              onClick={() => handleSave(null)}
+              onClick={() => handleSave(currentEditorData)}
               disabled={saving}
               className="btn btn-primary btn-sm flex items-center"
             >
@@ -312,12 +312,13 @@ const DesignEditor = () => {
         </div>
       </div>
 
-      {/* Área principal - Editor GrapesJS */}
+      {/* Área principal - Editor Easyblocks */}
        <div className="flex-1 overflow-hidden">
-         <GrapesJSEditor
+         <PuckEditor
            design={design}
            onSave={handleSave}
            onPreview={handlePreview}
+           onDataChange={handleEditorDataChange}
            saving={saving}
          />
        </div>
