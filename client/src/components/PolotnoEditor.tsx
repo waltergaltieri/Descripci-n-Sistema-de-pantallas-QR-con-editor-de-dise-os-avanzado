@@ -623,8 +623,7 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
   const handleFlipHorizontal = async () => {
     if (selectedElement) {
       await store.history.transaction(async () => {
-        const currentScaleX = selectedElement.scaleX || 1;
-        selectedElement.set({ scaleX: -currentScaleX });
+        selectedElement.set({ flipX: !selectedElement.flipX });
       });
     }
     onClose();
@@ -633,8 +632,7 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
   const handleFlipVertical = async () => {
     if (selectedElement) {
       await store.history.transaction(async () => {
-        const currentScaleY = selectedElement.scaleY || 1;
-        selectedElement.set({ scaleY: -currentScaleY });
+        selectedElement.set({ flipY: !selectedElement.flipY });
       });
     }
     onClose();
@@ -683,7 +681,9 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
           scaleY: 1,
           rotation: 0,
           skewX: 0,
-          skewY: 0
+          skewY: 0,
+          flipX: false,
+          flipY: false
         });
       });
     });
