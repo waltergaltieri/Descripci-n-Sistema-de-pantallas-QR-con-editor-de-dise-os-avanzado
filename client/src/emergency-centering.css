@@ -77,6 +77,7 @@
 
 /* Debug: Resaltar el workspace cuando está centrado */
 .polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace {
+  border: 2px solid transparent;
   /* border: 2px solid red !important; */
   /* background: rgba(255, 0, 0, 0.1) !important; */
 }

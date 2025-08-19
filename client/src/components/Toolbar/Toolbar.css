@@ -4,7 +4,7 @@
   padding: 8px 16px;
   background: #ffffff;
   border-bottom: 1px solid #e2e8f0;
-  gap: 8px;
+  gap: 16px;
   min-height: 48px;
   overflow-x: auto;
   overflow-y: hidden;
@@ -20,7 +20,7 @@
 .toolbar-group {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
 .toolbar-btn {

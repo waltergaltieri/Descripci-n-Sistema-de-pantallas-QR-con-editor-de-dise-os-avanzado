@@ -21,6 +21,7 @@ import '../test-specific-classes';
 import '../ultimate-centering-test'; // Script de testing definitivo
 import '../force-centering-javascript'; // Forzado de centrado mediante JavaScript
 import '../direct-centering-javascript'; // Solución JavaScript directa basada en inspección
+// import '../debug-contextual-controls'; // Diagnóstico de controles contextuales
 import '@blueprintjs/core/lib/css/blueprint.css';
 import './PolotnoEditor.css';
 import '../emergency-centering.css';

@@ -476,6 +476,29 @@
   display: none !important;
 }
 
+/* Ocultar navbar contextual flotante que aparece al seleccionar elementos */
+.bp5-navbar[style*="transform: translate(-50%, -50%)"] {
+  display: none !important;
+}
+
+/* Ocultar contenedor del navbar contextual flotante */
+div[style*="pointer-events: none;"] > .bp5-navbar {
+  display: none !important;
+}
+
+/* Ocultar botones específicos del navbar contextual */
+.bp5-navbar .bp5-button:has(.bp5-icon-clean),
+.bp5-navbar .bp5-button:has(.bp5-icon-duplicate),
+.bp5-navbar .bp5-button:has(.bp5-icon-trash),
+.bp5-navbar .bp5-button:has(.bp5-icon-layers) {
+  display: none !important;
+}
+
+/* Ocultar navbar con altura específica de 34px (contextual) */
+.bp5-navbar[style*="height: 34px"] {
+  display: none !important;
+}
+
 /* Mejorar contraste de botones */
 .polotno-toolbar .bp4-button {
   background-color: #f8f9fa !important;
