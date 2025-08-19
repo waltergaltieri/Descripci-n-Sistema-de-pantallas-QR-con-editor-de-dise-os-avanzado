@@ -33,6 +33,7 @@ import '../ultimate-centering-fix.css';
 import '../safe-centering-fix.css'; // Solución segura de centrado
 import '../nuclear-centering-override.css'; // Override nuclear para centrado definitivo
 import '../direct-centering-fix.css'; // Solución directa basada en inspección del elemento
+import '../context-menu-styles.css'; // Estilos para el menú contextual mejorado
 
 // Tipos de animaciones disponibles
 const ANIMATION_TYPES = {
@@ -449,6 +450,42 @@ const AnimationsPanel = ({ store, onClose }: { store: any, onClose: () => void }
   );
 };
 
+// Función para calcular posición inteligente del menú contextual
+const calculateSmartPosition = (x: number, y: number, menuWidth: number = 200, menuHeight: number = 400) => {
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const padding = 10; // Margen mínimo desde los bordes
+  
+  let finalX = x;
+  let finalY = y;
+  
+  // Ajustar posición horizontal
+  if (x + menuWidth + padding > viewportWidth) {
+    // Si no cabe a la derecha, posicionar a la izquierda del cursor
+    finalX = x - menuWidth;
+    // Si tampoco cabe a la izquierda, ajustar al borde derecho
+    if (finalX < padding) {
+      finalX = viewportWidth - menuWidth - padding;
+    }
+  }
+  
+  // Ajustar posición vertical
+  if (y + menuHeight + padding > viewportHeight) {
+    // Si no cabe hacia abajo, posicionar hacia arriba del cursor
+    finalY = y - menuHeight;
+    // Si tampoco cabe hacia arriba, ajustar al borde inferior
+    if (finalY < padding) {
+      finalY = viewportHeight - menuHeight - padding;
+    }
+  }
+  
+  // Asegurar que no se salga de los límites mínimos
+  finalX = Math.max(padding, finalX);
+  finalY = Math.max(padding, finalY);
+  
+  return { x: finalX, y: finalY };
+};
+
 // Componente de menú contextual
 const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: number, onClose: () => void }) => {
   const selectedElements = store.selectedElements;
@@ -462,6 +499,11 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
   const isShapeElement = selectedElement && (selectedElement.type === 'rect' || selectedElement.type === 'circle' || selectedElement.type === 'triangle' || selectedElement.className === 'Rect' || selectedElement.className === 'Circle' || selectedElement.className === 'RegularPolygon');
   
   if (!hasSelection) return null;
+  
+  // Calcular posición inteligente del menú
+  const menuWidth = 220; // Ancho estimado del menú
+  const maxMenuHeight = Math.min(500, window.innerHeight * 0.8); // Máximo 80% de la altura de la ventana
+  const smartPosition = calculateSmartPosition(x, y, menuWidth, maxMenuHeight);
   
   const handleDuplicate = () => {
     selectedElements.forEach((element: any) => {
@@ -609,17 +651,22 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
     <div 
       style={{
         position: 'fixed',
-        left: x,
-        top: y,
+        left: smartPosition.x,
+        top: smartPosition.y,
         zIndex: 9999,
         backgroundColor: 'white',
         border: '1px solid #ccc',
         borderRadius: '4px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-        minWidth: '150px'
+        boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+        minWidth: '200px',
+        maxWidth: '250px',
+        maxHeight: `${maxMenuHeight}px`,
+        overflowY: 'auto',
+        overflowX: 'hidden'
       }}
+      className="context-menu-container"
     >
-      <Menu>
+      <Menu style={{ maxHeight: 'none', overflow: 'visible' }}>
         {/* Selector de colores */}
         <div style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
           <div style={{ fontSize: '12px', color: '#666', fontWeight: 'bold', marginBottom: '4px' }}>Color</div>
@@ -629,7 +676,7 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
         {/* Opciones específicas para texto */}
         {isTextElement && (
           <div style={{ borderBottom: '1px solid #eee' }}>
-            <div style={{ fontSize: '12px', color: '#666', fontWeight: 'bold', padding: '8px 12px 4px', borderBottom: '1px solid #f0f0f0' }}>Formato de Texto</div>
+            <div className="section-title">Formato de Texto</div>
             <MenuItem 
               icon="bold" 
               text="Negrita" 
@@ -645,7 +692,7 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
               text="Subrayado" 
               onClick={handleUnderline}
             />
-            <div style={{ fontSize: '12px', color: '#666', fontWeight: 'bold', padding: '8px 12px 4px', borderBottom: '1px solid #f0f0f0' }}>Alineación</div>
+            <div className="section-title">Alineación</div>
             <MenuItem 
               icon="align-left" 
               text="Alinear izquierda" 
@@ -667,7 +714,7 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
         {/* Opciones específicas para imágenes */}
         {isImageElement && (
           <div style={{ borderBottom: '1px solid #eee' }}>
-            <div style={{ fontSize: '12px', color: '#666', fontWeight: 'bold', padding: '8px 12px 4px', borderBottom: '1px solid #f0f0f0' }}>Imagen</div>
+            <div className="section-title">Imagen</div>
             <MenuItem 
               icon="swap-horizontal" 
               text="Voltear horizontal" 
@@ -689,7 +736,7 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
         {/* Opciones específicas para formas */}
         {isShapeElement && (
           <div style={{ borderBottom: '1px solid #eee' }}>
-            <div style={{ fontSize: '12px', color: '#666', fontWeight: 'bold', padding: '8px 12px 4px', borderBottom: '1px solid #f0f0f0' }}>Forma</div>
+            <div className="section-title">Forma</div>
             <MenuItem 
               icon="swap-horizontal" 
               text="Voltear horizontal" 
@@ -711,7 +758,7 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
         {/* Opciones para selección múltiple */}
         {isMultipleSelection && (
           <div style={{ borderBottom: '1px solid #eee' }}>
-            <div style={{ fontSize: '12px', color: '#666', fontWeight: 'bold', padding: '8px 12px 4px', borderBottom: '1px solid #f0f0f0' }}>Selección Múltiple</div>
+            <div className="section-title">Selección Múltiple</div>
             <MenuItem 
               icon="group-objects" 
               text="Agrupar elementos" 
@@ -722,7 +769,7 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
         
         {/* Opciones generales */}
         <div style={{ borderBottom: '1px solid #eee' }}>
-          <div style={{ fontSize: '12px', color: '#666', fontWeight: 'bold', padding: '8px 12px 4px', borderBottom: '1px solid #f0f0f0' }}>Acciones</div>
+          <div className="section-title">Acciones</div>
           <MenuItem 
             icon="duplicate" 
             text="Duplicar" 
@@ -736,7 +783,7 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
         </div>
         
         <div style={{ borderBottom: '1px solid #eee' }}>
-          <div style={{ fontSize: '12px', color: '#666', fontWeight: 'bold', padding: '8px 12px 4px', borderBottom: '1px solid #f0f0f0' }}>Orden</div>
+          <div className="section-title">Orden</div>
           <MenuItem 
             icon="bring-data" 
             text="Traer al frente" 
