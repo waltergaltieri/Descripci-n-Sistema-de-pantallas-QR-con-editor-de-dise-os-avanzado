@@ -531,7 +531,11 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
   const handleBringToFront = async () => {
     await store.history.transaction(async () => {
       selectedElements.forEach((element: any) => {
-        element.moveToTop();
+        // Move element to the top by calling moveUp() multiple times
+        const totalElements = store.activePage?.children.length || 0;
+        for (let i = 0; i < totalElements; i++) {
+          element.moveUp();
+        }
       });
     });
     onClose();
@@ -540,7 +544,11 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
   const handleSendToBack = async () => {
     await store.history.transaction(async () => {
       selectedElements.forEach((element: any) => {
-        element.moveToBottom();
+        // Move element to the bottom by calling moveDown() multiple times
+        const totalElements = store.activePage?.children.length || 0;
+        for (let i = 0; i < totalElements; i++) {
+          element.moveDown();
+        }
       });
     });
     onClose();
