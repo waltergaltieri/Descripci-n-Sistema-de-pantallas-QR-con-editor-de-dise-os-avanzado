@@ -17,6 +17,9 @@ export interface PolotnoStore {
   };
   selectedElements: CanvasElement[];
   previewMode?: boolean;
+  history?: {
+    transaction: (fn: () => void) => void;
+  };
 }
 
 // Función para diagnosticar problemas de arrastre
@@ -114,7 +117,13 @@ export function fixCanvasDragIssues(store: PolotnoStore): {
 
       // Aplicar actualizaciones si es necesario
       if (needsUpdate && element.set) {
-        element.set(updates);
+        if (store.history?.transaction) {
+          store.history.transaction(() => {
+            element.set!(updates);
+          });
+        } else {
+          element.set(updates);
+        }
         fixedCount++;
       }
     } catch (error) {

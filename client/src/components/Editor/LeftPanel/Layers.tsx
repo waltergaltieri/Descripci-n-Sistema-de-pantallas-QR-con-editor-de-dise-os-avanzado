@@ -64,7 +64,9 @@ const LayerItem: React.FC<LayerItemProps> = observer(({
   const hasChildren = element.children && element.children.length > 0;
   
   const handleNameSubmit = () => {
-    element.set({ name: editName });
+    polotnoStore.history.transaction(() => {
+      element.set({ name: editName });
+    });
     setIsEditing(false);
   };
   
@@ -222,26 +224,60 @@ const Layers: React.FC = observer(() => {
   };
   
   const handleToggleVisibility = (element: any) => {
-    element.set({ visible: !element.visible });
+    polotnoStore.history.transaction(() => {
+      element.set({ visible: !element.visible });
+    });
   };
   
   const handleToggleLock = (element: any) => {
-    element.set({ locked: !element.locked });
+    polotnoStore.history.transaction(() => {
+      element.set({ locked: !element.locked });
+    });
   };
   
   const handleDuplicate = (element: any) => {
     const elementData = element.toJSON();
     const newElement = {
       ...elementData,
+      id: undefined, // Let Polotno generate new ID
       x: elementData.x + 20,
       y: elementData.y + 20,
       name: `${elementData.name || elementData.type} (copia)`
     };
-    activePage?.addElement(newElement);
+    polotnoStore.history.transaction(() => {
+      activePage?.addElement(newElement);
+    });
   };
   
   const handleDelete = (element: any) => {
-    polotnoStore.activePage?.children.remove(element);
+    polotnoStore.history.transaction(() => {
+      try {
+        // Use Konva's destroy method directly - this completely removes and destroys the node
+        if (element && typeof (element as any).destroy === 'function') {
+          (element as any).destroy();
+          console.log('Element destroyed successfully:', element.id);
+        } else if (polotnoStore.activePage && element) {
+          // Fallback to MobX State Tree removal if destroy is not available
+          polotnoStore.activePage.children.remove(element);
+          console.log('Element removed from store:', element.id);
+        }
+      } catch (error) {
+        console.error('Element deletion failed:', error);
+        // Last resort: try to remove from children array directly
+        try {
+          const page = polotnoStore.activePage;
+          if (page && element) {
+            const index = page.children.indexOf(element);
+            if (index > -1) {
+              page.children.splice(index, 1);
+              console.log('Element removed via splice:', element.id);
+            }
+          }
+        } catch (spliceError) {
+          console.error('All deletion methods failed:', spliceError);
+        }
+      }
+    });
   };
   
   const handleRename = (element: any) => {

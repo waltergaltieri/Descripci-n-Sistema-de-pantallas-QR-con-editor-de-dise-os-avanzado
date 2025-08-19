@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import '../polotno-image-config-override'; // Override de configuración de Polotno para imágenes (debe ir primero)
+import { configurePolotnoImageDefaults } from '../utils/polotno-image-config'; // Configuración segura de imágenes
 import { PolotnoContainer, SidePanelWrap, WorkspaceWrap } from 'polotno';
 import { Toolbar } from 'polotno/toolbar/toolbar';
 import { ZoomButtons } from 'polotno/toolbar/zoom-buttons';
@@ -22,8 +22,8 @@ import '../test-specific-classes';
 import '../ultimate-centering-test'; // Script de testing definitivo
 import '../force-centering-javascript'; // Forzado de centrado mediante JavaScript
 import '../direct-centering-javascript'; // Solución JavaScript directa basada en inspección
-import '../fix-image-resize'; // Corrección para el redimensionamiento de imágenes
-import '../image-resize-patch'; // Parche adicional para redimensionamiento de imágenes
+// import '../fix-image-resize'; // Corrección para el redimensionamiento de imágenes - DESACTIVADO: causa errores de MobX State Tree
+// import '../image-resize-patch'; // Parche adicional para redimensionamiento de imágenes - DESACTIVADO: causa errores de MobX State Tree
 // import '../debug-contextual-controls'; // Diagnóstico de controles contextuales
 import '@blueprintjs/core/lib/css/blueprint.css';
 import './PolotnoEditor.css';
@@ -505,116 +505,143 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
   const maxMenuHeight = Math.min(500, window.innerHeight * 0.8); // Máximo 80% de la altura de la ventana
   const smartPosition = calculateSmartPosition(x, y, menuWidth, maxMenuHeight);
   
-  const handleDuplicate = () => {
-    selectedElements.forEach((element: any) => {
-      const newElement = { ...element.toJSON() };
-      newElement.id = 'element_' + Math.random().toString(36).substr(2, 9);
-      newElement.x = element.x + 20;
-      newElement.y = element.y + 20;
-      store.activePage.addElement(newElement);
+  const handleDuplicate = async () => {
+    await store.history.transaction(async () => {
+      selectedElements.forEach((element: any) => {
+        const newElement = { ...element.toJSON() };
+        newElement.id = 'element_' + Math.random().toString(36).substr(2, 9);
+        newElement.x = element.x + 20;
+        newElement.y = element.y + 20;
+        store.activePage.addElement(newElement);
+      });
     });
     onClose();
   };
   
-  const handleDelete = () => {
-    selectedElements.forEach((element: any) => {
-      element.remove();
+  const handleDelete = async () => {
+    await store.history.transaction(async () => {
+      // Use Polotno's official deleteElements method
+      const elementIds = selectedElements.map((element: any) => element.id);
+      store.deleteElements(elementIds);
+      console.log('Elements deleted successfully:', elementIds);
     });
     onClose();
   };
   
-  const handleBringToFront = () => {
-    selectedElements.forEach((element: any) => {
-      element.moveToTop();
+  const handleBringToFront = async () => {
+    await store.history.transaction(async () => {
+      selectedElements.forEach((element: any) => {
+        element.moveToTop();
+      });
     });
     onClose();
   };
   
-  const handleSendToBack = () => {
-    selectedElements.forEach((element: any) => {
-      element.moveToBottom();
+  const handleSendToBack = async () => {
+    await store.history.transaction(async () => {
+      selectedElements.forEach((element: any) => {
+        element.moveToBottom();
+      });
     });
     onClose();
   };
 
-  const handleBold = () => {
+  const handleBold = async () => {
     if (isTextElement) {
-      const currentStyle = selectedElement.fontStyle || '';
-      const isBold = currentStyle.includes('bold');
-      selectedElement.set({
-        fontStyle: isBold ? currentStyle.replace('bold', '').trim() : `${currentStyle} bold`.trim()
+      await store.history.transaction(async () => {
+        const currentStyle = selectedElement.fontStyle || '';
+        const isBold = currentStyle.includes('bold');
+        selectedElement.set({
+          fontStyle: isBold ? currentStyle.replace('bold', '').trim() : `${currentStyle} bold`.trim()
+        });
       });
     }
     onClose();
   };
 
-  const handleItalic = () => {
+  const handleItalic = async () => {
     if (isTextElement) {
-      const currentStyle = selectedElement.fontStyle || '';
-      const isItalic = currentStyle.includes('italic');
-      selectedElement.set({
-        fontStyle: isItalic ? currentStyle.replace('italic', '').trim() : `${currentStyle} italic`.trim()
+      await store.history.transaction(async () => {
+        const currentStyle = selectedElement.fontStyle || '';
+        const isItalic = currentStyle.includes('italic');
+        selectedElement.set({
+          fontStyle: isItalic ? currentStyle.replace('italic', '').trim() : `${currentStyle} italic`.trim()
+        });
       });
     }
     onClose();
   };
 
-  const handleUnderline = () => {
+  const handleUnderline = async () => {
     if (isTextElement) {
-      const currentDecoration = selectedElement.textDecoration || '';
-      const isUnderlined = currentDecoration.includes('underline');
-      selectedElement.set({
-        textDecoration: isUnderlined ? currentDecoration.replace('underline', '').trim() : `${currentDecoration} underline`.trim()
+      await store.history.transaction(async () => {
+        const currentDecoration = selectedElement.textDecoration || '';
+        const isUnderlined = currentDecoration.includes('underline');
+        selectedElement.set({
+          textDecoration: isUnderlined ? currentDecoration.replace('underline', '').trim() : `${currentDecoration} underline`.trim()
+        });
       });
     }
     onClose();
   };
 
-  const handleAlignLeft = () => {
+  const handleAlignLeft = async () => {
     if (isTextElement) {
-      selectedElement.set({ align: 'left' });
+      await store.history.transaction(async () => {
+        selectedElement.set({ align: 'left' });
+      });
     }
     onClose();
   };
 
-  const handleAlignCenter = () => {
+  const handleAlignCenter = async () => {
     if (isTextElement) {
-      selectedElement.set({ align: 'center' });
+      await store.history.transaction(async () => {
+        selectedElement.set({ align: 'center' });
+      });
     }
     onClose();
   };
 
-  const handleAlignRight = () => {
+  const handleAlignRight = async () => {
     if (isTextElement) {
-      selectedElement.set({ align: 'right' });
+      await store.history.transaction(async () => {
+        selectedElement.set({ align: 'right' });
+      });
     }
     onClose();
   };
 
-  const handleFlipHorizontal = () => {
+  const handleFlipHorizontal = async () => {
     if (selectedElement) {
-      const currentScaleX = selectedElement.scaleX || 1;
-      selectedElement.set({ scaleX: -currentScaleX });
+      await store.history.transaction(async () => {
+        const currentScaleX = selectedElement.scaleX || 1;
+        selectedElement.set({ scaleX: -currentScaleX });
+      });
     }
     onClose();
   };
 
-  const handleFlipVertical = () => {
+  const handleFlipVertical = async () => {
     if (selectedElement) {
-      const currentScaleY = selectedElement.scaleY || 1;
-      selectedElement.set({ scaleY: -currentScaleY });
+      await store.history.transaction(async () => {
+        const currentScaleY = selectedElement.scaleY || 1;
+        selectedElement.set({ scaleY: -currentScaleY });
+      });
     }
     onClose();
   };
 
-  const handleLock = () => {
-    selectedElements.forEach((element: any) => {
-      element.set({ selectable: false, draggable: false });
+  const handleLock = async () => {
+    await store.history.transaction(async () => {
+      selectedElements.forEach((element: any) => {
+        element.set({ selectable: false, draggable: false });
+      });
     });
     onClose();
   };
 
-  const handleGroup = () => {
+  const handleGroup = async () => {
     if (isMultipleSelection) {
       // Crear un grupo con los elementos seleccionados
       const group = {
@@ -625,23 +652,31 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
         children: selectedElements.map((el: any) => el.toJSON())
       };
       
-      // Eliminar elementos individuales
-      selectedElements.forEach((element: any) => element.remove());
-      
-      // Agregar el grupo
-      store.activePage.addElement(group);
+      // Eliminar elementos individuales y agregar el grupo
+      await store.history.transaction(async () => {
+        selectedElements.forEach((element: any) => {
+          if (store.activePage) {
+            store.activePage.children.remove(element);
+          }
+        });
+        
+        // Agregar el grupo
+        store.activePage.addElement(group);
+      });
     }
     onClose();
   };
 
-  const handleResetTransform = () => {
-    selectedElements.forEach((element: any) => {
-      element.set({
-        scaleX: 1,
-        scaleY: 1,
-        rotation: 0,
-        skewX: 0,
-        skewY: 0
+  const handleResetTransform = async () => {
+    await store.history.transaction(async () => {
+      selectedElements.forEach((element: any) => {
+        element.set({
+          scaleX: 1,
+          scaleY: 1,
+          rotation: 0,
+          skewX: 0,
+          skewY: 0
+        });
       });
     });
     onClose();
@@ -827,8 +862,10 @@ const ColorPickerContextMenu = ({ store, onClose }: { store: any, onClose: () =>
   const handleColorChange = (color: string) => {
     setCurrentColor(color);
     if (hasSelection) {
-      store.selectedElements.forEach((element: any) => {
-        element.set({ fill: color });
+      store.history.transaction(() => {
+        store.selectedElements.forEach((element: any) => {
+          element.set({ fill: color });
+        });
       });
     }
     onClose();
@@ -899,6 +936,26 @@ const PolotnoEditor: React.FC = observer(() => {
   // Hacer el store disponible globalmente para depuración
   React.useEffect(() => {
     (window as any).polotnoStore = polotnoStore;
+  }, []);
+
+  // Configurar propiedades por defecto de imágenes de manera segura
+  React.useEffect(() => {
+    try {
+      configurePolotnoImageDefaults(polotnoStore, {
+        draggable: true,
+        resizable: true,
+        removable: true,
+        selectable: true,
+        contentEditable: false,
+        styleEditable: true,
+        locked: false,
+        keepRatio: true,
+        stretchEnabled: true
+      });
+      console.log('Configuración segura de imágenes aplicada correctamente');
+    } catch (error) {
+      console.warn('Error al configurar propiedades de imagen:', error);
+    }
   }, []);
   
   // Manejar clic derecho en el workspace

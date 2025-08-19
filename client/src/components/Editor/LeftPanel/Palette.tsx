@@ -18,14 +18,16 @@ const Palette: React.FC = observer(() => {
   
   // Agregar texto
   const addText = () => {
-    polotnoStore.activePage?.addElement({
-      type: 'text',
-      text: 'Texto de ejemplo',
-      x: 100,
-      y: 100,
-      fontSize: 24,
-      fontFamily: 'Arial',
-      fill: '#000000',
+    polotnoStore.history.transaction(() => {
+      polotnoStore.activePage?.addElement({
+        type: 'text',
+        text: 'Texto de ejemplo',
+        x: 100,
+        y: 100,
+        fontSize: 24,
+        fontFamily: 'Arial',
+        fill: '#000000',
+      });
     });
   };
   
@@ -40,13 +42,15 @@ const Palette: React.FC = observer(() => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const src = e.target?.result as string;
-        polotnoStore.activePage?.addElement({
-          type: 'image',
-          src,
-          x: 100,
-          y: 100,
-          width: 200,
-          height: 200,
+        polotnoStore.history.transaction(() => {
+          polotnoStore.activePage?.addElement({
+            type: 'image',
+            src,
+            x: 100,
+            y: 100,
+            width: 200,
+            height: 200,
+          });
         });
       };
       reader.readAsDataURL(file);
@@ -57,59 +61,69 @@ const Palette: React.FC = observer(() => {
   const addImageFromURL = () => {
     const url = prompt('Ingresa la URL de la imagen:');
     if (url) {
-      polotnoStore.activePage?.addElement({
-        type: 'image',
-        src: url,
-        x: 100,
-        y: 100,
-        width: 200,
-        height: 200,
+      polotnoStore.history.transaction(() => {
+        polotnoStore.activePage?.addElement({
+          type: 'image',
+          src: url,
+          x: 100,
+          y: 100,
+          width: 200,
+          height: 200,
+        });
       });
     }
   };
   
   // Agregar formas
   const addRectangle = () => {
-    polotnoStore.activePage?.addElement({
-      type: 'svg',
-      x: 100,
-      y: 100,
-      width: 150,
-      height: 100,
-      src: `<svg viewBox="0 0 150 100"><rect width="150" height="100" fill="#3B82F6" /></svg>`
+    polotnoStore.history.transaction(() => {
+      polotnoStore.activePage?.addElement({
+        type: 'svg',
+        x: 100,
+        y: 100,
+        width: 150,
+        height: 100,
+        src: `<svg viewBox="0 0 150 100"><rect width="150" height="100" fill="#3B82F6" /></svg>`
+      });
     });
   };
   
   const addCircle = () => {
-    polotnoStore.activePage?.addElement({
-      type: 'svg',
-      x: 100,
-      y: 100,
-      width: 150,
-      height: 150,
-      src: `<svg viewBox="0 0 150 150"><circle cx="75" cy="75" r="75" fill="#EF4444" /></svg>`
+    polotnoStore.history.transaction(() => {
+      polotnoStore.activePage?.addElement({
+        type: 'svg',
+        x: 100,
+        y: 100,
+        width: 150,
+        height: 150,
+        src: `<svg viewBox="0 0 150 150"><circle cx="75" cy="75" r="75" fill="#EF4444" /></svg>`
+      });
     });
   };
   
   const addTriangle = () => {
-    polotnoStore.activePage?.addElement({
-      type: 'svg',
-      x: 100,
-      y: 100,
-      width: 150,
-      height: 130,
-      src: `<svg viewBox="0 0 150 130"><polygon points="75,10 140,120 10,120" fill="#10B981" /></svg>`
+    polotnoStore.history.transaction(() => {
+      polotnoStore.activePage?.addElement({
+        type: 'svg',
+        x: 100,
+        y: 100,
+        width: 150,
+        height: 130,
+        src: `<svg viewBox="0 0 150 130"><polygon points="75,10 140,120 10,120" fill="#10B981" /></svg>`
+      });
     });
   };
   
   const addStar = () => {
-    polotnoStore.activePage?.addElement({
-      type: 'svg',
-      x: 100,
-      y: 100,
-      width: 160,
-      height: 160,
-      src: `<svg viewBox="0 0 160 160"><polygon points="80,10 95,50 140,50 105,80 120,120 80,100 40,120 55,80 20,50 65,50" fill="#F59E0B" /></svg>`
+    polotnoStore.history.transaction(() => {
+      polotnoStore.activePage?.addElement({
+        type: 'svg',
+        x: 100,
+        y: 100,
+        width: 160,
+        height: 160,
+        src: `<svg viewBox="0 0 160 160"><polygon points="80,10 95,50 140,50 105,80 120,120 80,100 40,120 55,80 20,50 65,50" fill="#F59E0B" /></svg>`
+      });
     });
   };
   
@@ -120,14 +134,16 @@ const Palette: React.FC = observer(() => {
   const addQRCode = () => {
     const text = prompt('Texto para el código QR:', 'https://ejemplo.com');
     if (text) {
-      polotnoStore.activePage?.addElement({
-        type: 'text',
-        text: `QR: ${text}`,
-        x: 100,
-        y: 100,
-        fontSize: 24,
-        fontFamily: 'Arial',
-        fill: '#000000'
+      polotnoStore.history.transaction(() => {
+        polotnoStore.activePage?.addElement({
+          type: 'text',
+          text: `QR: ${text}`,
+          x: 100,
+          y: 100,
+          fontSize: 24,
+          fontFamily: 'Arial',
+          fill: '#000000'
+        });
       });
     }
   };

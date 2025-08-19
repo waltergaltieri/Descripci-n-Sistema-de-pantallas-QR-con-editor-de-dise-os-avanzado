@@ -24,7 +24,9 @@ export const SelectionBox: React.FC<SelectionBoxProps> = ({
   const handleTransform = (elementId: string, newTransform: any) => {
     const element = polotnoStore.getElementById(elementId);
     if (element) {
-      element.set(newTransform);
+      polotnoStore.history.transaction(() => {
+        element.set(newTransform);
+      });
     }
   };
 

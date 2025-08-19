@@ -37,19 +37,23 @@ class AddElementCommand extends BaseCommand {
 
   execute(): void {
     const store = this.getStore();
-    const element = store.activePage.addElement({
-      ...this.elementData,
-      id: this.elementId
+    store.history.transaction(() => {
+      const element = store.activePage.addElement({
+        ...this.elementData,
+        id: this.elementId
+      });
+      this.elementId = element.id;
     });
-    this.elementId = element.id;
   }
 
   undo(): void {
     const store = this.getStore();
-    const element = store.getElementById(this.elementId);
-    if (element) {
-      store.activePage.children.remove(element);
-    }
+    store.history.transaction(() => {
+      const element = store.getElementById(this.elementId);
+      if (element) {
+        store.activePage.children.remove(element);
+      }
+    });
   }
 
   redo(): void {
@@ -97,26 +101,29 @@ class DeleteElementCommand extends BaseCommand {
 
   execute(): void {
     const store = this.getStore();
-    const element = store.getElementById(this.elementId);
-    if (element && store.activePage) {
-      store.activePage.children.remove(element);
-    }
+    store.history.transaction(() => {
+      // Use Polotno's official deleteElements method
+      store.deleteElements([this.elementId]);
+      console.log('Element deleted successfully:', this.elementId);
+    });
   }
 
   undo(): void {
     const store = this.getStore();
     
-    // Restaurar elemento
-    const element = store.activePage.addElement(this.elementData);
-    
-    // Restaurar posición si tenía un padre
-    if (this.parentId) {
-      const parent = store.getElementById(this.parentId);
-      if (parent && element) {
-        // Mover elemento al padre
-        element.set({ parent: parent });
+    store.history.transaction(async () => {
+      // Restaurar elemento
+      const element = store.activePage.addElement(this.elementData);
+      
+      // Restaurar posición si tenía un padre
+      if (this.parentId) {
+        const parent = store.getElementById(this.parentId);
+        if (parent && element) {
+          // Mover elemento al padre
+          element.set({ parent: parent });
+        }
       }
-    }
+    });
   }
 
   redo(): void {
@@ -159,21 +166,25 @@ class TransformElementsCommand extends BaseCommand {
 
   execute(): void {
     const store = this.getStore();
-    this.elementIds.forEach(id => {
-      const element = store.getElementById(id);
-      if (element && this.newTransforms[id]) {
-        element.set(this.newTransforms[id]);
-      }
+    store.history.transaction(async () => {
+      this.elementIds.forEach(id => {
+        const element = store.getElementById(id);
+        if (element && this.newTransforms[id]) {
+          element.set(this.newTransforms[id]);
+        }
+      });
     });
   }
 
   undo(): void {
     const store = this.getStore();
-    this.elementIds.forEach(id => {
-      const element = store.getElementById(id);
-      if (element && this.oldTransforms[id]) {
-        element.set(this.oldTransforms[id]);
-      }
+    store.history.transaction(async () => {
+      this.elementIds.forEach(id => {
+        const element = store.getElementById(id);
+        if (element && this.oldTransforms[id]) {
+          element.set(this.oldTransforms[id]);
+        }
+      });
     });
   }
 
@@ -215,7 +226,9 @@ class UpdateElementCommand extends BaseCommand {
     const store = this.getStore();
     const element = store.getElementById(this.elementId);
     if (element) {
-      element.set(this.newProperties);
+      store.history.transaction(() => {
+        element.set(this.newProperties);
+      });
     }
   }
 
@@ -223,7 +236,9 @@ class UpdateElementCommand extends BaseCommand {
     const store = this.getStore();
     const element = store.getElementById(this.elementId);
     if (element) {
-      element.set(this.oldProperties);
+      store.history.transaction(() => {
+        element.set(this.oldProperties);
+      });
     }
   }
 

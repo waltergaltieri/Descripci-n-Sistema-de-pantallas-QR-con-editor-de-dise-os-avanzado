@@ -122,145 +122,149 @@ const Animations: React.FC = observer(() => {
   const applyAnimation = () => {
     if (!hasSelection) return;
     
-    selectedElements.forEach((element, index) => {
-      const delay = animationConfig.delay + (isGroup ? index * animationConfig.stagger! : 0);
-      
-      // Aplicar animación según el tipo
-      switch (animationConfig.type) {
-        case 'fade':
-          element.set({
-            animation: {
-              type: 'fade',
-              duration: animationConfig.duration * 1000,
-              delay: delay * 1000,
-              easing: animationConfig.easing,
-              iterationCount: animationConfig.repeat === -1 ? 'infinite' : animationConfig.repeat,
-              direction: animationConfig.direction,
-              autoplay: animationConfig.autoplay
-            }
-          });
-          break;
-          
-        case 'slide':
-          element.set({
-            animation: {
-              type: 'slide',
-              duration: animationConfig.duration * 1000,
-              delay: delay * 1000,
-              easing: animationConfig.easing,
-              iterationCount: animationConfig.repeat === -1 ? 'infinite' : animationConfig.repeat,
-              direction: animationConfig.direction,
-              autoplay: animationConfig.autoplay,
-              from: { x: -100 },
-              to: { x: 0 }
-            }
-          });
-          break;
-          
-        case 'scale':
-          element.set({
-            animation: {
-              type: 'scale',
-              duration: animationConfig.duration * 1000,
-              delay: delay * 1000,
-              easing: animationConfig.easing,
-              iterationCount: animationConfig.repeat === -1 ? 'infinite' : animationConfig.repeat,
-              direction: animationConfig.direction,
-              autoplay: animationConfig.autoplay,
-              from: { scaleX: 0, scaleY: 0 },
-              to: { scaleX: 1, scaleY: 1 }
-            }
-          });
-          break;
-          
-        case 'rotate':
-          element.set({
-            animation: {
-              type: 'rotate',
-              duration: animationConfig.duration * 1000,
-              delay: delay * 1000,
-              easing: animationConfig.easing,
-              iterationCount: animationConfig.repeat === -1 ? 'infinite' : animationConfig.repeat,
-              direction: animationConfig.direction,
-              autoplay: animationConfig.autoplay,
-              from: { rotation: 0 },
-              to: { rotation: 360 }
-            }
-          });
-          break;
-          
-        case 'pulse':
-          element.set({
-            animation: {
-              type: 'pulse',
-              duration: animationConfig.duration * 1000,
-              delay: delay * 1000,
-              easing: animationConfig.easing,
-              iterationCount: animationConfig.repeat === -1 ? 'infinite' : animationConfig.repeat,
-              direction: animationConfig.direction,
-              autoplay: animationConfig.autoplay,
-              from: { scaleX: 1, scaleY: 1 },
-              to: { scaleX: 1.1, scaleY: 1.1 }
-            }
-          });
-          break;
-          
-        case 'bounce':
-          element.set({
-            animation: {
-              type: 'bounce',
-              duration: animationConfig.duration * 1000,
-              delay: delay * 1000,
-              easing: animationConfig.easing,
-              iterationCount: animationConfig.repeat === -1 ? 'infinite' : animationConfig.repeat,
-              direction: animationConfig.direction,
-              autoplay: animationConfig.autoplay,
-              from: { y: 0 },
-              to: { y: -20 }
-            }
-          });
-          break;
-          
-        case 'marquee':
-          element.set({
-            animation: {
-              type: 'marquee',
-              duration: animationConfig.duration * 1000,
-              delay: delay * 1000,
-              easing: 'linear',
-              iterationCount: animationConfig.repeat === -1 ? 'infinite' : animationConfig.repeat,
-              direction: animationConfig.direction,
-              autoplay: animationConfig.autoplay,
-              from: { x: -element.width },
-              to: { x: polotnoStore.activePage?.width || 800 }
-            }
-          });
-          break;
-          
-        case 'motionPath':
-          // Para motion path, necesitaríamos definir un path SVG
-          element.set({
-            animation: {
-              type: 'motionPath',
-              duration: animationConfig.duration * 1000,
-              delay: delay * 1000,
-              easing: animationConfig.easing,
-              iterationCount: animationConfig.repeat === -1 ? 'infinite' : animationConfig.repeat,
-              direction: animationConfig.direction,
-              autoplay: animationConfig.autoplay,
-              path: 'M 0 0 Q 50 -50 100 0 T 200 0' // Ejemplo de path
-            }
-          });
-          break;
-      }
+    polotnoStore.history.transaction(() => {
+      selectedElements.forEach((element, index) => {
+        const delay = animationConfig.delay + (isGroup ? index * animationConfig.stagger! : 0);
+        
+        // Aplicar animación según el tipo
+        switch (animationConfig.type) {
+          case 'fade':
+            element.set({
+              animation: {
+                type: 'fade',
+                duration: animationConfig.duration * 1000,
+                delay: delay * 1000,
+                easing: animationConfig.easing,
+                iterationCount: animationConfig.repeat === -1 ? 'infinite' : animationConfig.repeat,
+                direction: animationConfig.direction,
+                autoplay: animationConfig.autoplay
+              }
+            });
+            break;
+            
+          case 'slide':
+            element.set({
+              animation: {
+                type: 'slide',
+                duration: animationConfig.duration * 1000,
+                delay: delay * 1000,
+                easing: animationConfig.easing,
+                iterationCount: animationConfig.repeat === -1 ? 'infinite' : animationConfig.repeat,
+                direction: animationConfig.direction,
+                autoplay: animationConfig.autoplay,
+                from: { x: -100 },
+                to: { x: 0 }
+              }
+            });
+            break;
+            
+          case 'scale':
+            element.set({
+              animation: {
+                type: 'scale',
+                duration: animationConfig.duration * 1000,
+                delay: delay * 1000,
+                easing: animationConfig.easing,
+                iterationCount: animationConfig.repeat === -1 ? 'infinite' : animationConfig.repeat,
+                direction: animationConfig.direction,
+                autoplay: animationConfig.autoplay,
+                from: { scaleX: 0, scaleY: 0 },
+                to: { scaleX: 1, scaleY: 1 }
+              }
+            });
+            break;
+            
+          case 'rotate':
+            element.set({
+              animation: {
+                type: 'rotate',
+                duration: animationConfig.duration * 1000,
+                delay: delay * 1000,
+                easing: animationConfig.easing,
+                iterationCount: animationConfig.repeat === -1 ? 'infinite' : animationConfig.repeat,
+                direction: animationConfig.direction,
+                autoplay: animationConfig.autoplay,
+                from: { rotation: 0 },
+                to: { rotation: 360 }
+              }
+            });
+            break;
+            
+          case 'pulse':
+            element.set({
+              animation: {
+                type: 'pulse',
+                duration: animationConfig.duration * 1000,
+                delay: delay * 1000,
+                easing: animationConfig.easing,
+                iterationCount: animationConfig.repeat === -1 ? 'infinite' : animationConfig.repeat,
+                direction: animationConfig.direction,
+                autoplay: animationConfig.autoplay,
+                from: { scaleX: 1, scaleY: 1 },
+                to: { scaleX: 1.1, scaleY: 1.1 }
+              }
+            });
+            break;
+            
+          case 'bounce':
+            element.set({
+              animation: {
+                type: 'bounce',
+                duration: animationConfig.duration * 1000,
+                delay: delay * 1000,
+                easing: animationConfig.easing,
+                iterationCount: animationConfig.repeat === -1 ? 'infinite' : animationConfig.repeat,
+                direction: animationConfig.direction,
+                autoplay: animationConfig.autoplay,
+                from: { y: 0 },
+                to: { y: -20 }
+              }
+            });
+            break;
+            
+          case 'marquee':
+            element.set({
+              animation: {
+                type: 'marquee',
+                duration: animationConfig.duration * 1000,
+                delay: delay * 1000,
+                easing: 'linear',
+                iterationCount: animationConfig.repeat === -1 ? 'infinite' : animationConfig.repeat,
+                direction: animationConfig.direction,
+                autoplay: animationConfig.autoplay,
+                from: { x: -element.width },
+                to: { x: polotnoStore.activePage?.width || 800 }
+              }
+            });
+            break;
+            
+          case 'motionPath':
+            // Para motion path, necesitaríamos definir un path SVG
+            element.set({
+              animation: {
+                type: 'motionPath',
+                duration: animationConfig.duration * 1000,
+                delay: delay * 1000,
+                easing: animationConfig.easing,
+                iterationCount: animationConfig.repeat === -1 ? 'infinite' : animationConfig.repeat,
+                direction: animationConfig.direction,
+                autoplay: animationConfig.autoplay,
+                path: 'M 0 0 Q 50 -50 100 0 T 200 0' // Ejemplo de path
+              }
+            });
+            break;
+        }
+      });
     });
   };
   
   const removeAnimation = () => {
     if (!hasSelection) return;
     
-    selectedElements.forEach(element => {
-      element.set({ animation: null });
+    polotnoStore.history.transaction(() => {
+      selectedElements.forEach(element => {
+        element.set({ animation: null });
+      });
     });
   };
   

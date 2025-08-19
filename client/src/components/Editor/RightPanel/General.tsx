@@ -97,24 +97,26 @@ const General: React.FC = observer(() => {
     );
   }
   
-  const updateElement = (updates: any) => {
-    selectedElement.set(updates);
+  const updateElement = async (updates: any) => {
+    await polotnoStore.history.transaction(async () => {
+      selectedElement.set(updates);
+    });
   };
   
-  const handlePositionChange = (property: 'x' | 'y', value: number) => {
-    updateElement({ [property]: value });
+  const handlePositionChange = async (property: 'x' | 'y', value: number) => {
+    await updateElement({ [property]: value });
   };
   
-  const handleSizeChange = (property: 'width' | 'height', value: number) => {
-    updateElement({ [property]: Math.max(1, value) });
+  const handleSizeChange = async (property: 'width' | 'height', value: number) => {
+    await updateElement({ [property]: Math.max(1, value) });
   };
   
-  const handleRotationChange = (value: number) => {
-    updateElement({ rotation: value });
+  const handleRotationChange = async (value: number) => {
+    await updateElement({ rotation: value });
   };
   
-  const handleOpacityChange = (value: number) => {
-    updateElement({ opacity: value / 100 });
+  const handleOpacityChange = async (value: number) => {
+    await updateElement({ opacity: value / 100 });
   };
   
   const handleZIndexChange = (value: number) => {
@@ -330,7 +332,11 @@ const General: React.FC = observer(() => {
             Duplicar
           </button>
           <button
-            onClick={() => polotnoStore.activePage?.children.remove(selectedElement)}
+            onClick={() => {
+              polotnoStore.history.transaction(() => {
+                polotnoStore.activePage?.children.remove(selectedElement);
+              });
+            }}
             className="w-full px-3 py-2 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
           >
             Eliminar

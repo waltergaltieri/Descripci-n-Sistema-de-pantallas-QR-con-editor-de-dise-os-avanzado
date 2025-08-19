@@ -57,11 +57,13 @@ export const CanvasEditor: React.FC<CanvasEditorProps> = ({ width, height }) => 
   };
 
   const transformElements = (ids: string[], transform: any) => {
-    ids.forEach(id => {
-      const element = store.getElementById(id);
-      if (element) {
-        element.set(transform);
-      }
+    store.history.transaction(() => {
+      ids.forEach(id => {
+        const element = store.getElementById(id);
+        if (element) {
+          element.set(transform);
+        }
+      });
     });
   };
 

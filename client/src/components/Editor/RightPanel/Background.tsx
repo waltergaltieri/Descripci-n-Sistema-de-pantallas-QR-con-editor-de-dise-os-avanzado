@@ -94,48 +94,56 @@ const Background: React.FC = observer(() => {
   
   const activePage = polotnoStore.activePage;
   
-  const applyBackground = () => {
+  const applyBackground = async () => {
     if (!activePage) return;
     
     switch (backgroundType) {
       case 'solid':
-        activePage.set({ fill: solidColor });
+        await polotnoStore.history.transaction(async () => {
+          activePage.set({ fill: solidColor });
+        });
         break;
         
       case 'linear':
-        activePage.set({
-          fill: {
-            type: 'linear',
-            colorStops: [
-              { offset: 0, color: gradientStart },
-              { offset: 1, color: gradientEnd }
-            ],
-            angle: gradientAngle
-          }
+        await polotnoStore.history.transaction(async () => {
+          activePage.set({
+            fill: {
+              type: 'linear',
+              colorStops: [
+                { offset: 0, color: gradientStart },
+                { offset: 1, color: gradientEnd }
+              ],
+              angle: gradientAngle
+            }
+          });
         });
         break;
         
       case 'radial':
-        activePage.set({
-          fill: {
-            type: 'radial',
-            colorStops: [
-              { offset: 0, color: gradientStart },
-              { offset: 1, color: gradientEnd }
-            ]
-          }
+        await polotnoStore.history.transaction(async () => {
+          activePage.set({
+            fill: {
+              type: 'radial',
+              colorStops: [
+                { offset: 0, color: gradientStart },
+                { offset: 1, color: gradientEnd }
+              ]
+            }
+          });
         });
         break;
         
       case 'image':
         if (imageUrl) {
-          activePage.set({
-            backgroundImage: {
-              src: imageUrl,
-              fit: imageFit,
-              opacity: imageOpacity / 100,
-              blur: imageBlur
-            }
+          await polotnoStore.history.transaction(async () => {
+            activePage.set({
+              backgroundImage: {
+                src: imageUrl,
+                fit: imageFit,
+                opacity: imageOpacity / 100,
+                blur: imageBlur
+              }
+            });
           });
         }
         break;

@@ -201,27 +201,32 @@ export const useEditorUIStore = create<EditorUIStore>()(subscribeWithSelector(im
   
   // Element operations
   addElement: (element: any) => {
-    polotnoStore.activePage?.addElement(element);
+    polotnoStore.history.transaction(() => {
+      polotnoStore.activePage?.addElement(element);
+    });
   },
   
   duplicateElement: (id: string) => {
-    const element = polotnoStore.getElementById(id);
-    if (element) {
-      const elementData = element.toJSON();
-      polotnoStore.activePage?.addElement({
-        ...elementData,
-        id: undefined, // Let Polotno generate new ID
-        x: elementData.x + 20,
-        y: elementData.y + 20
-      });
-    }
+    polotnoStore.history.transaction(() => {
+      const element = polotnoStore.getElementById(id);
+      if (element) {
+        const elementData = element.toJSON();
+        polotnoStore.activePage?.addElement({
+          ...elementData,
+          id: undefined, // Let Polotno generate new ID
+          x: elementData.x + 20,
+          y: elementData.y + 20
+        });
+      }
+    });
   },
   
   deleteElement: (id: string) => {
-    const element = polotnoStore.getElementById(id);
-    if (element && polotnoStore.activePage) {
-      polotnoStore.activePage.children.remove(element);
-    }
+    polotnoStore.history.transaction(() => {
+      // Use Polotno's official deleteElements method
+      polotnoStore.deleteElements([id]);
+      console.log('Element deleted successfully:', id);
+    });
   },
   
   selectMultiple: (ids: string[]) => {
@@ -385,7 +390,7 @@ export const editorUtils = {
         }
         
         // Forzar transacción para actualizar el estado
-        polotnoStore.history.transaction(() => {
+        polotnoStore.history.transaction(async () => {
           // Operación vacía para forzar actualización
         });
       }, 100);
@@ -400,7 +405,7 @@ export const editorUtils = {
   },
 
   // Crear nueva página con dimensiones específicas
-  createPageWithDimensions: (width: number, height: number, background = '#ffffff') => {
+  createPageWithDimensions: async (width: number, height: number, background = '#ffffff') => {
     console.log('=== INICIO createPageWithDimensions ===');
     console.log(`Dimensiones solicitadas: ${width}x${height}`);
     console.log('Background:', background);
@@ -430,7 +435,9 @@ export const editorUtils = {
         
         // Configurar el fondo de la página
         if (background) {
-          page.set({ background: background });
+          await polotnoStore.history.transaction(async () => {
+            page.set({ background: background });
+          });
           console.log('Background configurado:', background);
         }
         
@@ -456,8 +463,8 @@ export const editorUtils = {
             window.dispatchEvent(customEvent);
           }
           
-          // Forzar transacción
-          polotnoStore.history.transaction(() => {
+          // Forzar transacción (sin await en setTimeout)
+          polotnoStore.history.transaction(async () => {
             // Operación vacía para forzar actualización
           });
           

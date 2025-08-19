@@ -190,12 +190,14 @@ export const Editor: React.FC = observer(() => {
         const canvasY = y / (store.scale);
         
         // Add element directly to polotno store with position
-        polotnoStore.activePage?.addElement({
-          type: elementType,
-          x: canvasX - 50,
-          y: canvasY - 25,
-          width: 100,
-          height: 50
+        polotnoStore.history.transaction(() => {
+          polotnoStore.activePage?.addElement({
+            type: elementType,
+            x: canvasX - 50,
+            y: canvasY - 25,
+            width: 100,
+            height: 50
+          });
         });
         return;
       }
@@ -230,7 +232,9 @@ export const Editor: React.FC = observer(() => {
               }
             });
             
-            polotnoStore.activePage?.addElement(newElement);
+            polotnoStore.history.transaction(() => {
+              polotnoStore.activePage?.addElement(newElement);
+            });
           };
           reader.readAsDataURL(file);
         });
