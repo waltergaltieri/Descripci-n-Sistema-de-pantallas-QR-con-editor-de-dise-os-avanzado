@@ -606,7 +606,28 @@ div[style*="pointer-events: none;"] > .bp5-navbar {
   height: 30px !important;
 }
 
-/* RESETEAR TODOS LOS ELEMENTOS HIJOS */
+/* CONTENEDOR PRINCIPAL CON FLEXBOX LAYOUT - SOLUCIÓN ROBUSTA */
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"],
+.polotno-side-panel div[style="padding: 10px; display: flex;"] {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 4px !important;
+  padding: 4px !important;
+  background-color: #ffffff !important;
+  border: 1px solid #dee2e6 !important;
+  border-radius: 6px !important;
+  margin: 8px 4px !important;
+  min-height: 32px !important;
+  max-width: 280px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+/* RESETEAR TODOS LOS ELEMENTOS HIJOS - FLEXBOX */
 .polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > *,
 .polotno-side-panel div[style="padding: 10px; display: flex;"] > * {
   margin: 0 !important;
@@ -619,61 +640,237 @@ div[style*="pointer-events: none;"] > .bp5-navbar {
   left: auto !important;
   right: auto !important;
   bottom: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+  max-width: fit-content !important;
 }
 
-/* Color picker - GRID COLUMN 1 */
+/* CONTENEDOR PADRE DEL PANEL LATERAL - CONTROL ESTRICTO */
+.polotno-side-panel {
+  overflow-x: hidden !important;
+  max-width: 100% !important;
+}
+
+.polotno-side-panel > * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* SELECTORES MUY ESPECÍFICOS PARA ELEMENTOS DEL PANEL LATERAL */
+/* Contenedor principal con clase específica */
+.go3960841851.bp5-navbar.polotno-panel-container {
+  max-width: 280px !important;
+  overflow: hidden !important;
+}
+
+/* Cards de elementos con padding reducido */
+.go3960841851.bp5-navbar.polotno-panel-container .bp5-card.bp5-elevation-0 {
+  padding: 2px !important;
+  margin: 0px 1px 2px !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Contenedor flex de cada elemento */
+.go3960841851.bp5-navbar.polotno-panel-container .bp5-card.bp5-elevation-0 > div[style*="display: flex"] {
+  gap: 2px !important;
+  padding: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Drag handle más pequeño */
+.go3960841851.bp5-navbar.polotno-panel-container .drag-handle {
+  width: 20px !important;
+  min-width: 20px !important;
+  height: 20px !important;
+  margin-right: 2px !important;
+}
+
+/* Texto del tipo de elemento más pequeño */
+.go3960841851.bp5-navbar.polotno-panel-container .drag-handle + div {
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  padding: 0px 2px !important;
+  font-size: 11px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Contenedor del texto editable más pequeño */
+.go3960841851.bp5-navbar.polotno-panel-container .bp5-editable-text {
+  max-width: 80px !important;
+  width: 80px !important;
+  min-width: 80px !important;
+}
+
+.go3960841851.bp5-navbar.polotno-panel-container .bp5-editable-text-content {
+  height: 20px !important;
+  line-height: 20px !important;
+  min-width: 80px !important;
+  max-width: 80px !important;
+  font-size: 12px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+/* Botones de acción más pequeños */
+.go3960841851.bp5-navbar.polotno-panel-container .bp5-button.bp5-minimal {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  max-width: 20px !important;
+  padding: 0 !important;
+  margin: 0 1px !important;
+}
+
+/* Iconos dentro de los botones más pequeños */
+.go3960841851.bp5-navbar.polotno-panel-container .bp5-button.bp5-minimal .bp5-icon {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+.go3960841851.bp5-navbar.polotno-panel-container .bp5-button.bp5-minimal .bp5-icon svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+/* Ocultar selector de colores completamente */
+.go3960841851.bp5-navbar.polotno-panel-container div[style*="display: flex"][style*="justify-content: space-around"][style*="padding-bottom: 10px"] {
+  display: none !important;
+}
+
+/* Ocultar cualquier selector de colores en el panel lateral */
+.polotno-side-panel div[style*="justify-content: space-around"][style*="padding-bottom"] {
+  display: none !important;
+}
+
+/* Ocultar elementos con colores predefinidos */
+.polotno-side-panel div[style*="background-color"][style*="border-radius"][style*="cursor: pointer"] {
+  display: none !important;
+}
+
+
+
+/* Color picker - FLEXBOX */
 .polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > span:first-child,
 .polotno-side-panel div[style="padding: 10px; display: flex;"] > span:first-child {
-  grid-column: 1 !important;
-  justify-self: start !important;
+  width: 24px !important;
+  min-width: 24px !important;
+  max-width: 24px !important;
+  height: 24px !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+  order: 1 !important;
 }
 
-/* Selector de fuente - GRID COLUMN 2 */
+/* Botones de color picker */
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > span:first-child .bp5-button,
+.polotno-side-panel div[style="padding: 10px; display: flex;"] > span:first-child .bp5-button {
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  max-width: 24px !important;
+  border-radius: 4px !important;
+  border: 2px solid #dee2e6 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+}
+
+/* Color picker con fondo de color */
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] .bp5-button[style*="background"],
+.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-button[style*="background"] {
+  border: 2px solid #dee2e6 !important;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1) !important;
+}
+
+/* Selector de fuente - FLEXBOX */
 .polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > span:nth-child(2),
 .polotno-side-panel div[style="padding: 10px; display: flex;"] > span:nth-child(2) {
-  grid-column: 2 !important;
-  min-width: 120px !important;
-  justify-self: start !important;
+  width: 80px !important;
+  min-width: 80px !important;
+  max-width: 80px !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+  order: 2 !important;
 }
 
-/* Control numérico de tamaño - GRID COLUMN 3 */
+/* Botones de selector de fuente */
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > span:nth-child(2) .bp5-button,
+.polotno-side-panel div[style="padding: 10px; display: flex;"] > span:nth-child(2) .bp5-button {
+  width: 80px !important;
+  min-width: 80px !important;
+  max-width: 80px !important;
+  text-align: left !important;
+  justify-content: space-between !important;
+  padding: 0 6px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+}
+
+/* Control numérico de tamaño - FLEXBOX */
 .polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > .bp5-control-group,
 .polotno-side-panel div[style="padding: 10px; display: flex;"] > .bp5-control-group {
-  grid-column: 3 !important;
-  justify-self: start !important;
+  width: 50px !important;
+  min-width: 50px !important;
+  max-width: 50px !important;
+  overflow: hidden !important;
+  flex-shrink: 0 !important;
+  order: 3 !important;
 }
 
-/* Primer grupo de botones de formato - GRID COLUMN 4 */
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > .bp5-button-group:first-of-type,
-.polotno-side-panel div[style="padding: 10px; display: flex;"] > .bp5-button-group:first-of-type {
-  grid-column: 4 !important;
-  justify-self: start !important;
+/* Inputs numéricos dentro del control group */
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] .bp5-numeric-input,
+.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-numeric-input {
+  width: 50px !important;
+  min-width: 50px !important;
+  max-width: 50px !important;
+  flex-shrink: 0 !important;
 }
 
-/* Botón de espaciado de línea - GRID COLUMN 5 */
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] .bp5-input,
+.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-input {
+  height: 32px !important;
+  border-radius: 4px !important;
+  border: 1px solid #ced4da !important;
+  padding: 0 8px !important;
+  font-size: 14px !important;
+}
+
+/* Grupos de botones y elementos restantes - FLEXBOX */
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > .bp5-button-group,
+.polotno-side-panel div[style="padding: 10px; display: flex;"] > .bp5-button-group {
+  flex-shrink: 0 !important;
+  order: 4 !important;
+}
+
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > .bp5-button,
+.polotno-side-panel div[style="padding: 10px; display: flex;"] > .bp5-button {
+  flex-shrink: 0 !important;
+  order: 5 !important;
+}
+
 .polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > span:has(.bp5-button),
 .polotno-side-panel div[style="padding: 10px; display: flex;"] > span:has(.bp5-button) {
-  grid-column: 5 !important;
-  justify-self: start !important;
-}
-
-/* Segundo grupo de botones y botones individuales - GRID COLUMN 6 */
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > .bp5-button-group:last-of-type,
-.polotno-side-panel div[style="padding: 10px; display: flex;"] > .bp5-button-group:last-of-type,
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > .bp5-button,
-.polotno-side-panel div[style="padding: 10px; display: flex;"] > .bp5-button,
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > span:last-child,
-.polotno-side-panel div[style="padding: 10px; display: flex;"] > span:last-child {
-  grid-column: 6 !important;
-  justify-self: start !important;
+  flex-shrink: 0 !important;
+  order: 6 !important;
 }
 
 /* FORZAR TODOS LOS BOTONES A SER VISIBLES Y NO SUPERPONERSE */
 .polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] .bp5-button,
 .polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-button {
-  min-width: 32px !important;
-  height: 32px !important;
-  margin: 2px !important;
+  min-width: 24px !important;
+  height: 24px !important;
+  margin: 0 !important;
   background-color: #f8f9fa !important;
   border: 1px solid #dee2e6 !important;
   position: relative !important;
@@ -681,14 +878,31 @@ div[style*="pointer-events: none;"] > .bp5-navbar {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
+  flex-shrink: 0 !important;
+  border-radius: 4px !important;
 }
 
-/* Todos los botones dentro del contenedor */
-.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-button {
-  margin: 0 1px !important;
-  min-width: 32px !important;
-  height: 32px !important;
-  flex-shrink: 0 !important;
+/* Grupos de botones dentro del grid */
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] .bp5-button-group,
+.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-button-group {
+  display: inline-flex !important;
+  border: 1px solid #dee2e6 !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  background-color: #ffffff !important;
+}
+
+/* Botones dentro de grupos */
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] .bp5-button-group .bp5-button,
+.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-button-group .bp5-button {
+  border-radius: 0 !important;
+  border-right: 1px solid #dee2e6 !important;
+  margin: 0 !important;
+}
+
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] .bp5-button-group .bp5-button:last-child,
+.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-button-group .bp5-button:last-child {
+  border-right: none !important;
 }
 
 /* Asegurar que los popovers no se superpongan */
@@ -966,39 +1180,17 @@ div[style*="pointer-events: none;"] > .bp5-navbar {
   transform: scale(0) !important;
 }
 
-/* Todos los botones dentro del contenedor */
-.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-button {
-  margin: 0 1px !important;
-  min-width: 32px !important;
-  height: 32px !important;
-  flex-shrink: 0 !important;
-}
-
-/* Asegurar que los popovers no se superpongan */
-.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-popover-target {
-  position: relative !important;
-  z-index: 10 !important;
-}
-
-/* Asegurar que el texto sea legible */
-.polotno-side-panel * {
-  color: #212529 !important;
-}
-
-.polotno-side-panel .bp4-text-muted,
-.polotno-side-panel .bp5-text-muted {
-  color: #6c757d !important;
-}
-
-/* Evitar superposición de elementos */
+/* Estilos adicionales para botones y popovers */
 .polotno-side-panel .bp5-popover-target {
   z-index: 10 !important;
   position: relative !important;
 }
 
 .polotno-side-panel .bp5-button {
-  margin: 2px !important;
+  margin: 1px !important;
   z-index: 5 !important;
+  min-width: 28px !important;
+  height: 28px !important;
 }
 
 /* COMENTADO: No ocultar pestañas del panel lateral cuando hay elementos seleccionados */
