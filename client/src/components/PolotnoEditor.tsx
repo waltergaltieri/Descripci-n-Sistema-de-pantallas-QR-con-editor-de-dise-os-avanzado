@@ -557,10 +557,21 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
   const handleBold = async () => {
     if (isTextElement) {
       await store.history.transaction(async () => {
-        const currentStyle = selectedElement.fontStyle || '';
+        const currentStyle = selectedElement.fontStyle || 'normal';
         const isBold = currentStyle.includes('bold');
+        const isItalic = currentStyle.includes('italic');
+        
+        let newStyle = 'normal';
+        if (isBold) {
+          // Quitar bold
+          newStyle = isItalic ? 'italic' : 'normal';
+        } else {
+          // Agregar bold
+          newStyle = isItalic ? 'italic bold' : 'bold';
+        }
+        
         selectedElement.set({
-          fontStyle: isBold ? currentStyle.replace('bold', '').trim() : `${currentStyle} bold`.trim()
+          fontStyle: newStyle
         });
       });
     }
@@ -570,10 +581,21 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
   const handleItalic = async () => {
     if (isTextElement) {
       await store.history.transaction(async () => {
-        const currentStyle = selectedElement.fontStyle || '';
+        const currentStyle = selectedElement.fontStyle || 'normal';
         const isItalic = currentStyle.includes('italic');
+        const isBold = currentStyle.includes('bold');
+        
+        let newStyle = 'normal';
+        if (isItalic) {
+          // Quitar italic
+          newStyle = isBold ? 'bold' : 'normal';
+        } else {
+          // Agregar italic
+          newStyle = isBold ? 'italic bold' : 'italic';
+        }
+        
         selectedElement.set({
-          fontStyle: isItalic ? currentStyle.replace('italic', '').trim() : `${currentStyle} italic`.trim()
+          fontStyle: newStyle
         });
       });
     }
@@ -710,11 +732,13 @@ const ContextMenu = ({ store, x, y, onClose }: { store: any, x: number, y: numbe
       className="context-menu-container"
     >
       <Menu style={{ maxHeight: 'none', overflow: 'visible' }}>
-        {/* Selector de colores */}
-        <div style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
-          <div style={{ fontSize: '12px', color: '#666', fontWeight: 'bold', marginBottom: '4px' }}>Color</div>
-          <ColorPickerContextMenu store={store} onClose={onClose} />
-        </div>
+        {/* Selector de colores - solo para texto y formas */}
+        {(isTextElement || isShapeElement) && (
+          <div style={{ padding: '8px', borderBottom: '1px solid #eee' }}>
+            <div style={{ fontSize: '12px', color: '#666', fontWeight: 'bold', marginBottom: '4px' }}>Color</div>
+            <ColorPickerContextMenu store={store} onClose={onClose} />
+          </div>
+        )}
         
         {/* Opciones específicas para texto */}
         {isTextElement && (
