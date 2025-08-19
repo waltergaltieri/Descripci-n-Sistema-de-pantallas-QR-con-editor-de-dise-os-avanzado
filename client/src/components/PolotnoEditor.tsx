@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import '../polotno-image-config-override'; // Override de configuración de Polotno para imágenes (debe ir primero)
 import { PolotnoContainer, SidePanelWrap, WorkspaceWrap } from 'polotno';
 import { Toolbar } from 'polotno/toolbar/toolbar';
 import { ZoomButtons } from 'polotno/toolbar/zoom-buttons';
@@ -21,6 +22,8 @@ import '../test-specific-classes';
 import '../ultimate-centering-test'; // Script de testing definitivo
 import '../force-centering-javascript'; // Forzado de centrado mediante JavaScript
 import '../direct-centering-javascript'; // Solución JavaScript directa basada en inspección
+import '../fix-image-resize'; // Corrección para el redimensionamiento de imágenes
+import '../image-resize-patch'; // Parche adicional para redimensionamiento de imágenes
 // import '../debug-contextual-controls'; // Diagnóstico de controles contextuales
 import '@blueprintjs/core/lib/css/blueprint.css';
 import './PolotnoEditor.css';
