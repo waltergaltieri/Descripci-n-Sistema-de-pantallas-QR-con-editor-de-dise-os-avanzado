@@ -9,6 +9,8 @@ const ScreenModal = ({ isOpen, onClose, screen, onSuccess }) => {
     description: '',
     active: true,
     refresh_interval: 30,
+    width: 1920,
+    height: 1080,
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -22,6 +24,8 @@ const ScreenModal = ({ isOpen, onClose, screen, onSuccess }) => {
           description: screen.description || '',
           active: screen.is_active ?? true,
           refresh_interval: screen.refresh_interval || 30,
+          width: screen.width || 1920,
+          height: screen.height || 1080,
         });
       } else {
         // Modo creación
@@ -30,6 +34,8 @@ const ScreenModal = ({ isOpen, onClose, screen, onSuccess }) => {
           description: '',
           active: true,
           refresh_interval: 30,
+          width: 1920,
+          height: 1080,
         });
       }
       setErrors({});
@@ -70,6 +76,16 @@ const ScreenModal = ({ isOpen, onClose, screen, onSuccess }) => {
       newErrors.refresh_interval = 'El intervalo debe estar entre 5 y 300 segundos';
     }
 
+    const width = parseInt(formData.width);
+    if (!width || width < 100 || width > 10000) {
+      newErrors.width = 'El ancho debe estar entre 100 y 10000 píxeles';
+    }
+
+    const height = parseInt(formData.height);
+    if (!height || height < 100 || height > 10000) {
+      newErrors.height = 'El alto debe estar entre 100 y 10000 píxeles';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -87,6 +103,8 @@ const ScreenModal = ({ isOpen, onClose, screen, onSuccess }) => {
       const data = {
         ...formData,
         refresh_interval: parseInt(formData.refresh_interval),
+        width: parseInt(formData.width),
+        height: parseInt(formData.height),
       };
 
       if (screen) {
@@ -182,6 +200,58 @@ const ScreenModal = ({ isOpen, onClose, screen, onSuccess }) => {
               {errors.description && (
                 <p className="mt-1 text-sm text-red-600">{errors.description}</p>
               )}
+            </div>
+
+            {/* Dimensiones de pantalla */}
+            <div>
+              <label className="label mb-3">
+                Dimensiones de la Pantalla *
+              </label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="width" className="block text-sm font-medium text-gray-700 mb-1">
+                    Ancho (px)
+                  </label>
+                  <input
+                    type="number"
+                    id="width"
+                    name="width"
+                    value={formData.width}
+                    onChange={handleChange}
+                    className={`input ${errors.width ? 'input-error' : ''}`}
+                    min="100"
+                    max="10000"
+                    disabled={loading}
+                    placeholder="1920"
+                  />
+                  {errors.width && (
+                    <p className="mt-1 text-sm text-red-600">{errors.width}</p>
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="height" className="block text-sm font-medium text-gray-700 mb-1">
+                    Alto (px)
+                  </label>
+                  <input
+                    type="number"
+                    id="height"
+                    name="height"
+                    value={formData.height}
+                    onChange={handleChange}
+                    className={`input ${errors.height ? 'input-error' : ''}`}
+                    min="100"
+                    max="10000"
+                    disabled={loading}
+                    placeholder="1080"
+                  />
+                  {errors.height && (
+                    <p className="mt-1 text-sm text-red-600">{errors.height}</p>
+                  )}
+                </div>
+              </div>
+              <p className="mt-2 text-sm text-gray-500">
+                Dimensiones físicas de la pantalla donde se mostrará el contenido
+              </p>
             </div>
 
             {/* Intervalo de refresco */}

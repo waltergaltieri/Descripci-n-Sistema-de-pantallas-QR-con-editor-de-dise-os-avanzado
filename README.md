@@ -1,15 +1,30 @@
-# PantallasQR - Sistema de Pantallas QR
+# Editor de Diseños con Polotno SDK
 
-Sistema completo para la gestión y visualización de pantallas QR con editor de diseños avanzado.
+Editor de diseños avanzado basado en Polotno SDK para un sistema de pantallas digitales con soporte para múltiples pantallas y composiciones extendidas.
 
 ## 🚀 Características
 
-- **Editor de Diseños Avanzado**: Editor visual con GrapesJS para crear diseños personalizados
-- **Canvas Interactivo**: Sistema de arrastrar y soltar con elementos redimensionables
-- **Gestión de Pantallas**: Administración completa de pantallas QR
-- **Plantillas**: Sistema de plantillas predefinidas para diseños rápidos
-- **Responsive**: Interfaz adaptable a diferentes dispositivos
-- **Base de Datos SQLite**: Almacenamiento local eficiente
+### Editor Principal
+- **Workspace principal** con zoom, pan (barra espaciadora), rulers, guías y grid con snap
+- **Panel izquierdo** dividido en:
+  - **Paleta**: Texto, Imagen (URL/subida), Formas, Contenedores, QR
+  - **Capas**: Lista jerárquica con renombrar, ocultar, bloquear, duplicar, eliminar, drag&drop
+- **Panel derecho** con pestañas:
+  - **General**: Posición, tamaño, rotación, opacidad, z-index
+  - **Fondo**: Sólido, gradiente linear/radial, imagen con ajustes
+  - **Animaciones**: Fade, slide, scale, rotate, pulse, bounce, marquee, motionPath
+
+### Funcionalidades Avanzadas
+- **Máscaras**: Crear máscaras combinando formas + imagen/contenedor
+- **Multipantalla**: Cada TV = una Page con soporte para composiciones extendidas
+- **Smart guides** y snap automático
+- **Atajos de teclado** completos (Ctrl+C/V/X, Delete, F2, flechas, etc.)
+
+### Persistencia y Publicación
+- **Guardar/Cargar**: Diseños como JSON con miniaturas automáticas
+- **Publicación**: Exportar PNG a resolución nativa
+- **Composiciones extendidas**: Crops automáticos por pantalla
+- **Player fullscreen**: Ruta `/player/:screenId` con actualizaciones en tiempo real
 
 ## 🛠️ Tecnologías
 

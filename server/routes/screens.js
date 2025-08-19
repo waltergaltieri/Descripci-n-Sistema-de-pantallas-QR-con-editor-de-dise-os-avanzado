@@ -4,10 +4,26 @@ const { authenticateToken, requireAdmin, optionalAuth } = require('../middleware
 
 const router = express.Router();
 
-// Obtener todas las pantallas (público para visualización)
+// Obtener todas las pantallas
 router.get('/', optionalAuth, async (req, res) => {
   try {
-    
+    // Si el usuario está autenticado y es admin, mostrar todas las pantallas
+    // Si no, mostrar solo las activas (para visualización pública)
+    if (req.user && req.user.role === 'admin') {
+      const result = await db().all(`
+        SELECT 
+          s.*,
+          d.id as design_id,
+          d.name as design_name,
+          d.content as design_content
+        FROM screens s
+        LEFT JOIN design_assignments da ON s.id = da.screen_id
+        LEFT JOIN designs d ON da.design_id = d.id
+        ORDER BY s.display_order ASC, s.created_at ASC
+      `);
+      
+      res.json(result);
+    } else {
       const result = await db().all(`
         SELECT 
           s.*,
@@ -22,6 +38,7 @@ router.get('/', optionalAuth, async (req, res) => {
       `);
       
       res.json(result);
+    }
     
   } catch (error) {
     console.error('Error al obtener pantallas:', error);
@@ -63,7 +80,7 @@ router.get('/:id', async (req, res) => {
 // Crear nueva pantalla (requiere autenticación)
 router.post('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { name, description, refresh_interval = 30 } = req.body;
+    const { name, description, refresh_interval = 30, width = 1920, height = 1080 } = req.body;
     
     if (!name) {
       return res.status(400).json({ error: 'El nombre es requerido' });
@@ -77,9 +94,9 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
       const nextOrder = orderResult.next_order;
       
       const result = await db().run(`
-        INSERT INTO screens (name, description, display_order, refresh_interval)
-        VALUES (?, ?, ?, ?)
-      `, [name, description, nextOrder, refresh_interval]);
+        INSERT INTO screens (name, description, display_order, refresh_interval, width, height)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [name, description, nextOrder, refresh_interval, width, height]);
       
       const newScreen = await db().get(
         'SELECT * FROM screens WHERE id = ?',
@@ -102,7 +119,7 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
 router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, is_active, refresh_interval } = req.body;
+    const { name, description, is_active, refresh_interval, width, height } = req.body;
     
     
       const result = await db().run(`
@@ -112,9 +129,11 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
           description = COALESCE(?, description),
           is_active = COALESCE(?, is_active),
           refresh_interval = COALESCE(?, refresh_interval),
+          width = COALESCE(?, width),
+          height = COALESCE(?, height),
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
-      `, [name, description, is_active, refresh_interval, id]);
+      `, [name, description, is_active, refresh_interval, width, height, id]);
       
       if (result.changes === 0) {
         return res.status(404).json({ error: 'Pantalla no encontrada' });
@@ -174,27 +193,21 @@ router.post('/reorder', authenticateToken, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Se requiere un array de IDs de pantallas' });
     }
     
+    // Actualizar el orden de cada pantalla
+    for (let i = 0; i < screenIds.length; i++) {
+      await db().run(
+        'UPDATE screens SET display_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [i + 1, screenIds[i]]
+      );
+    }
     
-      await db().run('BEGIN');
-      
-      // Actualizar el orden de cada pantalla
-      for (let i = 0; i < screenIds.length; i++) {
-        await db().run(
-          'UPDATE screens SET display_order = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-          [i + 1, screenIds[i]]
-        );
-      }
-      
-      await db().run('COMMIT');
-      
-      // Emitir evento de actualización
-      const io = req.app.get('io');
-      io.emit('screens-updated', { action: 'reordered', screenIds });
-      
-      res.json({ message: 'Orden actualizado exitosamente' });
+    // Emitir evento de actualización
+    const io = req.app.get('io');
+    io.emit('screens-updated', { action: 'reordered', screenIds });
+    
+    res.json({ message: 'Orden actualizado exitosamente' });
     
   } catch (error) {
-    await db().run('ROLLBACK');
     console.error('Error al reordenar pantallas:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
@@ -210,43 +223,35 @@ router.post('/:id/assign-design', authenticateToken, requireAdmin, async (req, r
       return res.status(400).json({ error: 'ID del diseño es requerido' });
     }
     
+    // Verificar que la pantalla y el diseño existen
+    const screenCheck = await db().get('SELECT id FROM screens WHERE id = ?', [id]);
+    const designCheck = await db().get('SELECT id FROM designs WHERE id = ?', [designId]);
     
-      await db().run('BEGIN');
-      
-      // Verificar que la pantalla y el diseño existen
-      const screenCheck = await db().get('SELECT id FROM screens WHERE id = ?', [id]);
-      const designCheck = await db().get('SELECT id FROM designs WHERE id = ?', [designId]);
-      
-      if (!screenCheck) {
-        await db().run('ROLLBACK');
-        return res.status(404).json({ error: 'Pantalla no encontrada' });
-      }
-      
-      if (!designCheck) {
-        await db().run('ROLLBACK');
-        return res.status(404).json({ error: 'Diseño no encontrado' });
-      }
-      
-      // Eliminar asignación anterior si existe
-      await db().run('DELETE FROM design_assignments WHERE screen_id = ?', [id]);
-      
-      // Crear nueva asignación
-      await db().run(
-        'INSERT INTO design_assignments (screen_id, design_id) VALUES (?, ?)',
-        [id, designId]
-      );
-      
-      await db().run('COMMIT');
-      
-      // Emitir evento de actualización a la pantalla específica
-      const io = req.app.get('io');
-      io.to(`screen-${id}`).emit('design-updated', { screenId: id, designId });
-      io.emit('screens-updated', { action: 'design-assigned', screenId: id, designId });
-      
-      res.json({ message: 'Diseño asignado exitosamente' });
+    if (!screenCheck) {
+      return res.status(404).json({ error: 'Pantalla no encontrada' });
+    }
+    
+    if (!designCheck) {
+      return res.status(404).json({ error: 'Diseño no encontrado' });
+    }
+    
+    // Eliminar asignación anterior si existe
+    await db().run('DELETE FROM design_assignments WHERE screen_id = ?', [id]);
+    
+    // Crear nueva asignación
+    await db().run(
+      'INSERT INTO design_assignments (screen_id, design_id) VALUES (?, ?)',
+      [id, designId]
+    );
+    
+    // Emitir evento de actualización a la pantalla específica
+    const io = req.app.get('io');
+    io.to(`screen-${id}`).emit('design-updated', { screenId: id, designId });
+    io.emit('screens-updated', { action: 'design-assigned', screenId: id, designId });
+    
+    res.json({ message: 'Diseño asignado exitosamente' });
     
   } catch (error) {
-    await db().run('ROLLBACK');
     console.error('Error al asignar diseño:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }

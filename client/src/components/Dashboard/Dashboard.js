@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { screensService, designsService } from '../../services/api';
 import { useSocket } from '../../contexts/SocketContext';
-import DesignPreconfigModal from '../Designs/Editor/DesignPreconfigModal';
+import DesignPreconfigModal from '../Designs/DesignPreconfigModal';
 import toast from 'react-hot-toast';
 
 const Dashboard = () => {
@@ -73,9 +73,12 @@ const Dashboard = () => {
 
   const handleCreateDesign = async (preconfigData) => {
     try {
+      console.log('=== CREANDO DISEÑO EN DASHBOARD ===');
+      console.log('Datos recibidos:', preconfigData);
+      
       const designData = {
         name: preconfigData.name,
-        description: preconfigData.description || '',
+        description: '',
         content: {
           elements: [],
           settings: {
@@ -88,6 +91,9 @@ const Dashboard = () => {
           }
         }
       };
+      
+      console.log('Datos a enviar al servidor:', designData);
+      console.log('Dimensiones en settings:', designData.content.settings.canvasWidth, 'x', designData.content.settings.canvasHeight);
 
       const response = await designsService.create(designData);
       toast.success('Diseño creado correctamente');
@@ -202,7 +208,7 @@ const Dashboard = () => {
           title="Pantallas Activas"
           value={stats.activeScreens}
           icon={Activity}
-          color="bg-green-500"
+          color="bg-blue-500"
           description={`${((stats.activeScreens / stats.totalScreens) * 100 || 0).toFixed(0)}% del total`}
         />
         <StatCard
@@ -245,7 +251,7 @@ const Dashboard = () => {
             description="Gestionar todas las pantallas"
             icon={Eye}
             link="/screens"
-            color="bg-green-500"
+            color="bg-blue-500"
           />
         </div>
       </div>
@@ -270,7 +276,7 @@ const Dashboard = () => {
                   <div key={screen.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex items-center">
                       <div className={`w-3 h-3 rounded-full mr-3 ${
-                        screen.is_active ? 'bg-green-400' : 'bg-gray-400'
+                        screen.is_active ? 'bg-blue-400' : 'bg-gray-400'
                       }`} />
                       <div>
                         <p className="text-sm font-medium text-gray-900">{screen.name}</p>

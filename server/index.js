@@ -46,6 +46,8 @@ app.use(cors());
 app.use(express.json({ limit: '100mb', parameterLimit: 50000 }));
 app.use(express.urlencoded({ extended: true, limit: '100mb', parameterLimit: 50000 }));
 
+// Logging middleware removido - debugging completado
+
 // Static files for uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 

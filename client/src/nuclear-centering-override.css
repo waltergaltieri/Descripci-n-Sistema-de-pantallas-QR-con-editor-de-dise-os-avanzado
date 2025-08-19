@@ -1,0 +1,141 @@
+/* NUCLEAR CSS OVERRIDE - MÁXIMA ESPECIFICIDAD PARA CENTRADO */
+/* Este archivo sobrescribe TODAS las reglas que interfieren con el centrado */
+
+/* RESET COMPLETO DEL WORKSPACE CUANDO PANEL ESTÁ OCULTO */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace,
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container .polotno-workspace,
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-polotno-editor-container .kaze-workspace-container .polotno-workspace,
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace[style],
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace[style*="position"],
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace[style*="left"],
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace[style*="right"],
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace[style*="transform"],
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace[style*="margin"] {
+  /* ELIMINAR TODOS LOS POSICIONAMIENTOS PROBLEMÁTICOS */
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  
+  /* CENTRADO SIMPLE Y EFECTIVO */
+  margin: 0 auto !important;
+  display: block !important;
+  
+  /* ASEGURAR QUE NO HAY INTERFERENCIAS */
+  float: none !important;
+  clear: both !important;
+  
+  /* DIMENSIONES AUTOMÁTICAS */
+  width: auto !important;
+  height: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+}
+
+/* CONTENEDOR DEL WORKSPACE - CENTRADO PERFECTO */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container,
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-polotno-editor-container .kaze-workspace-container {
+  /* FLEXBOX CENTRADO */
+  display: flex !important;
+  justify-content: center !important;
+  align-items: flex-start !important;
+  
+  /* OCUPAR TODO EL ESPACIO DISPONIBLE */
+  width: 100% !important;
+  height: 100% !important;
+  
+  /* ELIMINAR POSICIONAMIENTOS CONFLICTIVOS */
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  
+  /* MÁRGENES Y PADDING LIMPIOS */
+  margin: 0 !important;
+  padding: 20px !important;
+  
+  /* ASEGURAR FLUJO NORMAL */
+  float: none !important;
+  clear: both !important;
+}
+
+/* CANVAS Y ELEMENTOS INTERNOS - CENTRADO DIRECTO */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace canvas,
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace .konvajs-content,
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace > div {
+  /* CENTRADO SIMPLE */
+  margin: 0 auto !important;
+  display: block !important;
+  
+  /* ELIMINAR POSICIONAMIENTOS */
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  
+  /* FLUJO NORMAL */
+  float: none !important;
+  clear: both !important;
+}
+
+/* WORKSPACE WRAP - ASEGURAR FLUJO CORRECTO */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-wrap,
+.polotno-editor-isolation[data-side-panel="hidden"] .workspace-wrap {
+  /* OCUPAR TODO EL ANCHO */
+  width: 100% !important;
+  
+  /* ELIMINAR POSICIONAMIENTOS */
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  
+  /* MÁRGENES LIMPIOS */
+  margin: 0 !important;
+  padding: 0 !important;
+  
+  /* FLUJO NORMAL */
+  float: none !important;
+  clear: both !important;
+}
+
+/* ELIMINAR CUALQUIER ESTILO INLINE QUE INTERFIERA */
+.polotno-editor-isolation[data-side-panel="hidden"] [style*="position: absolute"],
+.polotno-editor-isolation[data-side-panel="hidden"] [style*="position: fixed"],
+.polotno-editor-isolation[data-side-panel="hidden"] [style*="left:"],
+.polotno-editor-isolation[data-side-panel="hidden"] [style*="right:"],
+.polotno-editor-isolation[data-side-panel="hidden"] [style*="transform:"] {
+  /* SOLO APLICAR A ELEMENTOS DEL WORKSPACE */
+}
+
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace [style*="position: absolute"],
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace [style*="position: fixed"],
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace [style*="left:"],
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace [style*="right:"],
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace [style*="transform:"] {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  margin: 0 auto !important;
+}
+
+/* OCULTAR ELEMENTOS QUE INTERFIEREN */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-pages-timeline {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* ASEGURAR QUE LA TOOLBAR Y ZOOM BUTTONS SE CENTREN TAMBIÉN */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-toolbar,
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-zoom-buttons {
+  margin: 0 auto !important;
+  display: flex !important;
+  justify-content: center !important;
+}

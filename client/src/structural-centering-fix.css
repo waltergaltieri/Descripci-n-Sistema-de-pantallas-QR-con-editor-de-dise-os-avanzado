@@ -1,0 +1,180 @@
+/* ========================================
+ * CORRECCIÓN ESTRUCTURAL DEL CENTRADO
+ * Solución definitiva basada en la estructura JSX real
+ * ======================================== */
+
+/* PROBLEMA IDENTIFICADO:
+ * El Workspace de Polotno está dentro de .kaze-workspace-inner
+ * pero las reglas CSS no consideran esta jerarquía correctamente
+ */
+
+/* 1. CORRECCIÓN DEL CONTENEDOR WORKSPACE */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container {
+  /* Centrado perfecto del contenedor principal */
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* 2. CORRECCIÓN DEL CONTENEDOR INTERNO */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-inner {
+  /* El contenedor interno debe centrarse también */
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  height: auto !important;
+  position: relative !important;
+  margin: 0 auto !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* 3. CORRECCIÓN DEL WORKSPACE DE POLOTNO */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-inner .polotno-workspace {
+  /* El workspace debe estar centrado dentro del contenedor interno */
+  margin: 0 auto !important;
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  display: block !important;
+}
+
+/* 4. CORRECCIÓN DEL CANVAS DE KONVA */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace canvas {
+  /* El canvas debe estar centrado */
+  margin: 0 auto !important;
+  display: block !important;
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* 5. CORRECCIÓN DEL CONTENIDO DE KONVA */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace .konvajs-content {
+  /* El contenido de Konva debe estar centrado */
+  margin: 0 auto !important;
+  display: block !important;
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* 6. SOBRESCRIBIR CUALQUIER ESTILO INLINE PROBLEMÁTICO */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace[style*="left"],
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace[style*="transform"],
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace[style*="margin"] {
+  left: auto !important;
+  transform: none !important;
+  margin: 0 auto !important;
+}
+
+/* 7. REGLA DE EMERGENCIA CON MÁXIMA ESPECIFICIDAD */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-polotno-editor-container .kaze-workspace-container .kaze-workspace-inner .polotno-workspace {
+  margin: 0 auto !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  position: relative !important;
+  display: block !important;
+}
+
+/* 8. CENTRADO PARA TOOLBAR Y OTROS ELEMENTOS */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-inner > * {
+  /* Todos los elementos hijos del workspace-inner deben centrarse */
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* 9. CORRECCIÓN ESPECÍFICA PARA LA TOOLBAR */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-inner .polotno-toolbar {
+  margin: 0 auto !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+/* 10. CORRECCIÓN PARA ZOOM BUTTONS */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-inner .polotno-zoom-buttons {
+  margin: 0 auto !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+/* 11. CORRECCIÓN PARA PAGES TIMELINE */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-inner .polotno-pages-timeline {
+  margin: 0 auto !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+/* 12. REGLA DE RESPALDO USANDO FLEXBOX EN EL PADRE */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container {
+  text-align: center !important;
+}
+
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container > * {
+  text-align: initial !important;
+}
+
+/* 13. MEDIA QUERIES PARA DIFERENTES TAMAÑOS DE PANTALLA */
+@media (max-width: 768px) {
+  .polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-inner {
+    padding: 10px !important;
+  }
+}
+
+@media (min-width: 1200px) {
+  .polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container {
+    padding: 20px !important;
+  }
+}
+
+/* 14. DEPURACIÓN - BORDES TEMPORALES (COMENTAR EN PRODUCCIÓN) */
+/*
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container {
+  border: 2px solid red !important;
+}
+
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-inner {
+  border: 2px solid blue !important;
+}
+
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace {
+  border: 2px solid green !important;
+}
+*/
+
+/* 15. ASEGURAR QUE NO HAY OVERFLOW HIDDEN QUE INTERFIERA */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container,
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-inner {
+  overflow: visible !important;
+}
+
+/* 16. CORRECCIÓN FINAL - CENTRADO ABSOLUTO COMO ÚLTIMO RECURSO */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace {
+  position: relative !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  margin: 0 !important;
+}
+
+/* Sobrescribir la regla anterior si margin: 0 auto funciona */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace:not([style*="position: absolute"]) {
+  position: relative !important;
+  left: auto !important;
+  transform: none !important;
+  margin: 0 auto !important;
+}

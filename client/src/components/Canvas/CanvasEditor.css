@@ -1,0 +1,138 @@
+/* Estilos para las barras de desplazamiento del canvas */
+.canvas-editor {
+  position: relative;
+}
+
+/* Barra de desplazamiento horizontal */
+.canvas-scrollbar-horizontal {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  transition: opacity 0.2s ease;
+}
+
+.canvas-scrollbar-horizontal::-webkit-slider-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  height: 12px;
+}
+
+.canvas-scrollbar-horizontal::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
+  height: 12px;
+  width: 20px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.canvas-scrollbar-horizontal::-webkit-slider-thumb:hover {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.canvas-scrollbar-horizontal::-moz-range-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  height: 12px;
+  border: none;
+}
+
+.canvas-scrollbar-horizontal::-moz-range-thumb {
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
+  height: 12px;
+  width: 20px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.canvas-scrollbar-horizontal::-moz-range-thumb:hover {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+/* Barra de desplazamiento vertical */
+.canvas-scrollbar-vertical {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  transition: opacity 0.2s ease;
+}
+
+.canvas-scrollbar-vertical::-webkit-slider-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  width: 12px;
+}
+
+.canvas-scrollbar-vertical::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
+  width: 12px;
+  height: 20px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.canvas-scrollbar-vertical::-webkit-slider-thumb:hover {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.canvas-scrollbar-vertical::-moz-range-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  width: 12px;
+  border: none;
+}
+
+.canvas-scrollbar-vertical::-moz-range-thumb {
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 6px;
+  width: 12px;
+  height: 20px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.canvas-scrollbar-vertical::-moz-range-thumb:hover {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+/* Efectos de hover para las barras */
+.canvas-editor:hover .canvas-scrollbar-horizontal,
+.canvas-editor:hover .canvas-scrollbar-vertical {
+  opacity: 0.9;
+}
+
+/* Ocultar barras cuando no se necesitan */
+.canvas-scrollbar-horizontal:not([style*="display: block"]),
+.canvas-scrollbar-vertical:not([style*="display: block"]) {
+  opacity: 0.5;
+}
+
+/* Animación suave para las barras */
+.canvas-scrollbar-horizontal,
+.canvas-scrollbar-vertical {
+  transition: opacity 0.3s ease, background 0.2s ease;
+}
+
+/* Estilo para cuando las barras están activas */
+.canvas-scrollbar-horizontal:active,
+.canvas-scrollbar-vertical:active {
+  opacity: 1;
+}
+
+.canvas-scrollbar-horizontal:active::-webkit-slider-thumb,
+.canvas-scrollbar-vertical:active::-webkit-slider-thumb {
+  background: rgba(0, 123, 255, 0.8);
+}
+
+.canvas-scrollbar-horizontal:active::-moz-range-thumb,
+.canvas-scrollbar-vertical:active::-moz-range-thumb {
+  background: rgba(0, 123, 255, 0.8);
+}

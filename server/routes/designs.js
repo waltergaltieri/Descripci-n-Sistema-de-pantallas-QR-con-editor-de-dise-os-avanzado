@@ -16,8 +16,21 @@ router.get('/', optionalAuth, async (req, res) => {
       GROUP BY d.id
       ORDER BY d.updated_at DESC
     `);
+    
+    // Parsear el contenido JSON para cada diseño
+    const parsedResult = result.map(design => {
+      if (design.content && typeof design.content === 'string') {
+        try {
+          design.content = JSON.parse(design.content);
+        } catch (error) {
+          console.error('Error parsing design content:', error);
+          design.content = null;
+        }
+      }
+      return design;
+    });
       
-      res.json(result);
+      res.json(parsedResult);
   } catch (error) {
     console.error('Error al obtener diseños:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -48,7 +61,18 @@ router.get('/:id', async (req, res) => {
     `, [id]);
     
     design.assigned_screens = assignedScreens;
-    res.json(design);
+    
+    // Parsear el contenido JSON antes de devolver
+      if (design.content && typeof design.content === 'string') {
+        try {
+          design.content = JSON.parse(design.content);
+        } catch (error) {
+          console.error('Error parsing design content:', error);
+          design.content = null;
+        }
+      }
+      
+      res.json(design);
   } catch (error) {
     console.error('Error al obtener diseño:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -78,6 +102,16 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
         'SELECT * FROM designs WHERE id = ?',
         [result.lastID]
       );
+      
+      // Parsear el contenido JSON antes de devolver
+      if (newDesign.content && typeof newDesign.content === 'string') {
+        try {
+          newDesign.content = JSON.parse(newDesign.content);
+        } catch (error) {
+          console.error('Error parsing design content:', error);
+          newDesign.content = null;
+        }
+      }
       
       // Emitir evento de actualización
       const io = req.app.get('io');

@@ -1,0 +1,111 @@
+/* SOLUCIÓN DEFINITIVA PARA EL CENTRADO DEL CANVAS */
+/* Esta solución tiene la máxima especificidad posible y evita usar transform */
+
+/* RESETEAR TODAS LAS REGLAS PROBLEMÁTICAS CON MÁXIMA ESPECIFICIDAD */
+.polotno-editor-isolation.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container.kaze-workspace-container {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  transform: none !important;
+  box-sizing: border-box !important;
+}
+
+/* CENTRADO DEL WORKSPACE CON MÁXIMA ESPECIFICIDAD - SIN TRANSFORM */
+.polotno-editor-isolation.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container.kaze-workspace-container .polotno-workspace.polotno-workspace {
+  position: relative !important;
+  margin: 0 auto !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  display: block !important;
+  z-index: 1 !important;
+}
+
+/* ALTERNATIVA: Si transform sigue siendo sobrescrito, usar margin calculado */
+.polotno-editor-isolation.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container.kaze-workspace-container .polotno-workspace.polotno-workspace[style] {
+  position: relative !important;
+  left: 50% !important;
+  margin-left: -400px !important; /* Aproximadamente la mitad del ancho típico del canvas */
+  transform: none !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+}
+
+/* SOLUCIÓN DE RESPALDO: Usar text-align en el contenedor padre */
+.polotno-editor-isolation.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container.kaze-workspace-container {
+  text-align: center !important;
+}
+
+.polotno-editor-isolation.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container.kaze-workspace-container .polotno-workspace.polotno-workspace {
+  display: inline-block !important;
+  text-align: left !important;
+  vertical-align: middle !important;
+}
+
+/* SOBRESCRIBIR CUALQUIER REGLA INLINE QUE PUEDA INTERFERIR */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace[style*="left"],
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace[style*="transform"],
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace[style*="position"] {
+  position: relative !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  margin: 0 !important;
+}
+
+/* REGLA DE EMERGENCIA: Si nada más funciona, usar position fixed */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace.emergency-center {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 9999 !important;
+}
+
+/* ASEGURAR QUE EL CONTENEDOR NO TENGA OVERFLOW HIDDEN */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container,
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace-wrap {
+  overflow: visible !important;
+}
+
+/* DEBUGGING: Borde temporal para verificar posicionamiento */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace.debug-center {
+  border: 3px solid red !important;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.5) !important;
+}
+
+/* MEDIA QUERIES PARA DIFERENTES TAMAÑOS DE PANTALLA */
+@media (max-width: 768px) {
+  .polotno-editor-isolation.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container.kaze-workspace-container .polotno-workspace.polotno-workspace[style] {
+    margin-left: -200px !important; /* Ajuste para pantallas pequeñas */
+  }
+}
+
+@media (min-width: 1200px) {
+  .polotno-editor-isolation.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container.kaze-workspace-container .polotno-workspace.polotno-workspace[style] {
+    margin-left: -500px !important; /* Ajuste para pantallas grandes */
+  }
+}
+
+/* REGLA FINAL: Máxima especificidad posible */
+body .polotno-editor-isolation.polotno-editor-isolation.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container.kaze-workspace-container.kaze-workspace-container .polotno-workspace.polotno-workspace.polotno-workspace {
+  position: relative !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  margin: 0 !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  display: block !important;
+}

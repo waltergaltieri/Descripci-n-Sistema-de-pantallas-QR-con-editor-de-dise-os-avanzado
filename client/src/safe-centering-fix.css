@@ -1,0 +1,128 @@
+/* ========================================
+ * SOLUCIÓN SEGURA DE CENTRADO
+ * Centrado simple sin posicionamiento absoluto
+ * ======================================== */
+
+/* DESACTIVAR REGLAS PROBLEMÁTICAS EXISTENTES */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace {
+  /* Desactivar posicionamiento absoluto problemático */
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  transform: none !important;
+  
+  /* Aplicar centrado simple y seguro */
+  margin: 0 auto !important;
+  display: block !important;
+  width: auto !important;
+  height: auto !important;
+  z-index: auto !important;
+}
+
+/* CENTRADO SEGURO DEL CONTENEDOR WORKSPACE */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: flex-start !important;
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  margin: 0 !important;
+  padding: 20px 0 !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  box-sizing: border-box !important;
+}
+
+/* CENTRADO SEGURO DEL CONTENEDOR INTERNO */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-inner {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  margin: 0 auto !important;
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* CENTRADO SEGURO DEL CANVAS */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace canvas {
+  margin: 0 auto !important;
+  display: block !important;
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* CENTRADO SEGURO DEL CONTENIDO KONVA */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace .konvajs-content {
+  margin: 0 auto !important;
+  display: block !important;
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* REGLA DE MÁXIMA ESPECIFICIDAD PARA SOBRESCRIBIR CONFLICTOS */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-polotno-editor-container .kaze-workspace-container .kaze-workspace-inner .polotno-workspace {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  margin: 0 auto !important;
+  display: block !important;
+}
+
+/* ASEGURAR QUE EL CONTENEDOR PADRE PERMITA EL CENTRADO */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container .polotno-workspace > div {
+  margin: 0 auto !important;
+  display: block !important;
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* REGLA DE RESPALDO PARA ELEMENTOS INTERNOS */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace * {
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* EXCEPCIÓN PARA ELEMENTOS QUE NECESITAN POSICIONAMIENTO ABSOLUTO */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace .konva-stage,
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace .konva-layer {
+  position: static !important;
+}
+
+/* CENTRADO DE LA TOOLBAR Y OTROS ELEMENTOS */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-inner .polotno-toolbar,
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-inner .polotno-zoom-buttons {
+  margin: 0 auto !important;
+  display: flex !important;
+  justify-content: center !important;
+}
+
+/* OCULTAR PAGES TIMELINE CUANDO EL PANEL LATERAL ESTÁ OCULTO */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-inner .polotno-pages-timeline {
+  display: none !important;
+}
+
+/* ASEGURAR QUE EL WORKSPACE CONTAINER OCUPE TODO EL ANCHO DISPONIBLE */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-polotno-editor-container .kaze-workspace-container {
+  flex: 1 !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+}

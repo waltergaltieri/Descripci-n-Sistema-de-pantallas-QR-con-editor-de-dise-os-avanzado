@@ -8,7 +8,7 @@ import Dashboard from './components/Dashboard/Dashboard';
 import ScreensManager from './components/Screens/ScreensManager';
 import DesignsManager from './components/Designs/DesignsManager';
 import DesignEditor from './components/Designs/DesignEditor';
-import DesignPreview from './components/Designs/DesignPreview';
+
 import ScreenDisplay from './components/Screens/ScreenDisplay';
 import Layout from './components/Layout/Layout';
 
@@ -86,14 +86,7 @@ function App() {
           } 
         />
         
-        <Route 
-          path="/designs/:id/preview" 
-          element={
-            <ProtectedRoute>
-              <DesignPreview />
-            </ProtectedRoute>
-          } 
-        />
+
         
         {/* Ruta por defecto */}
         <Route 

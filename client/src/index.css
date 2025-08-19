@@ -1,24 +1,83 @@
 /* Import Tailwind base styles */
-@import 'tailwindcss/base';
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-/* Base styles */
+/* CSS Reset and base styles */
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light;
+  color: #213547 !important;
+  background-color: #ffffff !important;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
 * {
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
   margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f9fafb;
+  background-color: #f9fafb !important;
+  color: #213547 !important;
 }
+
+/* Force correct colors for all elements */
+div {
+  color: inherit;
+}
+
+/* Ensure text is visible */
+h1, h2, h3, h4, h5, h6, p, span, a, button {
+  color: #213547 !important;
+}
+
+input {
+  background-color: #ffffff !important;
+  color: #213547 !important;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Temporarily disabled dark mode to fix visual issues
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: rgba(255, 255, 255, 0.87);
+    background-color: #242424;
+  }
+}
+*/
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
@@ -64,7 +123,7 @@ code {
   }
   
   .btn-success {
-    @apply bg-green-600 text-white hover:bg-green-700 focus:ring-green-500;
+    @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
   }
   
   .btn-outline {

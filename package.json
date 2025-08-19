@@ -11,10 +11,19 @@
     "start": "cd server && npm start",
     "install-all": "npm install && cd server && npm install && cd ../client && npm install"
   },
-  "keywords": ["screens", "qr", "management", "react", "express"],
+  "keywords": [
+    "screens",
+    "qr",
+    "management",
+    "react",
+    "express"
+  ],
   "author": "Sistema PantallasQR",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "react-konva": "^18.2.12"
   }
 }

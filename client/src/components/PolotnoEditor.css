@@ -1,0 +1,1012 @@
+/* 
+ * CSS básico para Polotno Editor
+ * Solución simple sin conflictos con Tailwind CSS
+ */
+
+/* Contenedor principal del editor */
+.polotno-editor-isolation {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  box-sizing: border-box;
+  background: #f8f9fa;
+}
+
+/* Box sizing básico */
+.polotno-editor-isolation *,
+.polotno-editor-isolation *::before,
+.polotno-editor-isolation *::after {
+  box-sizing: border-box;
+}
+
+/* Tooltips y overlays de Blueprint */
+.bp4-portal,
+.bp4-overlay,
+.bp4-tooltip {
+  z-index: 9999;
+}
+
+/* SOLUCIÓN ULTRA ESPECÍFICA PARA ÍCONOS SVG */
+.polotno-editor-isolation svg,
+.polotno-editor-isolation .bp4-icon svg,
+.polotno-editor-isolation .bp4-button svg,
+.polotno-editor-isolation [class*="bp4-"] svg {
+  display: inline-block !important;
+  margin: 0 8px !important;
+  vertical-align: middle !important;
+  width: 16px !important;
+  height: 16px !important;
+  flex-shrink: 0 !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+}
+
+/* Botones Blueprint con espaciado forzado */
+.polotno-editor-isolation .bp4-button,
+.polotno-editor-isolation button[class*="bp4-"],
+.polotno-editor-isolation [class*="bp4-button"] {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  padding: 8px 16px !important;
+  margin: 4px !important;
+  min-height: 32px !important;
+}
+
+/* Íconos dentro de botones con margen específico */
+.polotno-editor-isolation .bp4-button svg,
+.polotno-editor-isolation button[class*="bp4-"] svg {
+  margin: 0 6px 0 0 !important;
+}
+
+/* Toolbar compacta con espaciado mínimo */
+.polotno-editor-isolation .polotno-toolbar,
+.polotno-editor-isolation [class*="toolbar"] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+  padding: 4px 8px !important;
+  flex-wrap: nowrap !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+
+/* Íconos en toolbar */
+.polotno-editor-isolation .polotno-toolbar svg,
+.polotno-editor-isolation [class*="toolbar"] svg {
+  margin: 0 8px !important;
+}
+
+/* Side panel con espaciado */
+.polotno-editor-isolation .polotno-side-panel svg,
+.polotno-editor-isolation [class*="side-panel"] svg {
+  margin: 0 8px 0 0 !important;
+}
+
+/* Menu items */
+.polotno-editor-isolation .bp4-menu-item,
+.polotno-editor-isolation [class*="menu-item"] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 12px 16px !important;
+  min-height: 40px !important;
+}
+
+/* Button groups */
+.polotno-editor-isolation .bp4-button-group,
+.polotno-editor-isolation [class*="button-group"] {
+  display: inline-flex !important;
+  gap: 8px !important;
+  margin: 0 12px !important;
+}
+
+/* Contenedores de íconos */
+.polotno-editor-isolation .bp4-icon,
+.polotno-editor-isolation [class*="icon"] {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  margin: 0 4px !important;
+}
+
+/* REGLAS ESPECÍFICAS PARA TOOLBAR SUPERIOR */
+.polotno-editor-isolation [class*="polotno-toolbar"] > *,
+.polotno-editor-isolation [class*="toolbar"] > * {
+  margin: 0 1px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  vertical-align: middle !important;
+  height: 28px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Botones específicos en toolbar */
+.polotno-editor-isolation [class*="polotno-toolbar"] button,
+.polotno-editor-isolation [class*="toolbar"] button,
+.polotno-editor-isolation [class*="polotno-toolbar"] .bp4-button,
+.polotno-editor-isolation [class*="toolbar"] .bp4-button {
+  margin: 0 1px !important;
+  padding: 4px 6px !important;
+  min-width: 28px !important;
+  max-width: auto !important;
+  height: 28px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  vertical-align: middle !important;
+  line-height: 1 !important;
+  flex-shrink: 0 !important;
+}
+
+/* Separación específica para íconos en toolbar */
+.polotno-editor-isolation [class*="polotno-toolbar"] svg,
+.polotno-editor-isolation [class*="toolbar"] svg {
+  margin: 0 2px !important;
+  display: inline-block !important;
+  width: 14px !important;
+  height: 14px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Alineación vertical forzada para todos los elementos */
+.polotno-editor-isolation [class*="polotno-toolbar"] * {
+  vertical-align: middle !important;
+  line-height: 32px !important;
+}
+
+/* Elementos de texto en toolbar */
+.polotno-editor-isolation [class*="polotno-toolbar"] span,
+.polotno-editor-isolation [class*="toolbar"] span,
+.polotno-editor-isolation [class*="polotno-toolbar"] div,
+.polotno-editor-isolation [class*="toolbar"] div {
+  height: 28px !important;
+  line-height: 28px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  margin: 0 1px !important;
+  font-size: 12px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Media query para pantallas grandes */
+@media (min-width: 1024px) {
+  .polotno-editor-isolation svg {
+    margin: 0 10px !important;
+  }
+  
+  .polotno-editor-isolation .bp4-button {
+    gap: 10px !important;
+    padding: 10px 20px !important;
+    margin: 6px !important;
+  }
+  
+  .polotno-editor-isolation .polotno-toolbar {
+    gap: 16px !important;
+    padding: 20px !important;
+  }
+  
+  .polotno-editor-isolation [class*="polotno-toolbar"] button,
+  .polotno-editor-isolation [class*="toolbar"] button {
+    margin: 0 10px !important;
+  }
+}
+
+/* Contenedor de Polotno */
+.polotno-editor-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* Asegurar que el workspace funcione correctamente */
+.polotno-editor-isolation .polotno-workspace {
+  background: white;
+}
+
+/* Toolbar básica */
+.polotno-editor-isolation .polotno-toolbar {
+  background: #f8f9fa;
+  border-bottom: 1px solid #e1e5e9;
+  padding: 8px;
+}
+
+/* Side panel básico */
+.polotno-editor-isolation .polotno-side-panel {
+  background: #f8f9fa;
+  border-right: 1px solid #e1e5e9;
+}
+
+/* Pages timeline básico */
+.polotno-editor-isolation .polotno-pages-timeline {
+  background: #f8f9fa;
+  border-top: 1px solid #e1e5e9;
+  padding: 8px;
+}
+
+/* Mejoras de contraste para botones con fondo azul oscuro */
+.polotno-editor-isolation .bp4-button.bp4-intent-primary,
+.polotno-editor-isolation .bp4-button[class*="bp4-intent-primary"],
+.polotno-editor-isolation button[class*="bp4-intent-primary"] {
+  color: white !important;
+}
+
+/* Botones con fondo azul oscuro - mejorar legibilidad */
+.polotno-editor-isolation .bp4-button:not(.bp4-minimal):not(.bp4-outlined) {
+  color: white !important;
+}
+
+/* Botones activos con mejor contraste */
+.polotno-editor-isolation .bp4-button.bp4-active,
+.polotno-editor-isolation .bp4-button[class*="active"] {
+  color: white !important;
+  background-color: #1f4788 !important;
+}
+
+/* Ocultar elementos automáticos de selección que causan problemas de legibilidad */
+.polotno-editor-isolation .bp4-button span:empty,
+.polotno-editor-isolation .bp4-button svg + span:empty {
+  display: none !important;
+}
+
+/* Ocultar spans y svgs problemáticos en elementos seleccionados */
+.polotno-editor-isolation [class*="selection"] span:empty,
+.polotno-editor-isolation [class*="selected"] span:empty {
+  display: none !important;
+}
+
+/* Estilos personalizados para el editor Polotno */
+
+/* ESTILOS ESPECÍFICOS PARA EL POPOVER DE HERRAMIENTAS DE TEXTO */
+.bp5-popover-content div[style*="padding: 10px"][style*="display: flex"],
+.bp4-popover-content div[style*="padding: 10px"][style*="display: flex"] {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+  padding: 16px 20px !important;
+  margin: 0 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  min-height: 56px !important;
+  width: auto !important;
+  min-width: fit-content !important;
+  max-width: none !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  white-space: nowrap !important;
+}
+
+/* Elementos dentro del popover */
+.bp5-popover-content div[style*="padding: 10px"][style*="display: flex"] > *,
+.bp4-popover-content div[style*="padding: 10px"][style*="display: flex"] > * {
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  vertical-align: middle !important;
+}
+
+/* Elementos span específicos en el popover */
+.bp5-popover-content span,
+.bp4-popover-content span {
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 36px !important;
+  vertical-align: middle !important;
+}
+
+/* Botones con texto específicos */
+.bp5-popover-content .bp5-button .bp5-button-text,
+.bp4-popover-content .bp4-button .bp4-button-text {
+  line-height: 1 !important;
+  vertical-align: middle !important;
+}
+
+/* Botones en el popover */
+.bp5-popover-content .bp5-button,
+.bp4-popover-content .bp4-button {
+  min-width: 32px !important;
+  height: 36px !important;
+  padding: 8px 12px !important;
+  border-radius: 4px !important;
+  font-size: 14px !important;
+  border: 1px solid #e5e7eb !important;
+  background: #f9fafb !important;
+  transition: all 0.2s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  vertical-align: middle !important;
+}
+
+.bp5-popover-content .bp5-button:hover,
+.bp4-popover-content .bp4-button:hover {
+  background: #f3f4f6 !important;
+  border-color: #d1d5db !important;
+}
+
+.bp5-popover-content .bp5-button.bp5-active,
+.bp4-popover-content .bp4-button.bp4-active {
+  background: #3b82f6 !important;
+  color: white !important;
+  border-color: #3b82f6 !important;
+}
+
+/* Inputs numéricos en el popover */
+.bp5-popover-content input[type="number"],
+.bp4-popover-content input[type="number"] {
+  width: 60px !important;
+  height: 36px !important;
+  padding: 6px 8px !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 4px !important;
+  font-size: 14px !important;
+}
+
+/* Grupos de control numérico */
+.bp5-popover-content .bp5-control-group,
+.bp4-popover-content .bp4-control-group {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  height: 36px !important;
+}
+
+/* Botones verticales de incremento/decremento */
+.bp5-popover-content .bp5-button-group.bp5-vertical,
+.bp4-popover-content .bp4-button-group.bp4-vertical {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 36px !important;
+  width: 20px !important;
+}
+
+.bp5-popover-content .bp5-button-group.bp5-vertical .bp5-button,
+.bp4-popover-content .bp4-button-group.bp4-vertical .bp4-button {
+  height: 18px !important;
+  min-height: 18px !important;
+  width: 20px !important;
+  min-width: 20px !important;
+  padding: 0 !important;
+  border-radius: 2px !important;
+  font-size: 10px !important;
+}
+
+/* Selectores de fuente */
+.bp5-popover-content .bp5-select,
+.bp4-popover-content .bp4-select {
+  min-width: 120px !important;
+}
+
+.bp5-popover-content .bp5-select select,
+.bp4-popover-content .bp4-select select {
+  height: 32px !important;
+  padding: 4px 8px !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 4px !important;
+  font-size: 14px !important;
+  height: 36px !important;
+  margin: 0 2px !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+  background-color: #f8f9fa !important;
+  border: 1px solid #dee2e6 !important;
+}
+
+.bp5-popover-content .bp5-button:hover,
+.bp4-popover-content .bp4-button:hover {
+  background-color: #e9ecef !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Inputs numéricos en el popover */
+.bp5-popover-content .bp5-numeric-input,
+.bp4-popover-content .bp4-numeric-input {
+  width: 65px !important;
+}
+
+.bp5-popover-content .bp5-input,
+.bp4-popover-content .bp4-input {
+  height: 36px !important;
+  border-radius: 6px !important;
+  border: 1px solid #ced4da !important;
+}
+
+/* Selectores de fuente en el popover */
+.bp5-popover-content .bp5-button[style*="fontFamily"],
+.bp4-popover-content .bp4-button[style*="fontFamily"] {
+  min-width: 130px !important;
+  max-width: 170px !important;
+  text-align: left !important;
+  justify-content: space-between !important;
+  padding: 0 12px !important;
+}
+
+/* Button groups en el popover */
+.bp5-popover-content .bp5-button-group,
+.bp4-popover-content .bp4-button-group {
+  border: 1px solid #e5e7eb !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  display: inline-flex !important;
+}
+
+.bp5-popover-content .bp5-button-group .bp5-button,
+.bp4-popover-content .bp4-button-group .bp4-button {
+  border-radius: 0 !important;
+  border-right: 1px solid #e5e7eb !important;
+  margin: 0 !important;
+}
+
+.bp5-popover-content .bp5-button-group .bp5-button:last-child,
+.bp4-popover-content .bp4-button-group .bp4-button:last-child {
+  border-right: none !important;
+}
+
+/* Color picker en el popover */
+.bp5-popover-content .bp5-button[style*="background"],
+.bp4-popover-content .bp4-button[style*="background"] {
+  min-width: 40px !important;
+  width: 40px !important;
+  height: 36px !important;
+  border-radius: 6px !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: 0 0 0 1px #dee2e6 !important;
+}
+
+/* Ocultar elementos automáticos del toolbar */
+.polotno-toolbar [data-id="undo"],
+.polotno-toolbar [data-id="redo"],
+.polotno-toolbar [data-id="zoom"],
+.polotno-toolbar [data-id="hand"] {
+  display: none !important;
+}
+
+/* Mejorar contraste de botones */
+.polotno-toolbar .bp4-button {
+  background-color: #f8f9fa !important;
+  border: 1px solid #dee2e6 !important;
+  color: #495057 !important;
+}
+
+.polotno-toolbar .bp4-button:hover {
+  background-color: #e9ecef !important;
+  border-color: #adb5bd !important;
+}
+
+.polotno-toolbar .bp4-button.bp4-active,
+.polotno-toolbar .bp4-button[aria-pressed="true"] {
+  background-color: #007bff !important;
+  border-color: #007bff !important;
+  color: white !important;
+}
+
+/* Mejorar legibilidad del SidePanel */
+.polotno-side-panel {
+  background-color: #ffffff !important;
+}
+
+.polotno-side-panel .bp4-card,
+.polotno-side-panel .bp4-elevation-1,
+.polotno-side-panel .bp4-elevation-2 {
+  background-color: #ffffff !important;
+  border: 1px solid #e1e5e9 !important;
+  margin-bottom: 8px !important;
+}
+
+.polotno-side-panel .bp4-text-muted,
+.polotno-side-panel .bp4-label,
+.polotno-side-panel label {
+  color: #495057 !important;
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  padding: 2px 4px !important;
+  border-radius: 3px !important;
+}
+
+.polotno-side-panel .bp4-input,
+.polotno-side-panel .bp4-select select,
+.polotno-side-panel .bp4-slider {
+  background-color: #ffffff !important;
+  border: 1px solid #ced4da !important;
+  color: #495057 !important;
+}
+
+.polotno-side-panel .bp4-button {
+  background-color: #f8f9fa !important;
+  border: 1px solid #dee2e6 !important;
+  color: #495057 !important;
+}
+
+.polotno-side-panel .bp4-button:hover {
+  background-color: #e9ecef !important;
+}
+
+/* Mejorar contraste de texto en paneles de propiedades */
+.polotno-side-panel [class*="property"],
+.polotno-side-panel [class*="control"],
+.polotno-side-panel [class*="section"] {
+  background-color: #ffffff !important;
+  padding: 12px !important;
+  margin: 8px 4px !important;
+  border-radius: 6px !important;
+  border: 1px solid #dee2e6 !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+}
+
+/* Mejorar espaciado y visibilidad de controles de texto */
+.polotno-side-panel .bp5-control-group,
+.polotno-side-panel .bp5-button-group {
+  background-color: #ffffff !important;
+  padding: 8px !important;
+  margin: 4px 0 !important;
+  border-radius: 4px !important;
+  border: 1px solid #e1e5e9 !important;
+}
+
+/* ARREGLO ESPECÍFICO PARA HERRAMIENTAS DE TEXTO */
+.polotno-side-panel .text-tools-container {
+  background-color: #ffffff !important;
+  border: 1px solid #dee2e6 !important;
+  border-radius: 6px !important;
+  margin: 8px 0 !important;
+  padding: 12px !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  align-items: center !important;
+  min-height: 50px !important;
+}
+
+.polotno-side-panel .text-tools-container > * {
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+}
+
+/* Mejorar botones en general */
+.polotno-side-panel .bp5-button {
+  margin: 2px !important;
+  min-width: 30px !important;
+  height: 30px !important;
+}
+
+/* RESETEAR TODOS LOS ELEMENTOS HIJOS */
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > *,
+.polotno-side-panel div[style="padding: 10px; display: flex;"] > * {
+  margin: 0 !important;
+  padding: 0 !important;
+  position: static !important;
+  float: none !important;
+  clear: none !important;
+  transform: none !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+}
+
+/* Color picker - GRID COLUMN 1 */
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > span:first-child,
+.polotno-side-panel div[style="padding: 10px; display: flex;"] > span:first-child {
+  grid-column: 1 !important;
+  justify-self: start !important;
+}
+
+/* Selector de fuente - GRID COLUMN 2 */
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > span:nth-child(2),
+.polotno-side-panel div[style="padding: 10px; display: flex;"] > span:nth-child(2) {
+  grid-column: 2 !important;
+  min-width: 120px !important;
+  justify-self: start !important;
+}
+
+/* Control numérico de tamaño - GRID COLUMN 3 */
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > .bp5-control-group,
+.polotno-side-panel div[style="padding: 10px; display: flex;"] > .bp5-control-group {
+  grid-column: 3 !important;
+  justify-self: start !important;
+}
+
+/* Primer grupo de botones de formato - GRID COLUMN 4 */
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > .bp5-button-group:first-of-type,
+.polotno-side-panel div[style="padding: 10px; display: flex;"] > .bp5-button-group:first-of-type {
+  grid-column: 4 !important;
+  justify-self: start !important;
+}
+
+/* Botón de espaciado de línea - GRID COLUMN 5 */
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > span:has(.bp5-button),
+.polotno-side-panel div[style="padding: 10px; display: flex;"] > span:has(.bp5-button) {
+  grid-column: 5 !important;
+  justify-self: start !important;
+}
+
+/* Segundo grupo de botones y botones individuales - GRID COLUMN 6 */
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > .bp5-button-group:last-of-type,
+.polotno-side-panel div[style="padding: 10px; display: flex;"] > .bp5-button-group:last-of-type,
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > .bp5-button,
+.polotno-side-panel div[style="padding: 10px; display: flex;"] > .bp5-button,
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > span:last-child,
+.polotno-side-panel div[style="padding: 10px; display: flex;"] > span:last-child {
+  grid-column: 6 !important;
+  justify-self: start !important;
+}
+
+/* FORZAR TODOS LOS BOTONES A SER VISIBLES Y NO SUPERPONERSE */
+.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] .bp5-button,
+.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-button {
+  min-width: 32px !important;
+  height: 32px !important;
+  margin: 2px !important;
+  background-color: #f8f9fa !important;
+  border: 1px solid #dee2e6 !important;
+  position: relative !important;
+  z-index: 10 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Todos los botones dentro del contenedor */
+.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-button {
+  margin: 0 1px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Asegurar que los popovers no se superpongan */
+.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-popover-target {
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+/* Asegurar que el texto sea legible */
+.polotno-side-panel * {
+  color: #212529 !important;
+}
+
+.polotno-side-panel .bp4-text-muted,
+.polotno-side-panel .bp5-text-muted {
+  color: #6c757d !important;
+}
+
+/* Evitar superposición de elementos */
+.polotno-side-panel .bp5-popover-target {
+  z-index: 10 !important;
+  position: relative !important;
+}
+
+.polotno-side-panel .bp5-button {
+  margin: 2px !important;
+  z-index: 5 !important;
+}
+
+/* COMENTADO: No ocultar pestañas del panel lateral cuando hay elementos seleccionados */
+/* Permitir navegación normal del panel lateral incluso con elementos seleccionados */
+/*
+.polotno-editor-has-selection .polotno-side-panel [data-id="templates"],
+.polotno-editor-has-selection .polotno-side-panel [data-id="elements"],
+.polotno-editor-has-selection .polotno-side-panel [data-id="text"],
+.polotno-editor-has-selection .polotno-side-panel [data-id="images"],
+.polotno-editor-has-selection .polotno-side-panel [data-id="background"],
+.polotno-editor-has-selection .polotno-side-panel [data-id="upload"] {
+  display: none !important;
+}
+*/
+
+/* Las reglas para polotno-editor-has-selection se han eliminado ya que la clase no se añade */
+
+/* ========================================
+ * SOLUCIÓN ESPECÍFICA PARA CENTRADO DEL WORKSPACE
+ * Usando clases específicas para evitar conflictos CSS
+ * ======================================== */
+
+/* Clase específica para el contenedor principal del editor */
+.kaze-polotno-editor-container {
+  display: flex !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+/* Clase específica para el panel lateral con ancho fijo */
+.kaze-side-panel-fixed {
+  width: 300px !important;
+  min-width: 300px !important;
+  max-width: 300px !important;
+  flex-shrink: 0 !important;
+  flex-basis: 300px !important;
+  transition: all 0.3s ease !important;
+}
+
+/* Prevenir estilos inline en el panel lateral */
+.kaze-side-panel-fixed[style] {
+  width: 300px !important;
+  min-width: 300px !important;
+  max-width: 300px !important;
+}
+
+/* REGLAS ESPECÍFICAS PARA OCULTAR/MOSTRAR EL PANEL LATERAL */
+/* Estado específico: Panel lateral VISIBLE */
+.polotno-editor-isolation[data-side-panel="visible"] .kaze-side-panel-fixed {
+  width: 300px !important;
+  min-width: 300px !important;
+  max-width: 300px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: visible !important;
+  transform: translateX(0) !important;
+}
+
+/* Estado específico: Panel lateral OCULTO - Completamente oculto */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-side-panel-fixed {
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  display: none !important;
+  overflow: hidden !important;
+  transform: translateX(-100%) !important;
+  flex-basis: 0 !important;
+}
+
+/* Clase específica para el workspace wrapper */
+.kaze-workspace-container {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+  position: relative !important;
+  transition: all 0.3s ease !important;
+}
+
+/* Estado específico: Panel lateral VISIBLE */
+.polotno-editor-isolation[data-side-panel="visible"] .kaze-workspace-container {
+  justify-content: flex-start !important;
+  align-items: stretch !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  left: 0 !important;
+  transform: none !important;
+}
+
+/* Estado específico: Panel lateral OCULTO - Centrado perfecto */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container {
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  /* REMOVIDO: left: 0 que interfiere con el centrado */
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  width: 100% !important;
+  position: relative !important;
+}
+
+/* Centrado específico para el canvas de Polotno cuando panel está oculto - CENTRADO SIMPLE */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container .polotno-workspace {
+  margin: 0 auto !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  position: relative !important;
+  /* Sobrescribir cualquier reseteo previo */
+  top: auto !important;
+  bottom: auto !important;
+  display: block !important;
+}
+
+/* Regla alternativa con aún mayor especificidad */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-polotno-editor-container .kaze-workspace-container .polotno-workspace {
+  margin: 0 auto !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+  position: relative !important;
+}
+
+/* Centrado para el contenedor del canvas - MÁXIMA PRIORIDAD */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container .polotno-workspace > div {
+  margin: 0 auto !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  position: relative !important;
+  left: auto !important;
+  transform: none !important;
+}
+
+/* Regla alternativa con mayor especificidad */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-polotno-editor-container .kaze-workspace-container .polotno-workspace > div {
+  margin: 0 auto !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+/* Clase específica para el workspace interno (canvas) */
+.kaze-workspace-inner {
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Estado específico del canvas cuando panel está oculto */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-inner {
+  margin: 0 auto !important;
+  text-align: center !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+/* Estado específico del canvas cuando panel está visible */
+.polotno-editor-isolation[data-side-panel="visible"] .kaze-workspace-inner {
+  margin: 0 !important;
+  text-align: left !important;
+}
+
+/* REGLA PROBLEMÁTICA ELIMINADA - CAUSABA DESPLAZAMIENTO A LA IZQUIERDA */
+/* La regla con position: absolute y transform: translate(-50%, -50%) ha sido eliminada */
+
+/* Centrado específico para el contenedor interno del canvas */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace > div {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 0 auto !important;
+  position: relative !important;
+  left: auto !important;
+  transform: none !important;
+}
+
+/* Centrado directo del canvas de Konva */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace canvas {
+  margin: 0 auto !important;
+  display: block !important;
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* Centrado del contenedor konvajs-content */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace .konvajs-content {
+  margin: 0 auto !important;
+  display: block !important;
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* Regla de respaldo con máxima especificidad */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-polotno-editor-container .kaze-workspace-container .polotno-workspace {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 0 auto !important;
+}
+
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-polotno-editor-container .kaze-workspace-container .polotno-workspace canvas {
+  margin: 0 auto !important;
+  display: block !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* ARREGLO ULTRA AGRESIVO PARA RESIZESENSOR INFINITE LOOP */
+/* Deshabilitar completamente ResizeSensor en toda la aplicación */
+[class*="resize-sensor"],
+[class*="ResizeSensor"],
+.resize-sensor,
+.ResizeSensor,
+.bp5-popover .resize-sensor,
+.bp4-popover .resize-sensor,
+.bp5-color-picker .resize-sensor,
+.bp4-color-picker .resize-sensor {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  z-index: -9999 !important;
+  opacity: 0 !important;
+  transform: scale(0) !important;
+}
+
+/* Todos los botones dentro del contenedor */
+.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-button {
+  margin: 0 1px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Asegurar que los popovers no se superpongan */
+.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-popover-target {
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+/* Asegurar que el texto sea legible */
+.polotno-side-panel * {
+  color: #212529 !important;
+}
+
+.polotno-side-panel .bp4-text-muted,
+.polotno-side-panel .bp5-text-muted {
+  color: #6c757d !important;
+}
+
+/* Evitar superposición de elementos */
+.polotno-side-panel .bp5-popover-target {
+  z-index: 10 !important;
+  position: relative !important;
+}
+
+.polotno-side-panel .bp5-button {
+  margin: 2px !important;
+  z-index: 5 !important;
+}
+
+/* COMENTADO: No ocultar pestañas del panel lateral cuando hay elementos seleccionados */
+/* Permitir navegación normal del panel lateral incluso con elementos seleccionados */
+/*
+.polotno-editor-has-selection .polotno-side-panel [data-id="templates"],
+.polotno-editor-has-selection .polotno-side-panel [data-id="elements"],
+.polotno-editor-has-selection .polotno-side-panel [data-id="text"],
+.polotno-editor-has-selection .polotno-side-panel [data-id="images"],
+.polotno-editor-has-selection .polotno-side-panel [data-id="background"],
+.polotno-editor-has-selection .polotno-side-panel [data-id="upload"] {
+  display: none !important;
+}
+*/
+
+/* Mostrar solo el panel de propiedades cuando hay selección */
+.polotno-editor-has-selection .polotno-side-panel {
+  visibility: visible;
+  display: block;
+}
+
+/* ARREGLO CRÍTICO: Prevenir crecimiento del panel lateral cuando hay selección */
+.polotno-editor-has-selection .polotno-side-panel-wrap {
+  width: 300px !important;
+  min-width: 300px !important;
+  max-width: 300px !important;
+  flex-shrink: 0 !important;
+  overflow: hidden !important;
+  flex-basis: 300px !important;
+}
+
+/* Reglas CSS duplicadas eliminadas - ya no se necesitan referencias a polotno-editor-has-selection */
+
+/* Fin del archivo */
