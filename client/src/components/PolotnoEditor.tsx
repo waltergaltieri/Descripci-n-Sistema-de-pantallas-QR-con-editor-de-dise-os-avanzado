@@ -22,6 +22,7 @@ import '../test-specific-classes';
 import '../ultimate-centering-test'; // Script de testing definitivo
 import '../force-centering-javascript'; // Forzado de centrado mediante JavaScript
 import '../direct-centering-javascript'; // Solución JavaScript directa basada en inspección
+import '../hide-templates-tab'; // Script para ocultar la pestaña de Templates
 // import '../fix-image-resize'; // Corrección para el redimensionamiento de imágenes - DESACTIVADO: causa errores de MobX State Tree
 // import '../image-resize-patch'; // Parche adicional para redimensionamiento de imágenes - DESACTIVADO: causa errores de MobX State Tree
 // import '../debug-contextual-controls'; // Diagnóstico de controles contextuales

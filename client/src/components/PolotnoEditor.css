@@ -558,40 +558,40 @@ div[style*="pointer-events: none;"] > .bp5-navbar {
   background-color: #e9ecef !important;
 }
 
-/* Mejorar contraste de texto en paneles de propiedades */
+/* Mejorar contraste de texto en paneles de propiedades - SIN FONDOS */
 .polotno-side-panel [class*="property"],
 .polotno-side-panel [class*="control"],
 .polotno-side-panel [class*="section"] {
-  background-color: #ffffff !important;
+  background-color: transparent !important;
   padding: 12px !important;
   margin: 8px 4px !important;
-  border-radius: 6px !important;
-  border: 1px solid #dee2e6 !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
-/* Mejorar espaciado y visibilidad de controles de texto */
+/* Mejorar espaciado y visibilidad de controles de texto - SIN FONDOS */
 .polotno-side-panel .bp5-control-group,
 .polotno-side-panel .bp5-button-group {
-  background-color: #ffffff !important;
+  background-color: transparent !important;
   padding: 8px !important;
   margin: 4px 0 !important;
-  border-radius: 4px !important;
-  border: 1px solid #e1e5e9 !important;
+  border-radius: 0 !important;
+  border: none !important;
 }
 
-/* ARREGLO ESPECÍFICO PARA HERRAMIENTAS DE TEXTO */
+/* ARREGLO ESPECÍFICO PARA HERRAMIENTAS DE TEXTO - SIN BORDES */
 .polotno-side-panel .text-tools-container {
-  background-color: #ffffff !important;
-  border: 1px solid #dee2e6 !important;
-  border-radius: 6px !important;
-  margin: 8px 0 !important;
-  padding: 12px !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  margin: 4px 0 !important;
+  padding: 8px !important;
   display: flex !important;
   flex-wrap: wrap !important;
   gap: 8px !important;
   align-items: center !important;
-  min-height: 50px !important;
+  min-height: auto !important;
 }
 
 .polotno-side-panel .text-tools-container > * {
@@ -606,24 +606,24 @@ div[style*="pointer-events: none;"] > .bp5-navbar {
   height: 30px !important;
 }
 
-/* CONTENEDOR PRINCIPAL CON FLEXBOX LAYOUT - SOLUCIÓN ROBUSTA */
+/* CONTENEDOR PRINCIPAL CON FLEXBOX LAYOUT - SIN BORDES DUPLICADOS */
 .polotno-side-panel div[style*="padding: 10px"][style*="display: flex"],
 .polotno-side-panel div[style="padding: 10px; display: flex;"] {
   display: flex !important;
   flex-wrap: nowrap !important;
   align-items: center !important;
   justify-content: flex-start !important;
-  gap: 4px !important;
-  padding: 4px !important;
-  background-color: #ffffff !important;
-  border: 1px solid #dee2e6 !important;
-  border-radius: 6px !important;
-  margin: 8px 4px !important;
-  min-height: 32px !important;
-  max-width: 280px !important;
+  gap: 6px !important;
+  padding: 8px !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  margin: 4px 0 !important;
+  min-height: 40px !important;
+  max-width: 100% !important;
   width: 100% !important;
   box-sizing: border-box !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   position: relative !important;
 }
 
@@ -640,13 +640,78 @@ div[style*="pointer-events: none;"] > .bp5-navbar {
   left: auto !important;
   right: auto !important;
   bottom: auto !important;
-  display: flex !important;
+  display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   box-sizing: border-box !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   flex-shrink: 0 !important;
   max-width: fit-content !important;
+}
+
+/* ARREGLO ESPECÍFICO PARA BOTONES DE CREACIÓN DE TEXTO - BORDE SUTIL */
+.polotno-side-panel button[style*="width: 100%"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 2px 0 !important;
+  padding: 12px 16px !important;
+  text-align: left !important;
+  justify-content: flex-start !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: ellipsis !important;
+  display: flex !important;
+  align-items: center !important;
+  min-height: 40px !important;
+  box-sizing: border-box !important;
+  border: 1px solid #f1f3f4 !important;
+  border-radius: 6px !important;
+  background-color: #ffffff !important;
+  transition: border-color 0.2s ease !important;
+}
+
+/* Texto dentro de los botones de creación */
+.polotno-side-panel button[style*="width: 100%"] .bp5-button-text {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  color: #374151 !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+}
+
+/* Hover effect para los botones de texto */
+.polotno-side-panel button[style*="width: 100%"]:hover {
+  border-color: #d1d5db !important;
+  background-color: #f9fafb !important;
+}
+
+/* ARREGLO PARA GALERÍA DE PLANTILLAS DE TEXTO */
+.polotno-side-panel div[style*="display: grid"] {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)) !important;
+  gap: 8px !important;
+  padding: 8px !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+}
+
+/* ARREGLO PARA ELEMENTOS DE LA GALERÍA */
+.polotno-side-panel div[style*="display: grid"] > div {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  padding: 4px !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+.polotno-side-panel div[style*="display: grid"] > div:hover {
+  border-color: #3b82f6 !important;
+  background-color: #f8fafc !important;
 }
 
 /* CONTENEDOR PADRE DEL PANEL LATERAL - CONTROL ESTRICTO */
@@ -753,6 +818,17 @@ div[style*="pointer-events: none;"] > .bp5-navbar {
 /* Ocultar elementos con colores predefinidos */
 .polotno-side-panel div[style*="background-color"][style*="border-radius"][style*="cursor: pointer"] {
   display: none !important;
+}
+
+/* Ocultar contenedor de paleta de colores con flexbox-fix - MÁS ESPECÍFICO */
+.polotno-side-panel div.flexbox-fix[style*="margin: 0px -10px; padding: 10px 0px 0px 10px; border-top: 1px solid rgb(238, 238, 238)"],
+.polotno-side-panel div[class="flexbox-fix"][style*="margin: 0px -10px"][style*="padding: 10px 0px 0px 10px"][style*="border-top: 1px solid rgb(238, 238, 238)"],
+div[class="flexbox-fix"][style*="margin: 0px -10px; padding: 10px 0px 0px 10px; border-top: 1px solid rgb(238, 238, 238); display: flex; flex-wrap: wrap; position: relative"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
 }
 
 
@@ -1223,5 +1299,47 @@ div[style*="pointer-events: none;"] > .bp5-navbar {
 }
 
 /* Reglas CSS duplicadas eliminadas - ya no se necesitan referencias a polotno-editor-has-selection */
+
+/* OCULTAR PESTAÑA DE TEMPLATES DEL PANEL LATERAL */
+.polotno-side-panel [data-id="templates"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Ocultar solo la primera pestaña (Templates) del panel lateral */
+/* Usar nth-child(1) para seleccionar específicamente la primera pestaña */
+.polotno-side-tabs-container .polotno-side-panel-tab:nth-child(1) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Selector más específico para la pestaña de Templates */
+.polotno-side-tabs-inner > .polotno-side-panel-tab:first-child {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* OCULTAR PESTAÑA DE RESIZE DEL PANEL LATERAL */
+/* Ocultar la última pestaña (Resize) del panel lateral */
+.polotno-side-tabs-container .polotno-side-panel-tab:last-child {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Selector más específico para la pestaña de Resize */
+.polotno-side-tabs-inner > .polotno-side-panel-tab:last-child {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
 
 /* Fin del archivo */
