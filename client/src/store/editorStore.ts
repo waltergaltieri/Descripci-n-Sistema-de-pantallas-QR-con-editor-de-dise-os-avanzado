@@ -230,7 +230,32 @@ export const useEditorUIStore = create<EditorUIStore>()(subscribeWithSelector(im
   },
   
   selectMultiple: (ids: string[]) => {
-    polotnoStore.selectElements(ids);
+    try {
+      // Usar un enfoque más seguro para evitar el error de locked computed
+      polotnoStore.history.transaction(() => {
+        // Limpiar selección actual primero
+        polotnoStore.selectElements([]);
+        
+        // Filtrar elementos que realmente existen y son seleccionables
+        const validIds = ids.filter(id => {
+          const element = polotnoStore.getElementById(id);
+          return element && element.selectable !== false;
+        });
+        
+        // Seleccionar elementos válidos
+        if (validIds.length > 0) {
+          polotnoStore.selectElements(validIds);
+        }
+      });
+    } catch (error) {
+      console.warn('Error en selectMultiple, usando fallback:', error);
+      // Fallback: intentar selección directa
+      try {
+        polotnoStore.selectElements(ids);
+      } catch (fallbackError) {
+        console.error('Error en fallback de selectMultiple:', fallbackError);
+      }
+    }
   },
   
   clearSelection: () => {

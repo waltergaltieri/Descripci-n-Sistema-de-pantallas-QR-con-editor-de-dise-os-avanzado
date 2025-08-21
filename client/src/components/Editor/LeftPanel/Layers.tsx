@@ -47,6 +47,11 @@ const LayerItem: React.FC<LayerItemProps> = observer(({
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(element.name || element.type);
   
+  // Helper function para determinar si un elemento está bloqueado
+  const isElementLocked = (element: any) => {
+    return !element.selectable || !element.draggable;
+  };
+  
   const getElementIcon = (type: string) => {
     switch (type) {
       case 'text': return Type;
@@ -149,9 +154,9 @@ const LayerItem: React.FC<LayerItemProps> = observer(({
               onToggleLock(element);
             }}
             className="p-1 hover:bg-gray-200 rounded"
-            title={element.locked ? 'Desbloquear' : 'Bloquear'}
+            title={isElementLocked(element) ? 'Desbloquear' : 'Bloquear'}
           >
-            {element.locked ? <Lock size={12} /> : <Unlock size={12} />}
+            {isElementLocked(element) ? <Lock size={12} /> : <Unlock size={12} />}
           </button>
           
           {/* Duplicar */}
@@ -220,7 +225,25 @@ const Layers: React.FC = observer(() => {
   const elements = activePage?.children || [];
   
   const handleSelectElement = (element: any) => {
-    polotnoStore.selectElements([element]);
+    try {
+      // Usar un enfoque más seguro para evitar el error de locked computed
+      polotnoStore.history.transaction(() => {
+        // Verificar que el elemento sea seleccionable
+        if (element && element.selectable !== false) {
+          polotnoStore.selectElements([element]);
+        } else {
+          console.warn('Elemento no seleccionable:', element?.id);
+        }
+      });
+    } catch (error) {
+      console.warn('Error en handleSelectElement:', error);
+      // Fallback: intentar selección directa
+      try {
+        polotnoStore.selectElements([element]);
+      } catch (fallbackError) {
+        console.error('Error en fallback de handleSelectElement:', fallbackError);
+      }
+    }
   };
   
   const handleToggleVisibility = (element: any) => {
@@ -231,7 +254,12 @@ const Layers: React.FC = observer(() => {
   
   const handleToggleLock = (element: any) => {
     polotnoStore.history.transaction(() => {
-      element.set({ locked: !element.locked });
+      // En lugar de usar 'locked' (que es un computed value), usamos selectable y draggable
+      const isCurrentlyLocked = !element.selectable || !element.draggable;
+      element.set({ 
+        selectable: isCurrentlyLocked, 
+        draggable: isCurrentlyLocked 
+      });
     });
   };
   

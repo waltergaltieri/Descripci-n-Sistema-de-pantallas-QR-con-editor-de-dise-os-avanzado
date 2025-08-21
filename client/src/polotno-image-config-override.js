@@ -115,6 +115,44 @@
           };
         }
         
+        // Interceptar selectElements para evitar acceso a 'locked' computed
+        if (store && store.selectElements) {
+          const originalSelectElements = store.selectElements;
+          
+          store.selectElements = function(elementIds, ...otherArgs) {
+            console.log('🎯 Interceptando selectElements para evitar error de locked computed');
+            
+            try {
+              // Temporalmente deshabilitar acceso a 'locked' en elementos
+              const elements = elementIds.map(id => store.getElementById(id)).filter(Boolean);
+              
+              // Crear un wrapper que evite el acceso a 'locked'
+              elements.forEach(element => {
+                if (element && !element._lockedIntercepted) {
+                  const originalLocked = element.locked;
+                  
+                  // Definir un getter que no cause error de MobX
+                  Object.defineProperty(element, 'locked', {
+                    get: function() {
+                      // Retornar basado en selectable y draggable en lugar del computed
+                      return !this.selectable || !this.draggable;
+                    },
+                    configurable: true
+                  });
+                  
+                  element._lockedIntercepted = true;
+                }
+              });
+              
+              return originalSelectElements.call(this, elementIds, ...otherArgs);
+            } catch (error) {
+              console.warn('⚠️ Error en selectElements interceptado:', error);
+              // Fallback: intentar selección sin interceptor
+              return originalSelectElements.call(this, elementIds, ...otherArgs);
+            }
+          };
+        }
+        
         return store;
       };
       

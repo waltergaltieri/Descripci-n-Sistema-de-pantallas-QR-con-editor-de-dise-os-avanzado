@@ -128,7 +128,12 @@ const General: React.FC = observer(() => {
   };
   
   const handleLockToggle = () => {
-    updateElement({ locked: !selectedElement.locked });
+    // En lugar de usar 'locked' (que es un computed value), usamos selectable y draggable
+    const isCurrentlyLocked = !selectedElement.selectable || !selectedElement.draggable;
+    updateElement({ 
+      selectable: isCurrentlyLocked, 
+      draggable: isCurrentlyLocked 
+    });
   };
   
   return (
@@ -304,7 +309,7 @@ const General: React.FC = observer(() => {
             </span>
             <input
               type="checkbox"
-              checked={selectedElement.locked || false}
+              checked={!selectedElement.selectable || !selectedElement.draggable || false}
               onChange={handleLockToggle}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
