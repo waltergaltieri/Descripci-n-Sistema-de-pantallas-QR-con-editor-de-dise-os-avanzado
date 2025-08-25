@@ -12,6 +12,7 @@ const ScreenModal = ({ isOpen, onClose, screen, onSuccess }) => {
     width: 1920,
     height: 1080,
   });
+  const [selectedScreenSize, setSelectedScreenSize] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -19,13 +20,22 @@ const ScreenModal = ({ isOpen, onClose, screen, onSuccess }) => {
     if (isOpen) {
       if (screen) {
         // Modo edición
+        const width = screen.width || 1920;
+        const height = screen.height || 1080;
         setFormData({
           name: screen.name || '',
           description: screen.description || '',
           active: screen.is_active ?? true,
           refresh_interval: screen.refresh_interval || 30,
-          width: screen.width || 1920,
-          height: screen.height || 1080,
+          width,
+          height,
+        });
+        const orientation = width > height ? 'landscape' : 'portrait';
+        setSelectedScreenSize({
+          width,
+          height,
+          name: 'Personalizado',
+          orientation
         });
       } else {
         // Modo creación
@@ -36,6 +46,12 @@ const ScreenModal = ({ isOpen, onClose, screen, onSuccess }) => {
           refresh_interval: 30,
           width: 1920,
           height: 1080,
+        });
+        setSelectedScreenSize({
+          width: 1920,
+          height: 1080,
+          name: '40" Full HD TV',
+          orientation: 'landscape'
         });
       }
       setErrors({});
@@ -58,6 +74,21 @@ const ScreenModal = ({ isOpen, onClose, screen, onSuccess }) => {
     }
   };
 
+  const handleScreenSizeChange = (screenSize) => {
+    setSelectedScreenSize(screenSize);
+    setFormData(prev => ({
+      ...prev,
+      width: screenSize.width,
+      height: screenSize.height
+    }));
+    
+    // Limpiar errores relacionados con dimensiones
+    setErrors(prev => ({
+      ...prev,
+      dimensions: ''
+    }));
+  };
+
   const validateForm = () => {
     const newErrors = {};
 
@@ -76,14 +107,8 @@ const ScreenModal = ({ isOpen, onClose, screen, onSuccess }) => {
       newErrors.refresh_interval = 'El intervalo debe estar entre 5 y 300 segundos';
     }
 
-    const width = parseInt(formData.width);
-    if (!width || width < 100 || width > 10000) {
-      newErrors.width = 'El ancho debe estar entre 100 y 10000 píxeles';
-    }
-
-    const height = parseInt(formData.height);
-    if (!height || height < 100 || height > 10000) {
-      newErrors.height = 'El alto debe estar entre 100 y 10000 píxeles';
+    if (!selectedScreenSize || !selectedScreenSize.width || !selectedScreenSize.height) {
+      newErrors.dimensions = 'Debe seleccionar un tamaño de pantalla';
     }
 
     setErrors(newErrors);
@@ -142,7 +167,7 @@ const ScreenModal = ({ isOpen, onClose, screen, onSuccess }) => {
 
   return (
     <div className="modal-overlay">
-      <div className="modal max-w-md">
+      <div className="modal max-w-4xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">
@@ -207,51 +232,106 @@ const ScreenModal = ({ isOpen, onClose, screen, onSuccess }) => {
               <label className="label mb-3">
                 Dimensiones de la Pantalla *
               </label>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="width" className="block text-sm font-medium text-gray-700 mb-1">
-                    Ancho (px)
-                  </label>
-                  <input
-                    type="number"
-                    id="width"
-                    name="width"
-                    value={formData.width}
-                    onChange={handleChange}
-                    className={`input ${errors.width ? 'input-error' : ''}`}
-                    min="100"
-                    max="10000"
-                    disabled={loading}
-                    placeholder="1920"
-                  />
-                  {errors.width && (
-                    <p className="mt-1 text-sm text-red-600">{errors.width}</p>
-                  )}
-                </div>
-                <div>
-                  <label htmlFor="height" className="block text-sm font-medium text-gray-700 mb-1">
-                    Alto (px)
-                  </label>
-                  <input
-                    type="number"
-                    id="height"
-                    name="height"
-                    value={formData.height}
-                    onChange={handleChange}
-                    className={`input ${errors.height ? 'input-error' : ''}`}
-                    min="100"
-                    max="10000"
-                    disabled={loading}
-                    placeholder="1080"
-                  />
-                  {errors.height && (
-                    <p className="mt-1 text-sm text-red-600">{errors.height}</p>
-                  )}
-                </div>
-              </div>
-              <p className="mt-2 text-sm text-gray-500">
-                Dimensiones físicas de la pantalla donde se mostrará el contenido
-              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                 {[
+                   { name: '32" HD TV Horizontal', width: 1366, height: 768, orientation: 'landscape' },
+                   { name: '32" HD TV Vertical', width: 768, height: 1366, orientation: 'portrait' },
+                   { name: '40" Full HD Horizontal', width: 1920, height: 1080, orientation: 'landscape' },
+                   { name: '40" Full HD Vertical', width: 1080, height: 1920, orientation: 'portrait' },
+                   { name: '43" Full HD Horizontal', width: 1920, height: 1080, orientation: 'landscape' },
+                   { name: '43" Full HD Vertical', width: 1080, height: 1920, orientation: 'portrait' },
+                   { name: '50" 4K Horizontal', width: 3840, height: 2160, orientation: 'landscape' },
+                   { name: '50" 4K Vertical', width: 2160, height: 3840, orientation: 'portrait' },
+                   { name: '55" 4K Horizontal', width: 3840, height: 2160, orientation: 'landscape' },
+                   { name: '55" 4K Vertical', width: 2160, height: 3840, orientation: 'portrait' },
+                   { name: 'Monitor 24" Full HD', width: 1920, height: 1080, orientation: 'landscape' },
+                   { name: 'Monitor 27" QHD', width: 2560, height: 1440, orientation: 'landscape' },
+                   { name: 'Monitor 32" 4K', width: 3840, height: 2160, orientation: 'landscape' },
+                   { name: 'Personalizado', width: formData.width, height: formData.height }
+                 ].map((size, index) => {
+                   const isSelected = selectedScreenSize && 
+                     selectedScreenSize.name === size.name;
+                   
+                   return (
+                     <button
+                       key={index}
+                       onClick={() => {
+                         if (size.name === 'Personalizado') return;
+                         handleScreenSizeChange({
+                           name: size.name,
+                           width: size.width,
+                           height: size.height,
+                           orientation: size.orientation || (size.width > size.height ? 'landscape' : 'portrait')
+                         });
+                       }}
+                       disabled={loading || size.name === 'Personalizado'}
+                       className={`p-3 rounded-lg border-2 text-left transition-colors ${
+                         isSelected
+                           ? 'border-blue-500 bg-blue-50 text-blue-700'
+                           : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                       } ${size.name === 'Personalizado' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                     >
+                       <div className="font-medium text-sm mb-1">{size.name}</div>
+                       <div className="text-xs text-gray-500">
+                         {size.width} × {size.height} px
+                       </div>
+                     </button>
+                   );
+                 })}
+               </div>
+               
+               {/* Campos personalizados */}
+               <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-200">
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                     Ancho personalizado (px)
+                   </label>
+                   <input
+                     type="number"
+                     value={formData.width}
+                     onChange={(e) => {
+                       const width = parseInt(e.target.value) || 0;
+                       setFormData(prev => ({ ...prev, width }));
+                       setSelectedScreenSize({
+                         name: 'Personalizado',
+                         width,
+                         height: formData.height,
+                         orientation: width > formData.height ? 'landscape' : 'portrait'
+                       });
+                     }}
+                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                     min="100"
+                     max="10000"
+                     disabled={loading}
+                   />
+                 </div>
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                     Alto personalizado (px)
+                   </label>
+                   <input
+                     type="number"
+                     value={formData.height}
+                     onChange={(e) => {
+                       const height = parseInt(e.target.value) || 0;
+                       setFormData(prev => ({ ...prev, height }));
+                       setSelectedScreenSize({
+                         name: 'Personalizado',
+                         width: formData.width,
+                         height,
+                         orientation: formData.width > height ? 'landscape' : 'portrait'
+                       });
+                     }}
+                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                     min="100"
+                     max="10000"
+                     disabled={loading}
+                   />
+                 </div>
+               </div>
+              {errors.dimensions && (
+                <p className="mt-1 text-sm text-red-600">{errors.dimensions}</p>
+              )}
             </div>
 
             {/* Intervalo de refresco */}
