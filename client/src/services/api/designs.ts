@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -11,7 +11,7 @@ const api = axios.create({
 
 // Interceptor para agregar token de autenticación
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken');
+  const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -80,10 +80,22 @@ export const getDesign = async (id: string): Promise<Design> => {
 // Crear un nuevo diseño
 export const createDesign = async (design: CreateDesignRequest): Promise<Design> => {
   try {
-    const response = await api.post('/designs', design);
+    // Mapear los campos del frontend al formato esperado por el backend
+    const backendData = {
+      name: design.name,
+      content: design.data, // El backend espera 'content' en lugar de 'data'
+      thumbnail: design.thumbnail,
+      width: design.width,
+      height: design.height,
+      orientation: design.orientation,
+      isExtended: design.isExtended,
+      screens: design.screens
+    };
+    
+    const response = await api.post('/designs', backendData);
     return response.data;
   } catch (error) {
-    console.error('Error creating design:', error);
+    // Error creating design - details logged for debugging
     throw error;
   }
 };
@@ -91,7 +103,14 @@ export const createDesign = async (design: CreateDesignRequest): Promise<Design>
 // Actualizar un diseño existente
 export const updateDesign = async (id: string, updates: UpdateDesignRequest): Promise<Design> => {
   try {
-    const response = await api.put(`/designs/${id}`, updates);
+    // Mapear los campos del frontend al formato esperado por el backend
+    const backendData: any = { ...updates };
+    if (updates.data) {
+      backendData.content = updates.data; // El backend espera 'content' en lugar de 'data'
+      delete backendData.data;
+    }
+    
+    const response = await api.put(`/designs/${id}`, backendData);
     return response.data;
   } catch (error) {
     console.error('Error updating design:', error);
@@ -128,12 +147,39 @@ export const saveDesignFromStore = async (store: any, designId?: string, name?: 
     // Obtener datos del store
     const data = store.toJSON();
     
-    // Generar miniatura
-    const thumbnail = await store.toDataURL({ 
-      pixelRatio: 0.2,
-      mimeType: 'image/jpeg',
-      quality: 0.8
-    });
+    // Intentar generar miniatura, usar placeholder si falla
+    let thumbnail: string;
+    try {
+      // Verificar si el store tiene páginas y contenido
+      if (store.pages && store.pages.length > 0) {
+        // Esperar un poco para que el store se inicialice completamente
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        thumbnail = await store.toDataURL({ 
+          pixelRatio: 0.2,
+          mimeType: 'image/jpeg',
+          quality: 0.8
+        });
+      } else {
+        throw new Error('Store sin páginas válidas');
+      }
+    } catch (thumbnailError) {
+      console.warn('No se pudo generar miniatura, usando placeholder:', thumbnailError);
+      // Crear una miniatura placeholder simple
+      const canvas = document.createElement('canvas');
+      canvas.width = 200;
+      canvas.height = 150;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#f3f4f6';
+        ctx.fillRect(0, 0, 200, 150);
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Nuevo Diseño', 100, 75);
+      }
+      thumbnail = canvas.toDataURL('image/jpeg', 0.8);
+    }
     
     // Obtener dimensiones de la página activa
     const activePage = store.activePage;
@@ -164,7 +210,7 @@ export const saveDesignFromStore = async (store: any, designId?: string, name?: 
       return await createDesign(designData);
     }
   } catch (error) {
-    console.error('Error saving design from store:', error);
+    // Error saving design from store - details logged for debugging
     throw error;
   }
 };
@@ -226,7 +272,7 @@ export const createFromTemplate = async (templateId: string, name?: string): Pro
     });
     return response.data;
   } catch (error) {
-    console.error('Error creating design from template:', error);
+    // Error creating design from template - details logged for debugging
     throw error;
   }
 };

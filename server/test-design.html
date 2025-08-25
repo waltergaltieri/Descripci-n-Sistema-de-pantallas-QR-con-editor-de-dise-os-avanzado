@@ -1,0 +1,56 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diseño</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Norican:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .design-container {
+            width: 800px;
+            height: 600px;
+            position: relative;
+            overflow: hidden;
+            background-color: #ffffff;
+            
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .design-element {
+            position: absolute;
+        }
+        .text-element {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .image-element {
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        .shape-element {
+            border-radius: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="design-container"><div style="position: absolute; left: 100px; top: 100px; width: 200px; height: 50px; z-index: 0; opacity: 1; transform-origin: 0 0; transform: rotate(15deg);"><div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: flex-start; font-size: 24px; font-family: 'Norican', Arial, sans-serif; color: #333333; font-weight: normal; font-style: normal; line-height: normal; letter-spacing: normal; text-decoration: none; word-wrap: break-word;">Hola Mundo</div></div><div style="position: absolute; left: 50px; top: 200px; width: 150px; height: 100px; z-index: 0; opacity: 0.8; transform-origin: 0 0;"><div style="width: 100%; height: 100%; background-color: #ff6b6b; border-radius: 10px;"></div></div><div style="position: absolute; left: 300px; top: 150px; width: 200px; height: 150px; z-index: 0; opacity: 1; transform-origin: 0 0; overflow: hidden;"><img src="https://picsum.photos/400/300" style="position: absolute; left: -50px; top: -25px; width: 400px; height: 300px; object-fit: none;" alt="" /></div>
+    </div>
+</body>
+</html>

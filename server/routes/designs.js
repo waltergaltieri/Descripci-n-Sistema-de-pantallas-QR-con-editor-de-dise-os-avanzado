@@ -1,6 +1,8 @@
 const express = require('express');
 const { db } = require('../config/database');
 const { authenticateToken, requireAdmin, optionalAuth } = require('../middleware/auth');
+const { exportEnhancedJson } = require('../utils/enhancedJsonExporter');
+const { convertJsonToHtml } = require('../utils/jsonToHtml');
 
 const router = express.Router();
 
@@ -82,7 +84,7 @@ router.get('/:id', async (req, res) => {
 // Crear nuevo diseño
 router.post('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { name, description, content, thumbnail } = req.body;
+    const { name, description, content, thumbnail, width, height, orientation, isExtended, screens } = req.body;
     
     if (!name) {
       return res.status(400).json({ error: 'El nombre es requerido' });
@@ -149,7 +151,7 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
 router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, content, thumbnail } = req.body;
+    const { name, description, content, thumbnail, width, height, orientation, isExtended, screens } = req.body;
     
     
       // Generar JSON mejorado para almacenamiento adicional si hay contenido

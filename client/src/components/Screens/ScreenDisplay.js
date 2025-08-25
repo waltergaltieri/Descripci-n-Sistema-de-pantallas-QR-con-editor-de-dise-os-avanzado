@@ -78,7 +78,8 @@ const ScreenDisplay = () => {
 
   // Renderizar el contenido del diseño
   const renderDesignContent = () => {
-    if (!screen.design_content) {
+    // Verificar si no hay diseño asignado
+    if (!screen.design_content && !screen.design_html) {
       return (
         <div className="flex items-center justify-center h-full">
           <div className="text-center">
@@ -94,12 +95,46 @@ const ScreenDisplay = () => {
       );
     }
 
+    // Obtener dimensiones de la pantalla
+    const screenWidth = screen.width || 1920;
+    const screenHeight = screen.height || 1080;
+
+    // PRIORIDAD 1: Usar HTML generado si está disponible
+    if (screen.design_html) {
+      return (
+        <div 
+          className="design-renderer h-full w-full"
+          style={{
+            width: `${screenWidth}px`,
+            height: `${screenHeight}px`,
+            transform: `scale(${Math.min(window.innerWidth / screenWidth, window.innerHeight / screenHeight)})`,
+            transformOrigin: 'top left'
+          }}
+        >
+          <div dangerouslySetInnerHTML={{ __html: screen.design_html }} />
+        </div>
+      );
+    }
+
+    // FALLBACK: Procesar JSON del diseño si no hay HTML
+    if (!screen.design_content) {
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className="text-center">
+            <AlertCircle className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+            <h2 className="text-2xl font-semibold text-gray-600 mb-2">
+              Sin contenido
+            </h2>
+            <p className="text-gray-500">
+              No se pudo cargar el contenido del diseño
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     try {
       const content = JSON.parse(screen.design_content);
-      
-      // Obtener dimensiones de la pantalla
-      const screenWidth = screen.width || 1920;
-      const screenHeight = screen.height || 1080;
       
       // Nuevo formato de GrapesJS con HTML y CSS
       if (content.html && content.css) {
@@ -283,7 +318,7 @@ const ScreenDisplay = () => {
                 width: '100%',
                 height: '100%',
                 objectFit: 'cover',
-                filter: element.filters ? element.filters.join(' ') : 'none'
+                filter: element.filters && Array.isArray(element.filters) ? element.filters.join(' ') : 'none'
               }}
               onError={(e) => {
                 e.target.style.display = 'none';

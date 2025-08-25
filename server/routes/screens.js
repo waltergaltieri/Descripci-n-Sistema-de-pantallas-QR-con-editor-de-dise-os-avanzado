@@ -15,7 +15,8 @@ router.get('/', optionalAuth, async (req, res) => {
           s.*,
           d.id as design_id,
           d.name as design_name,
-          d.content as design_content
+          d.content as design_content,
+          d.html_content as design_html
         FROM screens s
         LEFT JOIN design_assignments da ON s.id = da.screen_id
         LEFT JOIN designs d ON da.design_id = d.id
@@ -29,7 +30,8 @@ router.get('/', optionalAuth, async (req, res) => {
           s.*,
           d.id as design_id,
           d.name as design_name,
-          d.content as design_content
+          d.content as design_content,
+          d.html_content as design_html
         FROM screens s
         LEFT JOIN design_assignments da ON s.id = da.screen_id
         LEFT JOIN designs d ON da.design_id = d.id
@@ -58,6 +60,7 @@ router.get('/:id', async (req, res) => {
         d.id as design_id,
         d.name as design_name,
         d.content as design_content,
+        d.html_content as design_html,
         d.updated_at as design_updated_at
       FROM screens s
       LEFT JOIN design_assignments da ON s.id = da.screen_id
