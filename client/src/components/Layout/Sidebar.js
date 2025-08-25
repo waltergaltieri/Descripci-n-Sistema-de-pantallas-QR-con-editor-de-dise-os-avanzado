@@ -42,7 +42,7 @@ const Sidebar = ({ onClose }) => {
   ];
 
   return (
-    <div className="flex h-full flex-col bg-white shadow-xl">
+    <div className="flex h-screen flex-col bg-white shadow-xl">
       {/* Header del sidebar */}
       <div className="flex h-16 flex-shrink-0 items-center justify-between px-4 border-b border-gray-200">
         <div className="flex items-center">

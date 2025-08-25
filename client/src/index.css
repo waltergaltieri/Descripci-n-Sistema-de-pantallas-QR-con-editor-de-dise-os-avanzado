@@ -32,7 +32,6 @@
 html,
 body {
   height: 100%;
-  overflow: hidden;
 }
 
 body {
@@ -279,8 +278,7 @@ code {
 /* Screen display styles */
 .screen-display {
   width: 100vw;
-  height: 100vh;
-  overflow: hidden;
+  min-height: 100vh;
   background: #ffffff;
 }
 

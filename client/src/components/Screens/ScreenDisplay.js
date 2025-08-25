@@ -105,7 +105,7 @@ const ScreenDisplay = () => {
       if (content.html && content.css) {
         return (
           <div 
-            className="design-renderer h-full w-full overflow-hidden"
+            className="design-renderer h-full w-full"
             style={{
               width: `${screenWidth}px`,
               height: `${screenHeight}px`,
@@ -197,7 +197,7 @@ const ScreenDisplay = () => {
 
     return (
       <div 
-        className="design-renderer overflow-hidden"
+        className="design-renderer"
         style={{
           width: `${screenWidth}px`,
           height: `${screenHeight}px`,
@@ -430,7 +430,7 @@ const ScreenDisplay = () => {
 
     return (
       <div 
-        className="design-renderer overflow-hidden"
+        className="design-renderer"
         style={{
           width: `${screenWidth}px`,
           height: `${screenHeight}px`,
@@ -484,7 +484,7 @@ const ScreenDisplay = () => {
                   <div
                     key={element.id || index}
                     style={style}
-                    className="overflow-hidden"
+                    className=""
                   >
                     <img
                       src={element.src}
@@ -508,7 +508,7 @@ const ScreenDisplay = () => {
                       borderRadius: element.borderRadius || '0px',
                       border: element.border || 'none',
                     }}
-                    className="overflow-hidden"
+                    className=""
                   >
                     {element.children && renderElements(element.children, designWidth, designHeight)}
                   </div>
@@ -611,7 +611,7 @@ const ScreenDisplay = () => {
       )}
 
       {/* Contenido principal */}
-      <div className="relative w-full h-full overflow-hidden">
+      <div className="relative w-full h-full">
         {renderDesignContent()}
       </div>
 
