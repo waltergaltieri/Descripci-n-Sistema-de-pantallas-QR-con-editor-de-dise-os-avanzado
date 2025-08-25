@@ -93,10 +93,30 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
     }
     
     
+      // Generar JSON mejorado para almacenamiento adicional
+      let enhancedContent = null;
+      try {
+        enhancedContent = exportEnhancedJson(content);
+      } catch (error) {
+        console.error('Error generando JSON mejorado:', error);
+        enhancedContent = null; // No usar fallback para evitar confusión
+      }
+      
+      // Generar HTML del diseño usando el contenido mejorado
+      let htmlContent = null;
+      try {
+        // Usar enhanced_content si está disponible, sino usar content original
+        const contentForHtml = enhancedContent || content;
+        htmlContent = convertJsonToHtml(contentForHtml);
+      } catch (error) {
+        console.error('Error generando HTML del diseño:', error);
+        // Continuar sin HTML si hay error en la conversión
+      }
+      
       const result = await db().run(`
-        INSERT INTO designs (name, description, content, thumbnail)
-        VALUES (?, ?, ?, ?)
-      `, [name, description, JSON.stringify(content), thumbnail]);
+        INSERT INTO designs (name, description, content, html_content, thumbnail, enhanced_content, width, height, orientation, is_extended, screens)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [name, description, JSON.stringify(content), htmlContent, thumbnail, enhancedContent ? JSON.stringify(enhancedContent) : null, width || null, height || null, orientation || null, isExtended ? 1 : 0, screens || 1]);
       
       const newDesign = await db().get(
         'SELECT * FROM designs WHERE id = ?',
@@ -132,19 +152,45 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
     const { name, description, content, thumbnail } = req.body;
     
     
+      // Generar JSON mejorado para almacenamiento adicional si hay contenido
+      let enhancedContent = null;
+      if (content) {
+        try {
+          enhancedContent = exportEnhancedJson(content);
+        } catch (error) {
+          console.error('Error generando JSON mejorado:', error);
+          enhancedContent = null;
+        }
+      }
+      
+      // Generar HTML del diseño usando el contenido mejorado
+      let htmlContent = null;
+      if (content) {
+        try {
+          const contentForHtml = enhancedContent || content;
+          htmlContent = convertJsonToHtml(contentForHtml);
+        } catch (error) {
+          console.error('Error generando HTML del diseño:', error);
+        }
+      }
+      
       const result = await db().run(`
         UPDATE designs SET
           name = COALESCE(?, name),
           description = COALESCE(?, description),
           content = COALESCE(?, content),
+          html_content = COALESCE(?, html_content),
           thumbnail = COALESCE(?, thumbnail),
+          enhanced_content = COALESCE(?, enhanced_content),
           updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `, [
         name, 
         description, 
-        content ? JSON.stringify(content) : null, 
-        thumbnail, 
+        content ? JSON.stringify(content) : null,
+        htmlContent,
+        thumbnail,
+        enhancedContent ? JSON.stringify(enhancedContent) : null,
         id
       ]);
       
