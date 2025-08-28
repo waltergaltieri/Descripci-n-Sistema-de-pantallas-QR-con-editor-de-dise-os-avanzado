@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diseño Veamos las dimenciones-center - Konva</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        #design-container {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 0 auto;
+            width: fit-content;
+        }
+        .info {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h2>Diseño Veamos las dimenciones-center - Konva Native</h2>
+        <p>Dimensiones: 1080x1920px</p>
+    </div>
+    
+    <div id="design-container"></div>
+    
+    <script>
+        // JSON del diseño en formato Konva
+        const konvaJson = "{\"attrs\":{\"width\":1080,\"height\":1920},\"className\":\"Stage\",\"children\":[{\"attrs\":{},\"className\":\"Layer\",\"children\":[{\"attrs\":{\"x\":-133.43629343629198,\"y\":3.552713678800501e-14,\"width\":1294.3142737046094,\"height\":1942.6698496992333,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"src\":\"https://images.unsplash.com/photo-1755417146741-8aafab9ec528?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMTY5OTZ8MHwxfGFsbHwxfHx8fHx8fHwxNzU2MTQxMjcyfA&ixlib=rb-4.1.0&q=80&w=1080\"},\"className\":\"Image\"},{\"attrs\":{\"x\":540.0000000000002,\"y\":363.07464607464954,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"radiusX\":208.33333333333331,\"radiusY\":208.33333333333331,\"fill\":\"rgb(234, 147, 147)\"},\"className\":\"Ellipse\"},{\"attrs\":{\"x\":390.00000000000034,\"y\":182.5746460746496,\"width\":300,\"height\":361,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"text\":\"1\",\"fontSize\":300,\"fontFamily\":\"Roboto\",\"fill\":\"black\",\"align\":\"center\",\"fontStyle\":\"bold\"},\"className\":\"Text\"},{\"attrs\":{\"x\":331.66666667666726,\"y\":1411.435006435007,\"width\":416.66666666666663,\"height\":416.66666666666663,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":0.9782040505877546,\"scaleY\":0.965724781967868,\"skewX\":0,\"skewY\":0,\"cornerRadius\":62.49999999999999,\"fill\":\"rgb(98, 98, 98)\"},\"className\":\"Rect\"},{\"attrs\":{\"x\":996.6023166023278,\"y\":960.0000000000002,\"width\":416.6666666666679,\"height\":131.26126126126604,\"rotation\":1.5707963267948963,\"opacity\":0.39215686274509803,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"fill\":\"rgb(191, 191, 191)\"},\"className\":\"Rect\"}]}]}";
+        
+        console.log('Creando stage con JSON:', konvaJson);
+        
+        try {
+            // Crear el stage usando Konva.Node.create()
+            const stage = Konva.Node.create(konvaJson, 'design-container');
+            console.log('Stage creado exitosamente:', stage);
+            
+            // Manejar la carga de imágenes si es necesario
+            const images = stage.find('Image');
+            images.forEach(imageNode => {
+                const src = imageNode.getAttr('src');
+                if (src) {
+                    const img = new Image();
+                    img.onload = () => {
+                        imageNode.image(img);
+                        stage.batchDraw();
+                    };
+                    img.src = src;
+                }
+            });
+            
+        } catch (error) {
+            console.error('Error al crear el stage:', error);
+            document.getElementById('design-container').innerHTML = 
+                '<p style="color: red;">Error: ' + error.message + '</p>';
+        }
+    </script>
+</body>
+</html>

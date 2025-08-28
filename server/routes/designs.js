@@ -1,8 +1,35 @@
 const express = require('express');
 const { db } = require('../config/database');
 const { authenticateToken, requireAdmin, optionalAuth } = require('../middleware/auth');
+const konvaRenderer = require('../utils/konvaRenderer');
 
 const router = express.Router();
+
+/**
+ * Función helper para generar y guardar HTML en la base de datos
+ * @param {number} designId - ID del diseño
+ * @param {object} content - Contenido JSON del diseño
+ * @param {string} designName - Nombre del diseño
+ */
+async function generateAndSaveHtml(designId, content, designName) {
+    try {
+        // Generar HTML usando konvaRenderer
+        const html = konvaRenderer.renderWithKonva(content, designName);
+        
+        // Actualizar el campo html_content en la base de datos
+        await db().run(
+            'UPDATE designs SET html_content = ? WHERE id = ?',
+            [html, designId]
+        );
+        
+        console.log(`✅ HTML generado y guardado para diseño ID ${designId} (${html.length} caracteres)`);
+        return { success: true, htmlLength: html.length };
+        
+    } catch (error) {
+        console.error(`❌ Error generando HTML para diseño ID ${designId}:`, error);
+        return { success: false, error: error.message };
+    }
+}
 
 // Obtener todos los diseños
 router.get('/', optionalAuth, async (req, res) => {
@@ -79,6 +106,25 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Función para sincronizar dimensiones del content con las páginas
+const syncContentDimensions = (content) => {
+  if (!content || typeof content !== 'object') {
+    return content;
+  }
+  
+  // Si hay páginas, usar las dimensiones de la primera página
+  if (content.pages && content.pages.length > 0) {
+    const firstPage = content.pages[0];
+    if (firstPage.width && firstPage.height) {
+      content.width = firstPage.width;
+      content.height = firstPage.height;
+      console.log(`✅ Dimensiones sincronizadas: ${firstPage.width}x${firstPage.height}`);
+    }
+  }
+  
+  return content;
+};
+
 // Crear nuevo diseño
 router.post('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
@@ -92,11 +138,14 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'El contenido del diseño es requerido' });
     }
     
+    // Sincronizar dimensiones antes de guardar
+    const syncedContent = syncContentDimensions(content);
+    
     
       const result = await db().run(`
         INSERT INTO designs (name, description, content, thumbnail)
         VALUES (?, ?, ?, ?)
-      `, [name, description, JSON.stringify(content), thumbnail]);
+      `, [name, description, JSON.stringify(syncedContent), thumbnail]);
       
       const newDesign = await db().get(
         'SELECT * FROM designs WHERE id = ?',
@@ -111,6 +160,11 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
           console.error('Error parsing design content:', error);
           newDesign.content = null;
         }
+      }
+      
+      // Generar y guardar HTML automáticamente
+      if (newDesign.content) {
+        await generateAndSaveHtml(result.lastID, newDesign.content, newDesign.name);
       }
       
       // Emitir evento de actualización
@@ -131,6 +185,9 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
     const { id } = req.params;
     const { name, description, content, thumbnail } = req.body;
     
+    // Sincronizar dimensiones si se está actualizando el contenido
+    const syncedContent = content ? syncContentDimensions(content) : null;
+    
     
       const result = await db().run(`
         UPDATE designs SET
@@ -143,7 +200,7 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
       `, [
         name, 
         description, 
-        content ? JSON.stringify(content) : null, 
+        syncedContent ? JSON.stringify(syncedContent) : null, 
         thumbnail, 
         id
       ]);
@@ -156,6 +213,18 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
         'SELECT * FROM designs WHERE id = ?',
         [id]
       );
+      
+      // Generar y guardar HTML automáticamente si se actualizó el contenido
+      if (syncedContent && updatedDesign.content) {
+        try {
+          const parsedContent = typeof updatedDesign.content === 'string' 
+            ? JSON.parse(updatedDesign.content) 
+            : updatedDesign.content;
+          await generateAndSaveHtml(id, parsedContent, updatedDesign.name);
+        } catch (error) {
+          console.error('Error generando HTML en actualización:', error);
+        }
+      }
       
       // Emitir evento de actualización
       const io = req.app.get('io');
