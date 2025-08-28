@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diseño Veamos las dimenciones - Konva</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Anton:wght@400&family=Montserrat+Subrayada:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+    <style>
+        
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .info {
+            text-align: center;
+            margin: 20px 0;
+            color: #666;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #canvas-container {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h2>Diseño Veamos las dimenciones - Konva Native</h2>
+        <p>Dimensiones: 1080x1920px</p>
+    </div>
+    
+    <div id="canvas-container"></div>
+    
+    <script>
+        // JSON del diseño en formato Konva
+        const konvaJson = "{\"attrs\":{\"width\":1080,\"height\":1920},\"className\":\"Stage\",\"children\":[{\"attrs\":{},\"className\":\"Layer\",\"children\":[{\"attrs\":{\"x\":1030,\"y\":1870,\"width\":50,\"height\":50,\"rotation\":0,\"opacity\":0.8,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"stroke\":\"#000000\",\"strokeWidth\":2,\"fill\":\"#800080\"},\"className\":\"Rect\"},{\"attrs\":{\"x\":0,\"y\":1870,\"width\":50,\"height\":50,\"rotation\":0,\"opacity\":0.8,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"stroke\":\"#000000\",\"strokeWidth\":2,\"fill\":\"#00FF00\"},\"className\":\"Rect\"},{\"attrs\":{\"x\":1030,\"y\":0,\"width\":50,\"height\":50,\"rotation\":0,\"opacity\":0.8,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"stroke\":\"#000000\",\"strokeWidth\":2,\"fill\":\"#FFA500\"},\"className\":\"Rect\"},{\"attrs\":{\"x\":0,\"y\":0,\"width\":50,\"height\":50,\"rotation\":0,\"opacity\":0.8,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"stroke\":\"#000000\",\"strokeWidth\":2,\"fill\":\"#FF0000\"},\"className\":\"Rect\"},{\"attrs\":{\"x\":-133.43629343629198,\"y\":3.552713678800501e-14,\"width\":1294.3142737046094,\"height\":1942.6698496992333,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"src\":\"https://images.unsplash.com/photo-1755417146741-8aafab9ec528?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3wxMTY5OTZ8MHwxfGFsbHwxfHx8fHx8fHwxNzU2MTQxMjcyfA&ixlib=rb-4.1.0&q=80&w=1080\"},\"className\":\"Image\"},{\"attrs\":{\"x\":540.0000000000002,\"y\":363.07464607464954,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"radiusX\":208.33333333333331,\"radiusY\":208.33333333333331,\"fill\":\"rgb(234, 147, 147)\"},\"className\":\"Ellipse\"},{\"attrs\":{\"x\":390.00000000000034,\"y\":238.92214607464962,\"width\":300,\"height\":361,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"text\":\"1\",\"fontSize\":300,\"fontFamily\":\"Roboto\",\"fill\":\"black\",\"align\":\"center\",\"fontStyle\":\"bold\"},\"className\":\"Text\"},{\"attrs\":{\"x\":331.6666666666642,\"y\":1402.7257990880453,\"width\":416.66666666666663,\"height\":450.02574002574744,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":0.961856427798897,\"scaleY\":1.0164954690593935,\"skewX\":0,\"skewY\":0,\"cornerRadius\":62.49999999999999,\"fill\":\"rgb(98, 98, 98)\"},\"className\":\"Rect\"},{\"attrs\":{\"x\":1029.9999999999995,\"y\":971.3349248496165,\"width\":416.6666666666679,\"height\":131.26126126126604,\"rotation\":1.5707963267948963,\"opacity\":0.39215686274509803,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"fill\":\"rgb(191, 191, 191)\"},\"className\":\"Rect\"},{\"attrs\":{\"x\":-1.7231446209704717e-12,\"y\":-1.6073930435231228e-13,\"width\":134.4969217724307,\"height\":134.49692177243068,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"fill\":\"rgb(255, 0, 0)\"},\"className\":\"Rect\"},{\"attrs\":{\"x\":945.5030782275694,\"y\":-1.8474111129762605e-13,\"width\":134.4969217724307,\"height\":134.49692177243068,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"fill\":\"rgb(255, 106, 0)\"},\"className\":\"Rect\"},{\"attrs\":{\"x\":-1.7337242752546445e-12,\"y\":1785.5030782275694,\"width\":134.4969217724307,\"height\":134.49692177243068,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"fill\":\"rgb(0, 255, 21)\"},\"className\":\"Rect\"},{\"attrs\":{\"x\":945.5030782275693,\"y\":1785.5030782275694,\"width\":134.4969217724307,\"height\":134.49692177243068,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"fill\":\"rgb(202, 0, 255)\"},\"className\":\"Rect\"},{\"attrs\":{\"x\":359.99999999999756,\"y\":467.5911282981487,\"width\":360,\"height\":10,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"fill\":\"#cccccc\"},\"className\":\"Rect\"},{\"attrs\":{\"x\":360.0000000100003,\"y\":243.49791439567113,\"width\":360,\"height\":10,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"fill\":\"#cccccc\"},\"className\":\"Rect\"},{\"attrs\":{\"x\":571.8373492644818,\"y\":253.6252873683259,\"width\":11.880680331069144,\"height\":213.6661456563265,\"rotation\":0,\"opacity\":0.39215686274509803,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"fill\":\"rgb(191, 191, 191)\"},\"className\":\"Rect\"},{\"attrs\":{\"x\":466.04934926448175,\"y\":253.62528736832587,\"width\":11.880680331069144,\"height\":213.6661456563265,\"rotation\":0,\"opacity\":0.39215686274509803,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"fill\":\"rgb(191, 191, 191)\"},\"className\":\"Rect\"},{\"attrs\":{\"x\":331.66666666666686,\"y\":676.052028966441,\"width\":394.320697089109,\"height\":256.2065188957542,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"fill\":\"rgb(255, 255, 255)\"},\"className\":\"Rect\"},{\"attrs\":{\"x\":331.6666666666641,\"y\":770.8263888888889,\"width\":401.704893269627,\"height\":225,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"text\":\"SALE\",\"fontSize\":186.11111111111111,\"fontFamily\":\"Anton\",\"fill\":\"black\",\"align\":\"center\"},\"className\":\"Text\"},{\"attrs\":{\"x\":337.50883302187947,\"y\":674.6398829860682,\"width\":396.8818646410805,\"height\":55,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"text\":\"END OF SEASON\",\"fontSize\":44.53830745103797,\"fontFamily\":\"Montserrat Subrayada\",\"fill\":\"black\",\"align\":\"center\",\"fontStyle\":\"bold\"},\"className\":\"Text\"},{\"attrs\":{\"x\":226.00477886181898,\"y\":958.6243111930819,\"width\":627.9904422563569,\"height\":160,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"text\":\"CLASSIC\",\"fontSize\":131.7701991214892,\"fontFamily\":\"Ewert\",\"fill\":\"rgba(0,0,0,1)\",\"align\":\"center\"},\"className\":\"Text\"},{\"attrs\":{\"x\":269.9999999949973,\"y\":1096.4393012667854,\"width\":540,\"height\":135,\"rotation\":0,\"opacity\":1,\"visible\":true,\"scaleX\":1,\"scaleY\":1,\"skewX\":0,\"skewY\":0,\"text\":\"Cool text\",\"fontSize\":111.11111111111111,\"fontFamily\":\"Super Sunkissed\",\"fill\":\"black\",\"align\":\"center\"},\"className\":\"Text\"}]}]}";
+        
+        console.log('Creando stage con JSON:', konvaJson);
+        
+        try {
+            // Crear el stage usando Konva.Node.create()
+            const stage = Konva.Node.create(konvaJson, 'canvas-container');
+            console.log('Stage creado exitosamente:', stage);
+            
+            // Manejar la carga de imágenes si es necesario
+            const images = stage.find('Image');
+            images.forEach(imageNode => {
+                const src = imageNode.getAttr('src');
+                if (src) {
+                    const img = new Image();
+                    img.onload = () => {
+                        imageNode.image(img);
+                        stage.batchDraw();
+                    };
+                    img.src = src;
+                }
+            });
+            
+        } catch (error) {
+            console.error('Error al crear el stage:', error);
+            document.getElementById('canvas-container').innerHTML = 
+                '<p style="color: red;">Error: ' + error.message + '</p>';
+        }
+    </script>
+</body>
+</html>

@@ -14,7 +14,7 @@ const router = express.Router();
 async function generateAndSaveHtml(designId, content, designName) {
     try {
         // Generar HTML usando konvaRenderer
-        const html = konvaRenderer.renderWithKonva(content, designName);
+        const html = await konvaRenderer.renderWithKonva(content, designName);
         
         // Actualizar el campo html_content en la base de datos
         await db().run(

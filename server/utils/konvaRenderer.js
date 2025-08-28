@@ -1,4 +1,299 @@
 const fs = require('fs');
+const path = require('path');
+const { db } = require('../config/database');
+
+/**
+ * Extrae todas las fuentes únicas utilizadas en el diseño
+ * @param {Object} designData - Datos del diseño
+ * @returns {Object} - Objeto con fuentes de Google y personalizadas
+ */
+function extractUniqueFonts(designData) {
+    const allFonts = new Set();
+    
+    // Recorrer todas las páginas y elementos
+    designData.pages.forEach(page => {
+        page.children.forEach(child => {
+            if (child.type === 'text' && child.fontFamily) {
+                allFonts.add(child.fontFamily);
+            }
+        });
+    });
+    
+    const fonts = Array.from(allFonts);
+    
+    // Mapear fuentes conocidas de Google Fonts
+    const googleFontMap = {
+        'Roboto': 'Roboto:wght@400;700',
+        'Anton': 'Anton:wght@400',
+        'Montserrat Subrayada': 'Montserrat+Subrayada:wght@400;700',
+        'Montserrat': 'Montserrat:wght@400;700',
+        'Open Sans': 'Open+Sans:wght@400;700',
+        'Lato': 'Lato:wght@400;700',
+        'Oswald': 'Oswald:wght@400;700',
+        'Source Sans Pro': 'Source+Sans+Pro:wght@400;700',
+        'Raleway': 'Raleway:wght@400;700',
+        'PT Sans': 'PT+Sans:wght@400;700',
+        'Inter': 'Inter:wght@400;700',
+        'Poppins': 'Poppins:wght@400;700',
+        'Nunito': 'Nunito:wght@400;700',
+        'Ewert': 'Ewert:wght@400'
+    };
+    
+    // Separar fuentes de Google y personalizadas
+    const googleFonts = fonts.filter(font => googleFontMap[font]);
+    const customFonts = fonts.filter(font => !googleFontMap[font] && !isSystemFont(font));
+    
+    return {
+        googleFonts,
+        customFonts,
+        allFonts: fonts
+    };
+}
+
+/**
+ * Verifica si una fuente es una fuente del sistema
+ * @param {string} fontName - Nombre de la fuente
+ * @returns {boolean} - True si es fuente del sistema
+ */
+function isSystemFont(fontName) {
+    const systemFonts = [
+        'Arial', 'Helvetica', 'Times', 'Times New Roman', 'Courier', 'Courier New',
+        'Verdana', 'Georgia', 'Palatino', 'Garamond', 'Bookman', 'Comic Sans MS',
+        'Trebuchet MS', 'Arial Black', 'Impact', 'Lucida Sans Unicode', 'Tahoma',
+        'Lucida Console', 'Monaco', 'Brush Script MT'
+    ];
+    return systemFonts.includes(fontName);
+}
+
+/**
+ * Genera los enlaces de Google Fonts para las fuentes especificadas
+ * @param {Array} googleFonts - Array de nombres de fuentes de Google
+ * @returns {string} - HTML con los enlaces de Google Fonts
+ */
+function generateGoogleFontsLinks(googleFonts) {
+    if (!googleFonts || googleFonts.length === 0) {
+        return '<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">';
+    }
+    
+    // Mapear nombres de fuentes a sus equivalentes de Google Fonts
+    const fontMap = {
+        'Roboto': 'Roboto:wght@400;700',
+        'Anton': 'Anton:wght@400',
+        'Montserrat Subrayada': 'Montserrat+Subrayada:wght@400;700',
+        'Montserrat': 'Montserrat:wght@400;700',
+        'Open Sans': 'Open+Sans:wght@400;700',
+        'Lato': 'Lato:wght@400;700',
+        'Oswald': 'Oswald:wght@400;700',
+        'Source Sans Pro': 'Source+Sans+Pro:wght@400;700',
+        'Raleway': 'Raleway:wght@400;700',
+        'PT Sans': 'PT+Sans:wght@400;700',
+        'Inter': 'Inter:wght@400;700',
+        'Poppins': 'Poppins:wght@400;700',
+        'Nunito': 'Nunito:wght@400;700',
+        'Ewert': 'Ewert:wght@400'
+    };
+    
+    const mappedFonts = googleFonts
+        .filter(font => fontMap[font])
+        .map(font => fontMap[font]);
+    
+    if (mappedFonts.length === 0) {
+        return '<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">';
+    }
+    
+    const fontQuery = mappedFonts.join('&family=');
+    
+    return `<link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=${fontQuery}&display=swap" rel="stylesheet">`;
+}
+
+/**
+ * Genera reglas @font-face para fuentes personalizadas
+ * @param {Array} customFonts - Array de nombres de fuentes personalizadas
+ * @returns {Promise<string>} - CSS con las reglas @font-face
+ */
+async function generateCustomFontFaces(customFonts) {
+    if (!customFonts || customFonts.length === 0) {
+        return '';
+    }
+    
+    let fontFaces = '';
+    
+    try {
+        const database = db();
+        
+        // Verificar si la base de datos está disponible
+        if (!database) {
+            console.log('⚠️ Base de datos no disponible para fuentes personalizadas, usando fallback');
+            return generateFallbackFontFaces(customFonts);
+        }
+        
+        for (const fontName of customFonts) {
+            // Buscar archivos de fuente en la base de datos de uploads
+            const fontFiles = await database.all(
+                `SELECT * FROM uploads WHERE 
+                 original_name LIKE ? AND 
+                 (mimetype LIKE 'font/%' OR 
+                  original_name LIKE '%.ttf' OR 
+                  original_name LIKE '%.woff' OR 
+                  original_name LIKE '%.woff2' OR 
+                  original_name LIKE '%.otf')`,
+                [`%${fontName}%`]
+            );
+            
+            if (fontFiles.length > 0) {
+                // Generar reglas @font-face para cada archivo encontrado
+                fontFiles.forEach(fontFile => {
+                    const fontFormat = getFontFormat(fontFile.filename);
+                    const fontWeight = getFontWeight(fontFile.original_name);
+                    const fontStyle = getFontStyle(fontFile.original_name);
+                    
+                    fontFaces += `
+@font-face {
+    font-family: '${fontName}';
+    src: url('${fontFile.url}') format('${fontFormat}');
+    font-weight: ${fontWeight};
+    font-style: ${fontStyle};
+    font-display: swap;
+}
+`;
+                });
+            } else {
+                console.log(`⚠️ Fuente personalizada '${fontName}' no encontrada en uploads, usando fallback`);
+                // Generar fallback para fuentes no encontradas
+                fontFaces += generateFallbackFontFace(fontName);
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error generando fuentes personalizadas:', error);
+        return generateFallbackFontFaces(customFonts);
+    }
+    
+    return fontFaces;
+}
+
+/**
+ * Genera fallbacks para fuentes personalizadas no encontradas
+ * @param {Array} customFonts - Array de nombres de fuentes personalizadas
+ * @returns {string} - CSS con fallbacks
+ */
+function generateFallbackFontFaces(customFonts) {
+    let fallbackCSS = '';
+    
+    customFonts.forEach(fontName => {
+        fallbackCSS += generateFallbackFontFace(fontName);
+    });
+    
+    return fallbackCSS;
+}
+
+/**
+ * Genera un fallback para una fuente personalizada específica
+ * @param {string} fontName - Nombre de la fuente
+ * @returns {string} - CSS con fallback
+ */
+function generateFallbackFontFace(fontName) {
+    // Mapeo de fuentes personalizadas a fallbacks apropiados
+    const fallbackMap = {
+        'Super Sunkissed': 'cursive, "Brush Script MT", "Comic Sans MS", fantasy',
+        'Ewert': 'serif, "Times New Roman", Georgia',
+        // Agregar más fallbacks según sea necesario
+    };
+    
+    const fallback = fallbackMap[fontName] || 'sans-serif, Arial, Helvetica';
+    
+    return `
+/* Fallback para fuente personalizada: ${fontName} */
+@font-face {
+    font-family: '${fontName}';
+    src: local('${fontName}'), local('${fontName.replace(/\s+/g, '-')}');
+    font-display: swap;
+}
+
+/* Clase de fallback para fuente personalizada: ${fontName} */
+.font-${fontName.replace(/\s+/g, '-').toLowerCase()} {
+    font-family: "${fontName}", ${fallback} !important;
+}
+`;
+}
+
+/**
+ * Genera clases CSS de fallback para fuentes personalizadas
+ * @param {Array} customFonts - Array de nombres de fuentes personalizadas
+ * @returns {string} - CSS con clases de fallback
+ */
+function generateFallbackFontClasses(customFonts) {
+    if (!customFonts || customFonts.length === 0) {
+        return '';
+    }
+    
+    let fallbackClasses = '';
+    
+    customFonts.forEach(fontName => {
+        const fallbackMap = {
+            'Super Sunkissed': 'cursive, "Brush Script MT", "Comic Sans MS", fantasy',
+            'Ewert': 'serif, "Times New Roman", Georgia',
+            // Agregar más fallbacks según sea necesario
+        };
+        
+        const fallback = fallbackMap[fontName] || 'sans-serif, Arial, Helvetica';
+        const className = fontName.replace(/\s+/g, '-').toLowerCase();
+        
+        fallbackClasses += `
+/* Clase de fallback para fuente personalizada: ${fontName} */
+.font-${className} {
+    font-family: "${fontName}", ${fallback} !important;
+}
+`;
+    });
+    
+    return fallbackClasses;
+}
+
+/**
+ * Determina el formato de fuente basado en la extensión del archivo
+ * @param {string} filename - Nombre del archivo
+ * @returns {string} - Formato de fuente
+ */
+function getFontFormat(filename) {
+    const ext = path.extname(filename).toLowerCase();
+    const formatMap = {
+        '.woff2': 'woff2',
+        '.woff': 'woff',
+        '.ttf': 'truetype',
+        '.otf': 'opentype',
+        '.eot': 'embedded-opentype'
+    };
+    return formatMap[ext] || 'truetype';
+}
+
+/**
+ * Extrae el peso de la fuente del nombre del archivo
+ * @param {string} filename - Nombre del archivo
+ * @returns {string} - Peso de la fuente
+ */
+function getFontWeight(filename) {
+    const name = filename.toLowerCase();
+    if (name.includes('bold') || name.includes('700')) return '700';
+    if (name.includes('semibold') || name.includes('600')) return '600';
+    if (name.includes('medium') || name.includes('500')) return '500';
+    if (name.includes('light') || name.includes('300')) return '300';
+    if (name.includes('thin') || name.includes('100')) return '100';
+    return '400'; // normal
+}
+
+/**
+ * Extrae el estilo de la fuente del nombre del archivo
+ * @param {string} filename - Nombre del archivo
+ * @returns {string} - Estilo de la fuente
+ */
+function getFontStyle(filename) {
+    const name = filename.toLowerCase();
+    if (name.includes('italic') || name.includes('oblique')) return 'italic';
+    return 'normal';
+}
 
 /**
  * Calcula la corrección vertical necesaria para alinear texto de Polotno con Konva
@@ -10,9 +305,13 @@ function calculateUniversalVerticalCorrection(fontSize, fontFamily = 'Arial') {
     // Métricas tipográficas estándar (basadas en OpenType)
     const fontMetrics = {
         'Arial': { ascent: 0.905, descent: 0.212 },
+        'Roboto': { ascent: 0.927, descent: 0.244 },
         'Helvetica': { ascent: 0.932, descent: 0.213 },
         'Times': { ascent: 0.898, descent: 0.218 },
         'Courier': { ascent: 0.829, descent: 0.171 },
+        'Anton': { ascent: 0.95, descent: 0.25 },
+        'Montserrat': { ascent: 0.92, descent: 0.24 },
+        'Montserrat Subrayada': { ascent: 0.92, descent: 0.24 },
         'default': { ascent: 0.9, descent: 0.2 }
     };
     
@@ -33,7 +332,15 @@ function calculateUniversalVerticalCorrection(fontSize, fontFamily = 'Arial') {
  * @param {string} designName - Nombre del diseño
  * @returns {string} HTML completo con Konva integrado
  */
-function renderWithKonva(designData, designName) {
+async function renderWithKonva(designData, designName) {
+    // Extraer fuentes únicas del diseño
+    const fontData = extractUniqueFonts(designData);
+    const googleFontsLinks = generateGoogleFontsLinks(fontData.googleFonts);
+    const customFontFaces = await generateCustomFontFaces(fontData.customFonts);
+    
+    // Generar clases CSS de fallback para fuentes personalizadas
+    const fallbackFontClasses = generateFallbackFontClasses(fontData.customFonts);
+    
     // Convertir el JSON de Polotno al formato que espera Konva.Node.create()
     const firstPage = designData.pages[0];
     const konvaStage = {
@@ -94,6 +401,13 @@ function renderWithKonva(designData, designName) {
                         // Mapear fontWeight='bold' a fontStyle='bold' para Konva
                         if (child.fontWeight === 'bold') {
                             konvaChild.attrs.fontStyle = 'bold';
+                        }
+                        
+                        // Aplicar clase CSS de fallback para fuentes personalizadas
+                        const fontFamily = child.fontFamily || 'Arial';
+                        if (fontData.customFonts && fontData.customFonts.includes(fontFamily)) {
+                            const className = fontFamily.replace(/\s+/g, '-').toLowerCase();
+                            konvaChild.attrs.className = `font-${className}`;
                         }
                         
                         // POSICIONAMIENTO CORRECTO: Usar coordenadas originales de Polotno
@@ -229,11 +543,11 @@ function renderWithKonva(designData, designName) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Diseño ${designName} - Konva</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    ${googleFontsLinks}
     <script src="https://unpkg.com/konva@9/konva.min.js"></script>
     <style>
+        ${customFontFaces}
+        ${fallbackFontClasses}
         body {
             margin: 0;
             padding: 0;
@@ -302,8 +616,6 @@ function renderWithKonva(designData, designName) {
     </script>
 </body>
 </html>`;
-    
-    return html;
 }
 
 /**
@@ -325,7 +637,7 @@ async function generateKonvaHtml(designId, outputPath) {
     }
     
     const jsonData = JSON.parse(design.content);
-    const html = renderWithKonva(jsonData, `design-${designId}-container`);
+    const html = await renderWithKonva(jsonData, `design-${designId}-container`);
     
     fs.writeFileSync(outputPath, html);
     
