@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Save,
@@ -13,7 +13,13 @@ import {
   Loader,
   Eye,
   X,
-  ChevronLeft
+  ChevronLeft,
+  Download,
+  ChevronDown,
+  FileImage,
+  FileText,
+  File,
+  Sliders
 } from 'lucide-react';
 import { designsService } from '../../services/api';
 import { useSocket } from '../../contexts/SocketContext';
@@ -44,7 +50,145 @@ const DesignEditor = () => {
   const [previewData, setPreviewData] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
   
+  // Estados para exportación
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportModalType, setExportModalType] = useState('png');
+  const exportMenuRef = useRef(null);
+  
+  // Cerrar menú de exportación al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target)) {
+        setShowExportMenu(false);
+      }
+    };
+
+    if (showExportMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showExportMenu]);
+  
   // El estado del panel lateral se maneja directamente con polotnoStore.openedSidePanel
+  
+  // Funciones de exportación
+  const handleExportPNG = async (options = { transparent: false }) => {
+    try {
+      // Si se requiere transparencia, temporalmente remover el fondo
+      let originalBackground = null;
+      if (options.transparent && polotnoStore.activePage) {
+        originalBackground = polotnoStore.activePage.background;
+        polotnoStore.activePage.set({ background: 'transparent' });
+      }
+
+      const dataURL = await polotnoStore.toDataURL({ 
+        pixelRatio: 2,
+        mimeType: 'image/png'
+      });
+
+      // Restaurar el fondo original si se removió
+      if (originalBackground && polotnoStore.activePage) {
+        polotnoStore.activePage.set({ background: originalBackground });
+      }
+
+      const link = document.createElement('a');
+      link.download = `${design?.name || 'diseño'}.png`;
+      link.href = dataURL;
+      link.click();
+      toast.success('PNG exportado correctamente');
+    } catch (error) {
+      console.error('Error al exportar PNG:', error);
+      toast.error('Error al exportar PNG');
+    }
+  };
+  
+  const handleExportJPEG = async () => {
+    try {
+      const dataURL = await polotnoStore.toDataURL({ 
+        pixelRatio: 2, 
+        mimeType: 'image/jpeg', 
+        quality: 0.9 
+      });
+      const link = document.createElement('a');
+      link.download = `${design?.name || 'diseño'}.jpg`;
+      link.href = dataURL;
+      link.click();
+      toast.success('JPEG exportado correctamente');
+    } catch (error) {
+      console.error('Error al exportar JPEG:', error);
+      toast.error('Error al exportar JPEG');
+    }
+  };
+  
+  const handleExportSVG = async () => {
+    try {
+      const activePage = polotnoStore.activePage;
+      if (!activePage) {
+        toast.error('No hay página activa para exportar');
+        return;
+      }
+      
+      // Guardar el fondo actual
+         const originalBackground = activePage.background;
+         
+         // Remover temporalmente el fondo para exportación transparente
+         await polotnoStore.history.transaction(async () => {
+           activePage.set({ background: 'transparent' });
+         });
+         
+         // Exportar SVG sin fondo
+         await polotnoStore.saveAsSVG();
+         
+         // Restaurar el fondo original
+         await polotnoStore.history.transaction(async () => {
+           activePage.set({ background: originalBackground });
+         });
+      
+      toast.success('SVG exportado exitosamente sin fondo');
+    } catch (error) {
+      console.error('Error al exportar SVG:', error);
+      toast.error('Error al exportar SVG');
+    }
+  };
+  
+  const handleExportJSON = () => {
+    try {
+      const json = polotnoStore.toJSON();
+      const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = `${design?.name || 'diseño'}.json`;
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success('JSON exportado correctamente');
+    } catch (error) {
+      console.error('Error al exportar JSON:', error);
+      toast.error('Error al exportar JSON');
+    }
+  };
+  
+  const handleExportPDF = async () => {
+    try {
+      // Para PDF exportamos como PNG de alta resolución
+      const dataURL = await polotnoStore.toDataURL({ 
+        pixelRatio: 2,
+        mimeType: 'image/png'
+      });
+      const link = document.createElement('a');
+      link.download = `${design?.name || 'diseño'}.png`;
+      link.href = dataURL;
+      link.click();
+      toast.success('Imagen exportada correctamente');
+    } catch (error) {
+      console.error('Error al exportar PDF:', error);
+      toast.error('Error al exportar PDF');
+    }
+  };
   
   // Debug: función para mostrar dimensiones actuales
   const showCanvasDimensions = () => {
@@ -382,6 +526,84 @@ const DesignEditor = () => {
             >
               <Eye className="h-4 w-4" />
             </button>
+
+            {/* Exportar */}
+            <div className="relative" ref={exportMenuRef}>
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className="btn btn-outline btn-sm flex items-center"
+                title="Opciones de exportación"
+              >
+                <Download className="h-4 w-4 mr-1" />
+                Exportar
+                <ChevronDown className="h-3 w-3 ml-1" />
+              </button>
+              
+              {showExportMenu && (
+                <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[200px]">
+                  <button
+                    onClick={() => {
+                      handleExportPNG({ transparent: false });
+                      setShowExportMenu(false);
+                    }}
+                    className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                  >
+                    <FileImage className="h-4 w-4" />
+                    PNG con fondo
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleExportPNG({ transparent: true });
+                      setShowExportMenu(false);
+                    }}
+                    className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                  >
+                    <FileImage className="h-4 w-4" />
+                    PNG sin fondo
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleExportJPEG();
+                      setShowExportMenu(false);
+                    }}
+                    className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                  >
+                    <FileImage className="h-4 w-4" />
+                    JPEG (Rápido)
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleExportSVG();
+                      setShowExportMenu(false);
+                    }}
+                    className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                  >
+                    <File className="h-4 w-4" />
+                    SVG
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleExportJSON();
+                      setShowExportMenu(false);
+                    }}
+                    className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                  >
+                    <FileText className="h-4 w-4" />
+                    JSON
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleExportPDF();
+                      setShowExportMenu(false);
+                    }}
+                    className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                  >
+                    <File className="h-4 w-4" />
+                    PDF
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Guardar */}
             <button

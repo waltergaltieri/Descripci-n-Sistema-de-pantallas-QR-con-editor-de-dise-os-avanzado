@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { observer } from 'mobx-react-lite';
 import { polotnoStore, useEditorUIStore, editorUtils } from '../../store/editorStore';
+import ExportModal from './ExportModal';
+import toast from 'react-hot-toast';
 import { 
   Save, 
   Upload, 
@@ -16,7 +18,12 @@ import {
   Undo,
   Redo,
   Settings,
-  ChevronLeft
+  ChevronLeft,
+  FileImage,
+  FileText,
+  File,
+  ChevronDown,
+  Sliders
 } from 'lucide-react';
 
 const TopBar: React.FC = observer(() => {
@@ -34,6 +41,8 @@ const TopBar: React.FC = observer(() => {
     toggleGuides,
     setPreviewMode
   } = useEditorUIStore();
+  
+  const exportMenuRef = useRef<HTMLDivElement>(null);
   
   // Función para colapsar/expandir el panel lateral de Polotno
   const togglePolotnoSidePanel = () => {
@@ -80,16 +89,156 @@ const TopBar: React.FC = observer(() => {
     input.click();
   };
   
-  const handleExport = async () => {
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportModalType, setExportModalType] = useState<'png' | 'jpeg' | 'svg' | 'pdf'>('png');
+
+  // Cerrar menú de exportación al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+
+    if (showExportMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showExportMenu]);
+
+  const handleExportPNG = async (options?: { pixelRatio?: number; quality?: number; transparent?: boolean }) => {
     try {
-      const dataURL = await editorUtils.exportPNG() as string;
+      // Si se requiere transparencia, temporalmente remover el fondo
+      let originalBackground = null;
+      if (options?.transparent && polotnoStore.activePage) {
+        originalBackground = polotnoStore.activePage.background;
+        polotnoStore.activePage.set({ background: 'transparent' });
+      }
+
+      const dataURL = await polotnoStore.toDataURL({
+        pixelRatio: options?.pixelRatio || 1,
+        mimeType: 'image/png',
+        quality: options?.quality || 1
+      });
+
+      // Restaurar el fondo original si se removió
+      if (originalBackground && polotnoStore.activePage) {
+        polotnoStore.activePage.set({ background: originalBackground });
+      }
+
       const link = document.createElement('a');
       link.download = 'design.png';
       link.href = dataURL;
       link.click();
     } catch (error) {
-      console.error('Error al exportar:', error);
+      console.error('Error al exportar PNG:', error);
     }
+  };
+
+  const handleExportJPEG = async (options?: { pixelRatio?: number; quality?: number }) => {
+    try {
+      const dataURL = await polotnoStore.toDataURL({
+        pixelRatio: options?.pixelRatio || 1,
+        mimeType: 'image/jpeg',
+        quality: options?.quality || 0.9
+      });
+      const link = document.createElement('a');
+      link.download = 'design.jpg';
+      link.href = dataURL;
+      link.click();
+    } catch (error) {
+      console.error('Error al exportar JPEG:', error);
+    }
+  };
+
+  const handleExportSVG = async (options?: { pixelRatio?: number; transparent?: boolean }) => {
+    try {
+      const activePage = polotnoStore.activePage;
+      if (!activePage) {
+        toast.error('No hay página activa para exportar');
+        return;
+      }
+      
+      // Guardar el fondo actual
+          const originalBackground = activePage.background;
+          
+          // Remover temporalmente el fondo para exportación transparente
+          await polotnoStore.history.transaction(async () => {
+            activePage.set({ background: 'transparent' });
+          });
+          
+          // Exportar SVG sin fondo
+          await polotnoStore.saveAsSVG();
+          
+          // Restaurar el fondo original
+          await polotnoStore.history.transaction(async () => {
+            activePage.set({ background: originalBackground });
+          });
+      
+      toast.success('SVG exportado exitosamente sin fondo');
+    } catch (error) {
+      console.error('Error al exportar SVG:', error);
+      toast.error('Error al exportar SVG');
+    }
+  };
+
+  const handleExportJSON = () => {
+    try {
+      const json = polotnoStore.toJSON();
+      const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = 'design.json';
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error al exportar JSON:', error);
+    }
+  };
+
+  const handleExportPDF = async (options?: { pixelRatio?: number }) => {
+    try {
+      // Para PDF, exportamos como PNG de alta resolución
+      // En el futuro se puede integrar con jsPDF o similar
+      const dataURL = await polotnoStore.toDataURL({
+        pixelRatio: options?.pixelRatio || 2,
+        mimeType: 'image/png'
+      });
+      const link = document.createElement('a');
+      link.download = 'design.png'; // Nota: Para PDF real se necesitaría jsPDF
+      link.href = dataURL;
+      link.click();
+    } catch (error) {
+      console.error('Error al exportar PDF:', error);
+    }
+  };
+
+  const handleAdvancedExport = (options: any) => {
+    switch (exportModalType) {
+      case 'png':
+        handleExportPNG(options);
+        break;
+      case 'jpeg':
+        handleExportJPEG(options);
+        break;
+      case 'svg':
+        handleExportSVG(options);
+        break;
+      case 'pdf':
+        handleExportPDF(options);
+        break;
+    }
+  };
+
+  const openExportModal = (type: 'png' | 'jpeg' | 'svg' | 'pdf') => {
+    setExportModalType(type);
+    setShowExportModal(true);
+    setShowExportMenu(false);
   };
   
   const handlePublish = async () => {
@@ -131,13 +280,99 @@ const TopBar: React.FC = observer(() => {
           >
             <Upload size={18} />
           </button>
-          <button
-            onClick={handleExport}
-            className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
-            title="Exportar PNG"
-          >
-            <Download size={18} />
-          </button>
+          <div className="relative" ref={exportMenuRef}>
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors flex items-center"
+              title="Opciones de exportación"
+            >
+              <Download size={18} />
+              <ChevronDown size={14} className="ml-1" />
+            </button>
+            
+            {showExportMenu && (
+              <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[200px]">
+                <button
+                  onClick={() => {
+                    handleExportPNG();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                >
+                  <FileImage size={16} />
+                  PNG (Rápido)
+                </button>
+                <button
+                  onClick={() => openExportModal('png')}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                >
+                  <Sliders size={16} />
+                  PNG (Opciones)
+                </button>
+                <button
+                  onClick={() => {
+                    handleExportJPEG();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                >
+                  <FileImage size={16} />
+                  JPEG (Rápido)
+                </button>
+                <button
+                  onClick={() => openExportModal('jpeg')}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                >
+                  <Sliders size={16} />
+                  JPEG (Opciones)
+                </button>
+                <button
+                  onClick={() => {
+                    handleExportSVG();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                >
+                  <File size={16} />
+                  SVG (Rápido)
+                </button>
+                <button
+                  onClick={() => openExportModal('svg')}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                >
+                  <Sliders size={16} />
+                  SVG (Opciones)
+                </button>
+                <button
+                  onClick={() => {
+                    handleExportJSON();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                >
+                  <FileText size={16} />
+                  JSON
+                </button>
+                <button
+                  onClick={() => {
+                    handleExportPDF();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                >
+                  <File size={16} />
+                  PDF (Rápido)
+                </button>
+                <button
+                  onClick={() => openExportModal('pdf')}
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                >
+                  <Sliders size={16} />
+                  PDF (Opciones)
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         
         {/* Historial */}
@@ -268,6 +503,16 @@ const TopBar: React.FC = observer(() => {
           Publicar
         </button>
       </div>
+      
+      {/* Modal de exportación */}
+      {showExportModal && (
+        <ExportModal
+          isOpen={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          onExport={handleAdvancedExport}
+          exportType={exportModalType}
+        />
+      )}
     </div>
   );
 });

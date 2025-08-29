@@ -194,7 +194,7 @@ export const exportDesignAsImage = async (store: any, options?: {
   quality?: number;
 }): Promise<string> => {
   try {
-    const dataURL = await store.saveAsDataURL({
+    const dataURL = await store.toDataURL({
       pixelRatio: options?.pixelRatio || 1,
       mimeType: options?.mimeType || 'image/png',
       quality: options?.quality || 1

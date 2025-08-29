@@ -135,7 +135,7 @@ export const publishFromStore = async (
 ): Promise<PublishResponse> => {
   try {
     // Exportar imagen a resolución nativa
-    const imageData = await store.saveAsDataURL({
+    const imageData = await store.toDataURL({
       pixelRatio: options?.pixelRatio || 1,
       mimeType: 'image/png',
       quality: 1
@@ -264,7 +264,7 @@ export const previewOnScreens = async (
 }[]> => {
   try {
     // Exportar imagen completa
-    const fullImage = await store.saveAsDataURL({
+    const fullImage = await store.toDataURL({
       pixelRatio: 0.5, // Menor resolución para preview
       mimeType: 'image/jpeg',
       quality: 0.8

@@ -140,8 +140,8 @@ export const Toolbar: React.FC = () => {
                 🖼️ PNG
               </button>
               <button onClick={() => handleExport('svg')} className="dropdown-item">
-                🎨 SVG
-              </button>
+                  🎨 SVG
+                </button>
             </div>
           )}
         </div>
