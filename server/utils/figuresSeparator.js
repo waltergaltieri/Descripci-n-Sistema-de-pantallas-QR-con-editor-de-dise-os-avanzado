@@ -63,6 +63,30 @@ function isFigureElement(element) {
 }
 
 /**
+ * Identifica si un elemento es una imagen enmascarada por una figura
+ * @param {Object} element - Elemento a evaluar
+ * @returns {boolean} - true si es una imagen con máscara de figura, false si no
+ */
+function isMaskedImageElement(element) {
+  if (!element || element.type !== 'image') {
+    return false;
+  }
+  
+  // Verificar si tiene clipSrc (máscara)
+  return element.clipSrc && element.clipSrc.trim() !== '';
+}
+
+/**
+ * Identifica si un elemento debe ser procesado por el separador de figuras
+ * Incluye tanto figuras normales como imágenes enmascaradas por figuras
+ * @param {Object} element - Elemento a evaluar
+ * @returns {boolean} - true si debe ser procesado, false si no
+ */
+function isProcessableElement(element) {
+  return isFigureElement(element) || isMaskedImageElement(element);
+}
+
+/**
  * Calcula el bounding box exacto de un elemento
  */
 function calculateElementBounds(element) {
@@ -295,21 +319,26 @@ async function separateDesignFigures(designId, options = {}) {
       throw new Error('El diseño no contiene elementos válidos');
     }
     
-    // Filtrar solo elementos que son figuras/formas
+    // Filtrar elementos que son figuras/formas o imágenes enmascaradas
+    const processableElements = allElements.filter(element => isProcessableElement(element));
     const figureElements = allElements.filter(element => isFigureElement(element));
+    const maskedImageElements = allElements.filter(element => isMaskedImageElement(element));
     
-    if (figureElements.length === 0) {
-      throw new Error('El diseño no contiene figuras para separar. Solo se encontraron elementos de texto, imágenes u otros tipos no geométricos.');
+    if (processableElements.length === 0) {
+      throw new Error('El diseño no contiene figuras o imágenes enmascaradas para separar. Solo se encontraron elementos de texto, imágenes simples u otros tipos no geométricos.');
     }
 
-    console.log(`Encontrados ${allElements.length} elementos totales, ${figureElements.length} son figuras.`);
-    console.log(`Separando ${figureElements.length} figuras del diseño "${originalDesign.name}" (ID: ${designId})`);
+    console.log(`Encontrados ${allElements.length} elementos totales:`);
+    console.log(`  - ${figureElements.length} figuras geométricas`);
+    console.log(`  - ${maskedImageElements.length} imágenes enmascaradas`);
+    console.log(`  - ${processableElements.length} elementos procesables en total`);
+    console.log(`Separando ${processableElements.length} elementos del diseño "${originalDesign.name}" (ID: ${designId})`);
     
     const createdDesignIds = [];
     
-    // Procesar cada figura
-    for (let i = 0; i < figureElements.length; i++) {
-      const element = figureElements[i];
+    // Procesar cada elemento (figuras e imágenes enmascaradas)
+    for (let i = 0; i < processableElements.length; i++) {
+      const element = processableElements[i];
       
       // Crear una copia del contenido original
       const newContent = JSON.parse(JSON.stringify(originalContent));
@@ -425,5 +454,7 @@ module.exports = {
   separateFiguresFromDesign,
   calculateElementBounds,
   optimizeCanvasForElement,
-  isFigureElement
+  isFigureElement,
+  isMaskedImageElement,
+  isProcessableElement
 };

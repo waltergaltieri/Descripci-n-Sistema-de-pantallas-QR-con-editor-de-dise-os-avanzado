@@ -1,6 +1,14 @@
 # Función de Separación de Figuras
 
-Esta funcionalidad permite separar automáticamente todas las figuras de un diseño en canvas individuales optimizados.
+Esta funcionalidad permite separar automáticamente todas las figuras y elementos enmascarados de un diseño en canvas individuales optimizados.
+
+## ✨ Funcionalidades
+
+- **Separación de figuras geométricas**: Rectángulos, círculos, polígonos, estrellas, etc.
+- **Separación de imágenes enmascaradas**: Imágenes que tienen una figura como máscara (clipSrc)
+- **Optimización automática del canvas**: Ajusta el tamaño del canvas al contenido
+- **Validación post-separación**: Verifica que todos los elementos estén correctamente contenidos
+- **Corrección automática**: Ajusta posiciones si hay elementos fuera del canvas
 
 ## 📁 Archivos Creados
 
@@ -115,6 +123,44 @@ Información sobre la API y sus capacidades.
 - **Figura 2**: Canvas 465x465px (optimizado)
 - Espacio en blanco mínimo (2px padding)
 - Figuras perfectamente centradas
+
+## 🎭 Imágenes Enmascaradas
+
+La función ahora soporta la separación de imágenes que tienen una figura como máscara (clipPath).
+
+### ¿Qué son las Imágenes Enmascaradas?
+Cuando se coloca una figura encima de una imagen, esta puede actuar como una máscara, haciendo que la imagen tome la forma de la figura. Esto se almacena en la propiedad `clipSrc` del elemento imagen.
+
+### Detección Automática
+La función identifica automáticamente:
+- **Figuras geométricas**: Elementos con tipos como `rect`, `circle`, `polygon`, etc.
+- **Imágenes enmascaradas**: Elementos de tipo `image` que tienen la propiedad `clipSrc`
+
+### Ejemplo de Procesamiento
+```javascript
+// Diseño original con:
+// - 1 figura geométrica (blob15)
+// - 1 imagen enmascarada (con clipSrc)
+
+const result = await separateDesignFigures(67);
+// Resultado: 2 diseños separados
+// - Diseño 1: Solo la figura geométrica
+// - Diseño 2: Solo la imagen enmascarada (mantiene su clipSrc)
+```
+
+### Funciones de Identificación
+```javascript
+const { isFigureElement, isMaskedImageElement, isProcessableElement } = require('./utils/figuresSeparator');
+
+// Verificar si es una figura geométrica
+const isFigure = isFigureElement(element);
+
+// Verificar si es una imagen enmascarada
+const isMasked = isMaskedImageElement(element);
+
+// Verificar si debe ser procesado (figura O imagen enmascarada)
+const shouldProcess = isProcessableElement(element);
+```
 
 ## 🔧 Configuración
 
