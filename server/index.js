@@ -12,6 +12,8 @@ const authRoutes = require('./routes/auth');
 const screensRoutes = require('./routes/screens');
 const designsRoutes = require('./routes/designs');
 const uploadsRoutes = require('./routes/uploads');
+const exportRoutes = require('./routes/export');
+const figuresSeparationRoutes = require('./routes/figuresSeparation');
 
 const app = express();
 const server = createServer(app);
@@ -56,6 +58,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/screens', screensRoutes);
 app.use('/api/designs', designsRoutes);
 app.use('/api/uploads', uploadsRoutes);
+app.use('/api/export', exportRoutes);
+app.use('/api/figures-separation', figuresSeparationRoutes);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
