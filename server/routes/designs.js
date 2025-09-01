@@ -31,8 +31,42 @@ async function generateAndSaveHtml(designId, content, designName) {
     }
 }
 
-// Obtener todos los diseños
+// Obtener todos los diseños (excluyendo diseños internos)
 router.get('/', optionalAuth, async (req, res) => {
+  try {
+    const result = await db().all(`
+      SELECT 
+        d.*,
+        COUNT(da.screen_id) as assigned_screens_count
+      FROM designs d
+      LEFT JOIN design_assignments da ON d.id = da.design_id
+      WHERE d.is_internal = 0 OR d.is_internal IS NULL
+      GROUP BY d.id
+      ORDER BY d.updated_at DESC
+    `);
+    
+    // Parsear el contenido JSON para cada diseño
+    const parsedResult = result.map(design => {
+      if (design.content && typeof design.content === 'string') {
+        try {
+          design.content = JSON.parse(design.content);
+        } catch (error) {
+          console.error('Error parsing design content:', error);
+          design.content = null;
+        }
+      }
+      return design;
+    });
+       
+     res.json(parsedResult);
+  } catch (error) {
+    console.error('Error al obtener diseños:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Obtener todos los diseños incluyendo internos (solo para administradores)
+router.get('/all-including-internal', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const result = await db().all(`
       SELECT 
@@ -57,9 +91,9 @@ router.get('/', optionalAuth, async (req, res) => {
       return design;
     });
       
-      res.json(parsedResult);
+    res.json(parsedResult);
   } catch (error) {
-    console.error('Error al obtener diseños:', error);
+    console.error('Error al obtener todos los diseños:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

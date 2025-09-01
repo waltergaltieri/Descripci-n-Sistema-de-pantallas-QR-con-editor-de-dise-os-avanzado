@@ -438,7 +438,184 @@ async function separateDesignFigures(designId, options = {}) {
 }
 
 /**
- * Función de conveniencia para separar figuras con configuración predeterminada
+ * Separa figuras usando el editor interno (sin interfaz visible)
+ * @param {number} designId - ID del diseño a procesar
+ * @param {Object} options - Opciones de configuración
+ * @param {string} options.namePrefix - Prefijo para los nombres de los nuevos diseños
+ * @param {boolean} options.optimizeCanvas - Si optimizar el canvas al tamaño de la figura
+ * @param {boolean} options.useInternalEditor - Si usar el editor interno (por defecto true)
+ * @returns {Promise<Array>} Array con los IDs de los nuevos diseños creados
+ */
+async function separateDesignFiguresInternal(designId, options = {}) {
+  const {
+    namePrefix = 'Figura separada (Interno)',
+    optimizeCanvas = true,
+    useInternalEditor = true
+  } = options;
+
+  try {
+    console.log(`🔧 Iniciando separación INTERNA de figuras para diseño ${designId}`);
+    console.log(`📋 Configuración: namePrefix="${namePrefix}", optimizeCanvas=${optimizeCanvas}, useInternalEditor=${useInternalEditor}`);
+    
+    // Conectar a la base de datos
+    const db = await open({
+      filename: path.join(__dirname, '../database.sqlite'),
+      driver: sqlite3.Database
+    });
+
+    // Obtener el diseño original
+    const originalDesign = await db.get(
+      'SELECT id, name, content FROM designs WHERE id = ?',
+      [designId]
+    );
+
+    if (!originalDesign) {
+      throw new Error(`Diseño con ID ${designId} no encontrado`);
+    }
+
+    const originalContent = JSON.parse(originalDesign.content);
+    
+    if (!originalContent.pages || !originalContent.pages[0]) {
+      throw new Error('El diseño no contiene páginas válidas');
+    }
+
+    const page = originalContent.pages[0];
+    const allElements = page.children || page.objects || [];
+    
+    if (!allElements || allElements.length === 0) {
+      throw new Error('El diseño no contiene elementos válidos');
+    }
+    
+    // Filtrar elementos que son figuras/formas o imágenes enmascaradas
+    const processableElements = allElements.filter(element => isProcessableElement(element));
+    const figureElements = allElements.filter(element => isFigureElement(element));
+    const maskedImageElements = allElements.filter(element => isMaskedImageElement(element));
+    
+    if (processableElements.length === 0) {
+      throw new Error('El diseño no contiene figuras o imágenes enmascaradas para separar. Solo se encontraron elementos de texto, imágenes simples u otros tipos no geométricos.');
+    }
+
+    console.log(`🎯 MODO INTERNO - Encontrados ${allElements.length} elementos totales:`);
+    console.log(`  - ${figureElements.length} figuras geométricas`);
+    console.log(`  - ${maskedImageElements.length} imágenes enmascaradas`);
+    console.log(`  - ${processableElements.length} elementos procesables en total`);
+    console.log(`🔄 Procesando ${processableElements.length} elementos del diseño "${originalDesign.name}" (ID: ${designId}) en MODO INTERNO`);
+    
+    const createdDesignIds = [];
+    
+    // Procesar cada elemento (figuras e imágenes enmascaradas) en modo interno
+    for (let i = 0; i < processableElements.length; i++) {
+      const element = processableElements[i];
+      
+      // Crear una copia del contenido original
+      const newContent = JSON.parse(JSON.stringify(originalContent));
+      
+      // Crear nombre descriptivo usando el ID del elemento original
+      const elementId = element.id || `${element.type}-${i + 1}`;
+      const elementName = element.name || elementId;
+      const designName = `${namePrefix} - ${elementId}`;
+      
+      // Crear una copia del elemento sin rotación
+      const elementWithoutRotation = JSON.parse(JSON.stringify(element));
+      
+      // Eliminar completamente la rotación para evitar problemas de posicionamiento
+      elementWithoutRotation.rotation = 0;
+      if (elementWithoutRotation.transform) {
+        elementWithoutRotation.transform.rotation = 0;
+      }
+      if (elementWithoutRotation.angle) {
+        elementWithoutRotation.angle = 0;
+      }
+      
+      // Optimizar canvas si está habilitado
+      if (optimizeCanvas) {
+        optimizeCanvasForElement(newContent, elementWithoutRotation);
+      } else {
+        // Solo mantener el elemento actual sin rotación
+        const newPage = newContent.pages[0];
+        if (newPage.children) {
+          newPage.children = [elementWithoutRotation];
+        } else {
+          newPage.objects = [elementWithoutRotation];
+        }
+      }
+      
+      // Marcar el diseño como procesado internamente
+      if (!newContent.metadata) {
+        newContent.metadata = {};
+      }
+      newContent.metadata.processedInternally = true;
+      newContent.metadata.originalDesignId = designId;
+      newContent.metadata.separationMode = 'internal';
+      newContent.metadata.processedAt = new Date().toISOString();
+      
+      // Insertar nuevo diseño en la base de datos (marcado como interno)
+      const result = await db.run(
+        `INSERT INTO designs (name, description, content, thumbnail, is_internal, created_at, updated_at) 
+         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        [
+          designName,
+          `Figura separada automáticamente (MODO INTERNO) del diseño "${originalDesign.name}"`,
+          JSON.stringify(newContent),
+          null, // thumbnail se puede generar después si es necesario
+          1 // is_internal = 1 para diseños creados internamente
+        ]
+      );
+      
+      createdDesignIds.push(result.lastID);
+      
+      console.log(`✅ INTERNO: Creado ${designName} (ID: ${result.lastID})`);
+    }
+    
+    await db.close();
+    
+    console.log(`\n🎯 Separación INTERNA completada. Se crearon ${createdDesignIds.length} nuevos diseños.`);
+    console.log(`📋 IDs de los nuevos diseños (MODO INTERNO): ${createdDesignIds.join(', ')}`);
+    
+    // Ejecutar validación post-separación automáticamente
+    console.log(`\n🔍 Ejecutando validación post-separación (MODO INTERNO)...`);
+    try {
+      const { validateAndFixDesign } = require('./postSeparationValidator');
+      
+      let totalIssuesFound = 0;
+      let totalIssuesFixed = 0;
+      
+      for (const designId of createdDesignIds) {
+        const validationResult = await validateAndFixDesign(designId, true);
+        
+        if (validationResult.issues && validationResult.issues.length > 0) {
+          totalIssuesFound += validationResult.issues.length;
+          
+          if (validationResult.fixed) {
+            totalIssuesFixed += validationResult.issues.length;
+            console.log(`✅ INTERNO: Corregido ${validationResult.designName} (${validationResult.issues.length} problemas)`);
+          } else {
+            console.log(`⚠️  INTERNO: Problemas detectados en ${validationResult.designName} (${validationResult.issues.length} problemas)`);
+          }
+        }
+      }
+      
+      if (totalIssuesFound > 0) {
+        console.log(`\n📊 Validación INTERNA completada: ${totalIssuesFixed}/${totalIssuesFound} problemas corregidos automáticamente`);
+      } else {
+        console.log(`\n✅ Validación INTERNA completada: Todas las figuras están correctamente contenidas`);
+      }
+      
+    } catch (validationError) {
+      console.warn(`⚠️  Error en validación post-separación (MODO INTERNO): ${validationError.message}`);
+      console.warn(`Los diseños fueron creados exitosamente, pero la validación falló.`);
+    }
+    
+    return createdDesignIds;
+    
+  } catch (error) {
+    console.error('Error en separateDesignFiguresInternal:', error);
+    throw error;
+  }
+}
+
+/**
+ * Función de conveniencia para separar figuras con configuración predeterminada (MODO NORMAL)
  * @param {number} designId - ID del diseño a procesar
  * @returns {Promise<Array>} Array con los IDs de los nuevos diseños creados
  */
@@ -449,9 +626,24 @@ async function separateFiguresFromDesign(designId) {
   });
 }
 
+/**
+ * Función de conveniencia para separar figuras usando el editor interno (SIN INTERFAZ VISIBLE)
+ * @param {number} designId - ID del diseño a procesar
+ * @returns {Promise<Array>} Array con los IDs de los nuevos diseños creados
+ */
+async function separateFiguresFromDesignInternal(designId) {
+  return await separateDesignFiguresInternal(designId, {
+    namePrefix: 'Figura (Interno)',
+    optimizeCanvas: true,
+    useInternalEditor: true
+  });
+}
+
 module.exports = {
   separateDesignFigures,
   separateFiguresFromDesign,
+  separateDesignFiguresInternal,
+  separateFiguresFromDesignInternal,
   calculateElementBounds,
   optimizeCanvasForElement,
   isFigureElement,
