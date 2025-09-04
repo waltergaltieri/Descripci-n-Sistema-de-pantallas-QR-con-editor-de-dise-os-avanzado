@@ -39,12 +39,24 @@ async function getSeparatedSvgs(designId) {
  * @returns {Object} - Objeto con fuentes de Google y personalizadas
  */
 function extractUniqueFonts(designData) {
-    const fonts = new Set();
+    const fontVariants = new Map(); // Mapa para almacenar fuentes con sus variantes
     
     designData.pages.forEach(page => {
         page.children.forEach(element => {
             if (element.type === 'text' && element.fontFamily) {
-                fonts.add(element.fontFamily);
+                const fontFamily = element.fontFamily;
+                const fontWeight = element.fontWeight || 'normal';
+                const fontStyle = element.fontStyle || 'normal';
+                
+                // Crear clave única para la variante de fuente
+                const variantKey = `${fontFamily}_${fontWeight}_${fontStyle}`;
+                
+                if (!fontVariants.has(fontFamily)) {
+                    fontVariants.set(fontFamily, new Set());
+                }
+                
+                // Agregar la variante específica
+                fontVariants.get(fontFamily).add({ weight: fontWeight, style: fontStyle });
             }
         });
     });
@@ -52,28 +64,59 @@ function extractUniqueFonts(designData) {
     const googleFonts = [];
     const customFonts = [];
     
-    fonts.forEach(font => {
-        if (isSystemFont(font)) {
+    // Mapeo de nombres comunes a nombres de Google Fonts
+    const googleFontMap = {
+        'Open Sans': 'Open+Sans',
+        'Roboto': 'Roboto',
+        'Lato': 'Lato',
+        'Montserrat': 'Montserrat',
+        'Source Sans Pro': 'Source+Sans+Pro',
+        'Oswald': 'Oswald',
+        'Raleway': 'Raleway',
+        'PT Sans': 'PT+Sans',
+        'Inter': 'Inter'
+    };
+    
+    fontVariants.forEach((variants, fontFamily) => {
+        if (isSystemFont(fontFamily)) {
             // No necesitamos cargar fuentes del sistema
             return;
         }
         
-        // Mapeo de nombres comunes a nombres de Google Fonts
-        const googleFontMap = {
-            'Open Sans': 'Open+Sans',
-            'Roboto': 'Roboto',
-            'Lato': 'Lato',
-            'Montserrat': 'Montserrat',
-            'Source Sans Pro': 'Source+Sans+Pro',
-            'Oswald': 'Oswald',
-            'Raleway': 'Raleway',
-            'PT Sans': 'PT+Sans'
-        };
-        
-        if (googleFontMap[font]) {
-            googleFonts.push(googleFontMap[font]);
+        if (googleFontMap[fontFamily]) {
+            // Construir string de pesos para Google Fonts
+            const weights = new Set();
+            variants.forEach(variant => {
+                let weight = '400'; // peso normal por defecto
+                
+                // Mapear fontWeight a números
+                switch(variant.weight) {
+                    case 'normal': weight = '400'; break;
+                    case 'bold': weight = '700'; break;
+                    case 'lighter': weight = '300'; break;
+                    case '100': case '200': case '300': case '400': 
+                    case '500': case '600': case '700': case '800': case '900':
+                        weight = variant.weight; break;
+                    default: weight = '400';
+                }
+                
+                // Agregar peso normal y bold si se necesita italic
+                if (variant.style === 'italic') {
+                    weights.add(weight);
+                    weights.add(weight + 'i'); // Agregar versión itálica
+                } else {
+                    weights.add(weight);
+                }
+            });
+            
+            // Siempre incluir pesos básicos para asegurar compatibilidad
+            weights.add('400'); // normal
+            weights.add('700'); // bold
+            
+            const fontString = `${googleFontMap[fontFamily]}:wght@${Array.from(weights).sort().join(';')}`;
+            googleFonts.push(fontString);
         } else {
-            customFonts.push(font);
+            customFonts.push(fontFamily);
         }
     });
     
@@ -103,22 +146,25 @@ function generateGoogleFontsLinks(googleFonts) {
         return '';
     }
     
-    const fontsQuery = googleFonts.join('|');
+    // Unir las fuentes con sus pesos específicos
+    const fontsQuery = googleFonts.join('&family=');
+    const fullFontsUrl = `family=${fontsQuery}&display=swap`;
+    
     return `
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=${fontsQuery}:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?${fullFontsUrl}" rel="stylesheet">
     
     <!-- Preload Google Fonts for better performance -->
-    <link rel="preload" href="https://fonts.googleapis.com/css2?family=${fontsQuery}:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <link rel="preload" href="https://fonts.googleapis.com/css2?${fullFontsUrl}" as="style" onload="this.onload=null;this.rel='stylesheet'">
     <noscript>
-        <link href="https://fonts.googleapis.com/css2?family=${fontsQuery}:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?${fullFontsUrl}" rel="stylesheet">
     </noscript>
     
     <!-- Font Display Optimization -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=${fontsQuery}:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?${fullFontsUrl}');
     </style>`;
 }
 
@@ -149,13 +195,14 @@ async function generateCustomFontFaces(customFonts) {
                             lowerFile.endsWith('.ttf') || lowerFile.endsWith('.otf'));
                 });
                 
-                fontFiles.forEach(file => {
-                    const fontPath = `/uploads/${file}`;
-                    const format = getFontFormat(file);
-                    const weight = getFontWeight(file);
-                    const style = getFontStyle(file);
-                    
-                    fontFaces += `
+                if (fontFiles.length > 0) {
+                    fontFiles.forEach(file => {
+                        const fontPath = `/uploads/${file}`;
+                        const format = getFontFormat(file);
+                        const weight = getFontWeight(file);
+                        const style = getFontStyle(file);
+                        
+                        fontFaces += `
         @font-face {
             font-family: '${fontName}';
             src: url('${fontPath}') format('${format}');
@@ -163,7 +210,39 @@ async function generateCustomFontFaces(customFonts) {
             font-style: ${style};
             font-display: swap;
         }`;
-                });
+                    });
+                } else {
+                    // Si no se encuentran archivos, generar fallbacks básicos
+                    fontFaces += `
+        @font-face {
+            font-family: '${fontName}';
+            src: local('${fontName}'), local('${fontName.replace(/\s+/g, '-')}');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: '${fontName}';
+            src: local('${fontName} Bold'), local('${fontName.replace(/\s+/g, '-')}-Bold');
+            font-weight: bold;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: '${fontName}';
+            src: local('${fontName} Italic'), local('${fontName.replace(/\s+/g, '-')}-Italic');
+            font-weight: normal;
+            font-style: italic;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: '${fontName}';
+            src: local('${fontName} Bold Italic'), local('${fontName.replace(/\s+/g, '-')}-BoldItalic');
+            font-weight: bold;
+            font-style: italic;
+            font-display: swap;
+        }`;
+                }
             }
         } catch (error) {
             console.warn(`No se pudo cargar la fuente personalizada: ${fontName}`, error);
@@ -253,12 +332,23 @@ function getFontFormat(filename) {
  */
 function getFontWeight(filename) {
     const lower = filename.toLowerCase();
-    if (lower.includes('bold')) return 'bold';
+    
+    // Detectar pesos específicos por número
+    if (lower.includes('100') || lower.includes('thin')) return '100';
+    if (lower.includes('200') || lower.includes('extralight')) return '200';
+    if (lower.includes('300') || lower.includes('light')) return '300';
+    if (lower.includes('400') || lower.includes('regular')) return '400';
+    if (lower.includes('500') || lower.includes('medium')) return '500';
+    if (lower.includes('600') || lower.includes('semibold') || lower.includes('semi-bold')) return '600';
+    if (lower.includes('700') || lower.includes('bold')) return '700';
+    if (lower.includes('800') || lower.includes('extrabold') || lower.includes('extra-bold')) return '800';
+    if (lower.includes('900') || lower.includes('black') || lower.includes('heavy')) return '900';
+    
+    // Detectar variantes comunes
+    if (lower.includes('bold')) return '700';
     if (lower.includes('light')) return '300';
-    if (lower.includes('medium')) return '500';
-    if (lower.includes('semibold')) return '600';
-    if (lower.includes('heavy') || lower.includes('black')) return '900';
-    return 'normal';
+    
+    return '400'; // normal
 }
 
 /**
@@ -268,7 +358,8 @@ function getFontWeight(filename) {
  */
 function getFontStyle(filename) {
     const lower = filename.toLowerCase();
-    return lower.includes('italic') || lower.includes('oblique') ? 'italic' : 'normal';
+    if (lower.includes('italic') || lower.includes('oblique') || lower.includes('slant')) return 'italic';
+    return 'normal';
 }
 
 /**
@@ -524,6 +615,28 @@ async function renderWithKonva(designData, designName, designId = null) {
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
+        
+        /* Asegurar que los elementos con font-weight se rendericen correctamente */
+        .konvajs-content * {
+            font-synthesis: weight style;
+        }
+        
+        /* Clases de utilidad para pesos de fuente */
+        .font-weight-100 { font-weight: 100 !important; }
+        .font-weight-200 { font-weight: 200 !important; }
+        .font-weight-300 { font-weight: 300 !important; }
+        .font-weight-400 { font-weight: 400 !important; }
+        .font-weight-500 { font-weight: 500 !important; }
+        .font-weight-600 { font-weight: 600 !important; }
+        .font-weight-700 { font-weight: 700 !important; }
+        .font-weight-800 { font-weight: 800 !important; }
+        .font-weight-900 { font-weight: 900 !important; }
+        .font-weight-bold { font-weight: bold !important; }
+        .font-weight-normal { font-weight: normal !important; }
+        
+        /* Clases de utilidad para estilos de fuente */
+        .font-style-normal { font-style: normal !important; }
+        .font-style-italic { font-style: italic !important; }
     </style>
 </head>
 <body>
@@ -567,6 +680,42 @@ async function renderWithKonva(designData, designName, designId = null) {
                     };
                     img.src = src;
                 }
+            });
+            
+            // Aplicar propiedades de fuente a elementos de texto
+            const textNodes = stage.find('Text');
+            console.log('📝 Elementos de texto encontrados:', textNodes.length);
+            
+            textNodes.forEach(textNode => {
+                const fontWeight = textNode.getAttr('fontWeight');
+                const fontStyle = textNode.getAttr('fontStyle');
+                const fontFamily = textNode.getAttr('fontFamily');
+                
+                console.log('🔤 Texto:', textNode.text().substring(0, 20) + '...', 
+                           'Familia:', fontFamily, 
+                           'Peso:', fontWeight, 
+                           'Estilo:', fontStyle);
+                
+                // Construir el estilo de fuente completo
+                let fullFontStyle = '';
+                
+                // Agregar peso de fuente
+                if (fontWeight && (fontWeight === 'bold' || fontWeight === '700' || fontWeight === 'bolder')) {
+                    fullFontStyle += 'bold ';
+                } else if (fontWeight && fontWeight !== 'normal' && fontWeight !== '400') {
+                    fullFontStyle += fontWeight + ' ';
+                }
+                
+                // Agregar estilo de fuente
+                if (fontStyle === 'italic') {
+                    fullFontStyle += 'italic ';
+                }
+                
+                // Aplicar el estilo completo o normal si está vacío
+                const finalStyle = fullFontStyle.trim() || 'normal';
+                textNode.fontStyle(finalStyle);
+                
+                console.log('🎨 Estilo aplicado:', finalStyle);
             });
             
             // Manejar elementos SVG embebidos (buscar Groups con isSvgElement)
