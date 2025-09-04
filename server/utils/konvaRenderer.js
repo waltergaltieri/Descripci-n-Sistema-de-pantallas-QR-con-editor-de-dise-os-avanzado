@@ -559,6 +559,8 @@ async function renderWithKonva(designData, designName, designId = null) {
                                 text: child.text || '',
                                 fontSize: child.fontSize || 16,
                                 fontFamily: child.fontFamily || 'Arial',
+                                fontWeight: child.fontWeight || 'normal',
+                                fontStyle: child.fontStyle || 'normal',
                                 fill: child.fill || '#000000',
                                 align: child.align || 'left',
                                 width: child.width,
