@@ -74,7 +74,40 @@ function extractUniqueFonts(designData) {
         'Oswald': 'Oswald',
         'Raleway': 'Raleway',
         'PT Sans': 'PT+Sans',
-        'Inter': 'Inter'
+        'Inter': 'Inter',
+        'Anton': 'Anton',
+        'Poppins': 'Poppins',
+        'Nunito': 'Nunito',
+        'Playfair Display': 'Playfair+Display',
+        'Merriweather': 'Merriweather',
+        'Ubuntu': 'Ubuntu',
+        'Fira Sans': 'Fira+Sans',
+        'Noto Sans': 'Noto+Sans',
+        'Work Sans': 'Work+Sans',
+        'Crimson Text': 'Crimson+Text',
+        'Libre Baskerville': 'Libre+Baskerville',
+        'Dancing Script': 'Dancing+Script',
+        'Pacifico': 'Pacifico',
+        'Lobster': 'Lobster',
+        'Comfortaa': 'Comfortaa',
+        'Quicksand': 'Quicksand',
+        'Rubik': 'Rubik',
+        'Barlow': 'Barlow',
+        'Oxygen': 'Oxygen',
+        'Cabin': 'Cabin',
+        'Karla': 'Karla',
+        'Bitter': 'Bitter',
+        'Arvo': 'Arvo',
+        'Dosis': 'Dosis',
+        'Titillium Web': 'Titillium+Web',
+        'Exo': 'Exo',
+        'Fjalla One': 'Fjalla+One',
+        'Abril Fatface': 'Abril+Fatface',
+        'Righteous': 'Righteous',
+        'Fredoka One': 'Fredoka+One',
+        'Bangers': 'Bangers',
+        'Creepster': 'Creepster',
+        'Shadows Into Light': 'Shadows+Into+Light'
     };
     
     fontVariants.forEach((variants, fontFamily) => {
@@ -415,11 +448,22 @@ async function renderWithKonva(designData, designName, designId = null) {
     const separatedSvgs = designId ? await getSeparatedSvgs(designId) : [];
     // Extraer fuentes únicas del diseño
     const fontData = extractUniqueFonts(designData);
+    console.log('🔤 Fuentes extraídas:', fontData);
+    
     const googleFontsLinks = generateGoogleFontsLinks(fontData.googleFonts);
+    console.log('🌐 Google Fonts Links generados:', googleFontsLinks.length, 'caracteres');
+    
     const customFontFaces = await generateCustomFontFaces(fontData.customFonts);
+    console.log('📝 Custom Font Faces generados:', customFontFaces.length, 'caracteres');
     
     // Generar clases CSS de fallback para fuentes personalizadas
     const fallbackFontClasses = generateFallbackFontClasses(fontData.customFonts);
+    console.log('🔄 Fallback Font Classes generados:', fallbackFontClasses.length, 'caracteres');
+    
+    // Debug: Mostrar contenido de las fuentes si están vacías
+    if (googleFontsLinks.length === 0 && customFontFaces.length === 0) {
+        console.log('⚠️ No se generaron fuentes. Datos del diseño:', JSON.stringify(designData, null, 2).substring(0, 1000));
+    }
     
     // Convertir el JSON de Polotno al formato que espera Konva.Node.create()
     const firstPage = designData.pages[0];
