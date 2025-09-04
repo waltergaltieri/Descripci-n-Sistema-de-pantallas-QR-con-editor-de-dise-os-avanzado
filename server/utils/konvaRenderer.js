@@ -1,338 +1,327 @@
 const fs = require('fs');
 const path = require('path');
-const { db } = require('../config/database');
+const { open } = require('sqlite');
+const sqlite3 = require('sqlite3');
 
 /**
- * Extrae todas las fuentes únicas utilizadas en el diseño
+ * Obtiene los SVGs separados de un diseño desde la base de datos
+ * @param {number} designId - ID del diseño
+ * @returns {Promise<Array>} - Array de SVGs o array vacío si no hay
+ */
+async function getSeparatedSvgs(designId) {
+    try {
+        const db = await open({
+            filename: path.join(__dirname, '../database.sqlite'),
+            driver: sqlite3.Database
+        });
+        
+        const design = await db.get(
+            'SELECT separated_svgs FROM designs WHERE id = ?',
+            [designId]
+        );
+        
+        await db.close();
+        
+        if (!design || !design.separated_svgs) {
+            return [];
+        }
+        
+        return JSON.parse(design.separated_svgs);
+    } catch (error) {
+        console.error('Error obteniendo SVGs separados:', error);
+        return [];
+    }
+}
+
+/**
+ * Extrae las fuentes únicas utilizadas en el diseño
  * @param {Object} designData - Datos del diseño
  * @returns {Object} - Objeto con fuentes de Google y personalizadas
  */
 function extractUniqueFonts(designData) {
-    const allFonts = new Set();
+    const fonts = new Set();
     
-    // Recorrer todas las páginas y elementos
     designData.pages.forEach(page => {
-        page.children.forEach(child => {
-            if (child.type === 'text' && child.fontFamily) {
-                allFonts.add(child.fontFamily);
+        page.children.forEach(element => {
+            if (element.type === 'text' && element.fontFamily) {
+                fonts.add(element.fontFamily);
             }
         });
     });
     
-    const fonts = Array.from(allFonts);
+    const googleFonts = [];
+    const customFonts = [];
     
-    // Mapear fuentes conocidas de Google Fonts
-    const googleFontMap = {
-        'Roboto': 'Roboto:wght@400;700',
-        'Anton': 'Anton:wght@400',
-        'Montserrat Subrayada': 'Montserrat+Subrayada:wght@400;700',
-        'Montserrat': 'Montserrat:wght@400;700',
-        'Open Sans': 'Open+Sans:wght@400;700',
-        'Lato': 'Lato:wght@400;700',
-        'Oswald': 'Oswald:wght@400;700',
-        'Source Sans Pro': 'Source+Sans+Pro:wght@400;700',
-        'Raleway': 'Raleway:wght@400;700',
-        'PT Sans': 'PT+Sans:wght@400;700',
-        'Inter': 'Inter:wght@400;700',
-        'Poppins': 'Poppins:wght@400;700',
-        'Nunito': 'Nunito:wght@400;700',
-        'Ewert': 'Ewert:wght@400'
-    };
-    
-    // Separar fuentes de Google y personalizadas
-    const googleFonts = fonts.filter(font => googleFontMap[font]);
-    const customFonts = fonts.filter(font => !googleFontMap[font] && !isSystemFont(font));
+    fonts.forEach(font => {
+        if (isSystemFont(font)) {
+            // No necesitamos cargar fuentes del sistema
+            return;
+        }
+        
+        // Mapeo de nombres comunes a nombres de Google Fonts
+        const googleFontMap = {
+            'Open Sans': 'Open+Sans',
+            'Roboto': 'Roboto',
+            'Lato': 'Lato',
+            'Montserrat': 'Montserrat',
+            'Source Sans Pro': 'Source+Sans+Pro',
+            'Oswald': 'Oswald',
+            'Raleway': 'Raleway',
+            'PT Sans': 'PT+Sans'
+        };
+        
+        if (googleFontMap[font]) {
+            googleFonts.push(googleFontMap[font]);
+        } else {
+            customFonts.push(font);
+        }
+    });
     
     return {
-        googleFonts,
-        customFonts,
-        allFonts: fonts
+        googleFonts: [...new Set(googleFonts)],
+        customFonts: [...new Set(customFonts)]
     };
 }
 
 /**
  * Verifica si una fuente es una fuente del sistema
  * @param {string} fontName - Nombre de la fuente
- * @returns {boolean} - True si es fuente del sistema
+ * @returns {boolean}
  */
 function isSystemFont(fontName) {
-    const systemFonts = [
-        'Arial', 'Helvetica', 'Times', 'Times New Roman', 'Courier', 'Courier New',
-        'Verdana', 'Georgia', 'Palatino', 'Garamond', 'Bookman', 'Comic Sans MS',
-        'Trebuchet MS', 'Arial Black', 'Impact', 'Lucida Sans Unicode', 'Tahoma',
-        'Lucida Console', 'Monaco', 'Brush Script MT'
-    ];
+    const systemFonts = ['Arial', 'Helvetica', 'Times New Roman', 'Times', 'Courier New', 'Courier', 'Verdana', 'Georgia', 'Palatino', 'Garamond', 'Bookman', 'Comic Sans MS', 'Trebuchet MS', 'Arial Black', 'Impact'];
     return systemFonts.includes(fontName);
 }
 
 /**
- * Genera los enlaces de Google Fonts para las fuentes especificadas
- * @param {Array} googleFonts - Array de nombres de fuentes de Google
+ * Genera los enlaces de Google Fonts
+ * @param {Array} googleFonts - Array de fuentes de Google
  * @returns {string} - HTML con los enlaces de Google Fonts
  */
 function generateGoogleFontsLinks(googleFonts) {
-    if (!googleFonts || googleFonts.length === 0) {
-        return '<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">';
+    if (googleFonts.length === 0) {
+        return '';
     }
     
-    // Mapear nombres de fuentes a sus equivalentes de Google Fonts
-    const fontMap = {
-        'Roboto': 'Roboto:wght@400;700',
-        'Anton': 'Anton:wght@400',
-        'Montserrat Subrayada': 'Montserrat+Subrayada:wght@400;700',
-        'Montserrat': 'Montserrat:wght@400;700',
-        'Open Sans': 'Open+Sans:wght@400;700',
-        'Lato': 'Lato:wght@400;700',
-        'Oswald': 'Oswald:wght@400;700',
-        'Source Sans Pro': 'Source+Sans+Pro:wght@400;700',
-        'Raleway': 'Raleway:wght@400;700',
-        'PT Sans': 'PT+Sans:wght@400;700',
-        'Inter': 'Inter:wght@400;700',
-        'Poppins': 'Poppins:wght@400;700',
-        'Nunito': 'Nunito:wght@400;700',
-        'Ewert': 'Ewert:wght@400'
-    };
-    
-    const mappedFonts = googleFonts
-        .filter(font => fontMap[font])
-        .map(font => fontMap[font]);
-    
-    if (mappedFonts.length === 0) {
-        return '<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">';
-    }
-    
-    const fontQuery = mappedFonts.join('&family=');
-    
-    return `<link rel="preconnect" href="https://fonts.googleapis.com">
+    const fontsQuery = googleFonts.join('|');
+    return `
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=${fontQuery}&display=swap" rel="stylesheet">`;
+    <link href="https://fonts.googleapis.com/css2?family=${fontsQuery}:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Preload Google Fonts for better performance -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=${fontsQuery}:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript>
+        <link href="https://fonts.googleapis.com/css2?family=${fontsQuery}:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    </noscript>
+    
+    <!-- Font Display Optimization -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=${fontsQuery}:wght@300;400;500;600;700&display=swap');
+    </style>`;
 }
 
 /**
- * Genera reglas @font-face para fuentes personalizadas
- * @param {Array} customFonts - Array de nombres de fuentes personalizadas
- * @returns {Promise<string>} - CSS con las reglas @font-face
+ * Genera las declaraciones @font-face para fuentes personalizadas
+ * @param {Array} customFonts - Array de fuentes personalizadas
+ * @returns {string} - CSS con las declaraciones @font-face
  */
 async function generateCustomFontFaces(customFonts) {
-    if (!customFonts || customFonts.length === 0) {
+    if (customFonts.length === 0) {
         return '';
     }
     
     let fontFaces = '';
     
-    try {
-        const database = db();
-        
-        // Verificar si la base de datos está disponible
-        if (!database) {
-            console.log('⚠️ Base de datos no disponible para fuentes personalizadas, usando fallback');
-            return generateFallbackFontFaces(customFonts);
-        }
-        
-        for (const fontName of customFonts) {
-            // Buscar archivos de fuente en la base de datos de uploads
-            const fontFiles = await database.all(
-                `SELECT * FROM uploads WHERE 
-                 original_name LIKE ? AND 
-                 (mimetype LIKE 'font/%' OR 
-                  original_name LIKE '%.ttf' OR 
-                  original_name LIKE '%.woff' OR 
-                  original_name LIKE '%.woff2' OR 
-                  original_name LIKE '%.otf')`,
-                [`%${fontName}%`]
-            );
+    for (const fontName of customFonts) {
+        try {
+            // Buscar archivos de fuente en el directorio de uploads
+            const uploadsDir = path.join(__dirname, '../uploads');
             
-            if (fontFiles.length > 0) {
-                // Generar reglas @font-face para cada archivo encontrado
-                fontFiles.forEach(fontFile => {
-                    const fontFormat = getFontFormat(fontFile.filename);
-                    const fontWeight = getFontWeight(fontFile.original_name);
-                    const fontStyle = getFontStyle(fontFile.original_name);
+            if (fs.existsSync(uploadsDir)) {
+                const files = fs.readdirSync(uploadsDir);
+                const fontFiles = files.filter(file => {
+                    const lowerFile = file.toLowerCase();
+                    const lowerFont = fontName.toLowerCase().replace(/\s+/g, '');
+                    return (lowerFile.includes(lowerFont) || lowerFile.includes(fontName.toLowerCase())) && 
+                           (lowerFile.endsWith('.woff2') || lowerFile.endsWith('.woff') || 
+                            lowerFile.endsWith('.ttf') || lowerFile.endsWith('.otf'));
+                });
+                
+                fontFiles.forEach(file => {
+                    const fontPath = `/uploads/${file}`;
+                    const format = getFontFormat(file);
+                    const weight = getFontWeight(file);
+                    const style = getFontStyle(file);
                     
                     fontFaces += `
-@font-face {
-    font-family: '${fontName}';
-    src: url('${fontFile.url}') format('${fontFormat}');
-    font-weight: ${fontWeight};
-    font-style: ${fontStyle};
-    font-display: swap;
-}
-`;
+        @font-face {
+            font-family: '${fontName}';
+            src: url('${fontPath}') format('${format}');
+            font-weight: ${weight};
+            font-style: ${style};
+            font-display: swap;
+        }`;
                 });
-            } else {
-                console.log(`⚠️ Fuente personalizada '${fontName}' no encontrada en uploads, usando fallback`);
-                // Generar fallback para fuentes no encontradas
-                fontFaces += generateFallbackFontFace(fontName);
             }
+        } catch (error) {
+            console.warn(`No se pudo cargar la fuente personalizada: ${fontName}`, error);
+            
+            // Generar fallback font-face
+            fontFaces += generateFallbackFontFace(fontName);
         }
-        
-    } catch (error) {
-        console.error('Error generando fuentes personalizadas:', error);
-        return generateFallbackFontFaces(customFonts);
     }
     
     return fontFaces;
 }
 
 /**
- * Genera fallbacks para fuentes personalizadas no encontradas
- * @param {Array} customFonts - Array de nombres de fuentes personalizadas
- * @returns {string} - CSS con fallbacks
+ * Genera declaraciones @font-face de fallback para fuentes personalizadas
+ * @param {Array} customFonts - Array de fuentes personalizadas
+ * @returns {string} - CSS con las declaraciones @font-face de fallback
  */
 function generateFallbackFontFaces(customFonts) {
-    let fallbackCSS = '';
-    
-    customFonts.forEach(fontName => {
-        fallbackCSS += generateFallbackFontFace(fontName);
-    });
-    
-    return fallbackCSS;
+    return customFonts.map(fontName => generateFallbackFontFace(fontName)).join('');
 }
 
 /**
- * Genera un fallback para una fuente personalizada específica
+ * Genera una declaración @font-face de fallback para una fuente específica
  * @param {string} fontName - Nombre de la fuente
- * @returns {string} - CSS con fallback
+ * @returns {string} - CSS con la declaración @font-face de fallback
  */
 function generateFallbackFontFace(fontName) {
-    // Mapeo de fuentes personalizadas a fallbacks apropiados
-    const fallbackMap = {
-        'Super Sunkissed': 'cursive, "Brush Script MT", "Comic Sans MS", fantasy',
-        'Ewert': 'serif, "Times New Roman", Georgia',
-        // Agregar más fallbacks según sea necesario
-    };
-    
-    const fallback = fallbackMap[fontName] || 'sans-serif, Arial, Helvetica';
-    
     return `
-/* Fallback para fuente personalizada: ${fontName} */
-@font-face {
-    font-family: '${fontName}';
-    src: local('${fontName}'), local('${fontName.replace(/\s+/g, '-')}');
-    font-display: swap;
-}
-
-/* Clase de fallback para fuente personalizada: ${fontName} */
-.font-${fontName.replace(/\s+/g, '-').toLowerCase()} {
-    font-family: "${fontName}", ${fallback} !important;
-}
-`;
+        @font-face {
+            font-family: '${fontName}';
+            src: local('Arial'), local('Helvetica'), local('sans-serif');
+            font-weight: normal;
+            font-style: normal;
+            font-display: swap;
+        }
+        @font-face {
+            font-family: '${fontName}';
+            src: local('Arial Bold'), local('Helvetica Bold'), local('sans-serif');
+            font-weight: bold;
+            font-style: normal;
+            font-display: swap;
+        }`;
 }
 
 /**
  * Genera clases CSS de fallback para fuentes personalizadas
- * @param {Array} customFonts - Array de nombres de fuentes personalizadas
- * @returns {string} - CSS con clases de fallback
+ * @param {Array} customFonts - Array de fuentes personalizadas
+ * @returns {string} - CSS con las clases de fallback
  */
 function generateFallbackFontClasses(customFonts) {
-    if (!customFonts || customFonts.length === 0) {
+    if (customFonts.length === 0) {
         return '';
     }
     
-    let fallbackClasses = '';
-    
-    customFonts.forEach(fontName => {
-        const fallbackMap = {
-            'Super Sunkissed': 'cursive, "Brush Script MT", "Comic Sans MS", fantasy',
-            'Ewert': 'serif, "Times New Roman", Georgia',
-            // Agregar más fallbacks según sea necesario
-        };
-        
-        const fallback = fallbackMap[fontName] || 'sans-serif, Arial, Helvetica';
+    return customFonts.map(fontName => {
         const className = fontName.replace(/\s+/g, '-').toLowerCase();
-        
-        fallbackClasses += `
-/* Clase de fallback para fuente personalizada: ${fontName} */
-.font-${className} {
-    font-family: "${fontName}", ${fallback} !important;
-}
-`;
-    });
-    
-    return fallbackClasses;
+        return `
+        .font-${className} {
+            font-family: '${fontName}', Arial, Helvetica, sans-serif;
+        }
+        .font-${className}-fallback {
+            font-family: Arial, Helvetica, sans-serif;
+        }`;
+    }).join('');
 }
 
 /**
  * Determina el formato de fuente basado en la extensión del archivo
- * @param {string} filename - Nombre del archivo
+ * @param {string} filename - Nombre del archivo de fuente
  * @returns {string} - Formato de fuente
  */
 function getFontFormat(filename) {
     const ext = path.extname(filename).toLowerCase();
-    const formatMap = {
-        '.woff2': 'woff2',
-        '.woff': 'woff',
-        '.ttf': 'truetype',
-        '.otf': 'opentype',
-        '.eot': 'embedded-opentype'
-    };
-    return formatMap[ext] || 'truetype';
+    switch (ext) {
+        case '.woff2': return 'woff2';
+        case '.woff': return 'woff';
+        case '.ttf': return 'truetype';
+        case '.otf': return 'opentype';
+        default: return 'truetype';
+    }
 }
 
 /**
- * Extrae el peso de la fuente del nombre del archivo
- * @param {string} filename - Nombre del archivo
- * @returns {string} - Peso de la fuente
+ * Determina el peso de fuente basado en el nombre del archivo
+ * @param {string} filename - Nombre del archivo de fuente
+ * @returns {string} - Peso de fuente
  */
 function getFontWeight(filename) {
-    const name = filename.toLowerCase();
-    if (name.includes('bold') || name.includes('700')) return '700';
-    if (name.includes('semibold') || name.includes('600')) return '600';
-    if (name.includes('medium') || name.includes('500')) return '500';
-    if (name.includes('light') || name.includes('300')) return '300';
-    if (name.includes('thin') || name.includes('100')) return '100';
-    return '400'; // normal
-}
-
-/**
- * Extrae el estilo de la fuente del nombre del archivo
- * @param {string} filename - Nombre del archivo
- * @returns {string} - Estilo de la fuente
- */
-function getFontStyle(filename) {
-    const name = filename.toLowerCase();
-    if (name.includes('italic') || name.includes('oblique')) return 'italic';
+    const lower = filename.toLowerCase();
+    if (lower.includes('bold')) return 'bold';
+    if (lower.includes('light')) return '300';
+    if (lower.includes('medium')) return '500';
+    if (lower.includes('semibold')) return '600';
+    if (lower.includes('heavy') || lower.includes('black')) return '900';
     return 'normal';
 }
 
 /**
- * Calcula la corrección vertical necesaria para alinear texto de Polotno con Konva
- * @param {number} fontSize - Tamaño de fuente en píxeles
+ * Determina el estilo de fuente basado en el nombre del archivo
+ * @param {string} filename - Nombre del archivo de fuente
+ * @returns {string} - Estilo de fuente
+ */
+function getFontStyle(filename) {
+    const lower = filename.toLowerCase();
+    return lower.includes('italic') || lower.includes('oblique') ? 'italic' : 'normal';
+}
+
+/**
+ * Calcula la corrección vertical universal para el texto
+ * @param {number} fontSize - Tamaño de fuente
  * @param {string} fontFamily - Familia de fuente
- * @returns {number} Corrección en píxeles para aplicar a la coordenada Y
+ * @returns {number} - Corrección vertical en píxeles
  */
 function calculateUniversalVerticalCorrection(fontSize, fontFamily = 'Arial') {
-    // Métricas tipográficas estándar (basadas en OpenType)
+    // Métricas de fuente aproximadas para diferentes familias
     const fontMetrics = {
-        'Arial': { ascent: 0.905, descent: 0.212 },
-        'Roboto': { ascent: 0.927, descent: 0.244 },
-        'Helvetica': { ascent: 0.932, descent: 0.213 },
-        'Times': { ascent: 0.898, descent: 0.218 },
-        'Courier': { ascent: 0.829, descent: 0.171 },
-        'Anton': { ascent: 0.95, descent: 0.25 },
-        'Montserrat': { ascent: 0.92, descent: 0.24 },
-        'Montserrat Subrayada': { ascent: 0.92, descent: 0.24 },
+        'Arial': { ascent: 0.9, descent: 0.2 },
+        'Helvetica': { ascent: 0.9, descent: 0.2 },
+        'Times New Roman': { ascent: 0.85, descent: 0.25 },
+        'Georgia': { ascent: 0.85, descent: 0.25 },
+        'Verdana': { ascent: 0.92, descent: 0.18 },
+        'Trebuchet MS': { ascent: 0.88, descent: 0.22 },
+        'Comic Sans MS': { ascent: 0.87, descent: 0.23 },
+        'Impact': { ascent: 0.95, descent: 0.15 },
+        'Courier New': { ascent: 0.8, descent: 0.3 },
+        'Open Sans': { ascent: 0.9, descent: 0.2 },
+        'Roboto': { ascent: 0.9, descent: 0.2 },
+        'Lato': { ascent: 0.9, descent: 0.2 },
+        'Montserrat': { ascent: 0.9, descent: 0.2 },
+        'Source Sans Pro': { ascent: 0.9, descent: 0.2 },
+        'Oswald': { ascent: 0.92, descent: 0.18 },
+        'Raleway': { ascent: 0.9, descent: 0.2 },
+        'PT Sans': { ascent: 0.9, descent: 0.2 },
         'default': { ascent: 0.9, descent: 0.2 }
     };
     
     const metrics = fontMetrics[fontFamily] || fontMetrics['default'];
-    const totalHeight = (metrics.ascent + metrics.descent) * fontSize;
-    const baselineOffset = metrics.ascent * fontSize;
-    const geometricCenter = totalHeight / 2;
     
-    // Corrección ajustada: mover el texto hacia abajo para alineación perfecta
-    // Aplicamos una corrección negativa del 50% para bajar el texto al máximo
-    const correction = -(geometricCenter - baselineOffset) * 0.55;
-    return correction;
+    // Calcular la línea base aproximada
+    const baseline = fontSize * metrics.ascent;
+    
+    // La corrección es la diferencia entre la línea base y el centro del texto
+    const textCenter = fontSize / 2;
+    const correction = baseline - textCenter;
+    
+    return Math.round(correction * 0.3); // Factor de ajuste empírico
 }
 
 /**
- * Renderiza un diseño JSON usando la funcionalidad nativa de Konva
- * @param {Object} designData - El JSON del diseño de Polotno
+ * Renderiza el diseño usando Konva y genera HTML
+ * @param {Object} designData - Datos del diseño en formato Polotno
  * @param {string} designName - Nombre del diseño
- * @returns {string} HTML completo con Konva integrado
+ * @param {number} designId - ID del diseño (opcional, para obtener SVGs separados)
+ * @returns {string} - HTML generado
  */
-async function renderWithKonva(designData, designName) {
+async function renderWithKonva(designData, designName, designId = null) {
+    // Obtener SVGs separados si se proporciona el ID del diseño
+    const separatedSvgs = designId ? await getSeparatedSvgs(designId) : [];
     // Extraer fuentes únicas del diseño
     const fontData = extractUniqueFonts(designData);
     const googleFontsLinks = generateGoogleFontsLinks(fontData.googleFonts);
@@ -352,108 +341,143 @@ async function renderWithKonva(designData, designName) {
         children: [{
             attrs: {},
             className: 'Layer',
-            children: firstPage.children.map(child => {
-                // Convertir cada elemento de Polotno a formato Konva
-                const konvaChild = {
-                    attrs: {
-                        x: child.x || 0,
-                        y: child.y || 0,
-                        width: child.width || 100,
-                        height: child.height || 100,
-                        rotation: (child.rotation || 0) * Math.PI / 180, // Convertir a radianes
-                        opacity: child.opacity !== undefined ? child.opacity : 1,
-                        visible: child.visible !== undefined ? child.visible : true,
-                        // Transformaciones de escala
-                        scaleX: child.scaleX !== undefined ? child.scaleX : 1,
-                        scaleY: child.scaleY !== undefined ? child.scaleY : 1,
-                        // Transformaciones de sesgo (skew)
-                        skewX: child.skewX !== undefined ? child.skewX : 0,
-                        skewY: child.skewY !== undefined ? child.skewY : 0,
-                        // Transformaciones de volteo (flip)
-                        // En Konva, el flip se maneja con escalas negativas
-                        ...(child.flipX && { scaleX: (child.scaleX !== undefined ? child.scaleX : 1) * -1 }),
-                        ...(child.flipY && { scaleY: (child.scaleY !== undefined ? child.scaleY : 1) * -1 })
-                    }
-                };
+            children: (() => {
+                // Primero, identificar elementos que deben ser reemplazados por SVGs
+                const figureTypes = ['figure', 'mask', 'shape', 'rect', 'circle', 'ellipse', 'polygon', 'star', 'line', 'arrow'];
+                let svgIndex = 0;
                 
-                // Solo aplicar stroke si strokeWidth > 0
-                if (child.strokeWidth && child.strokeWidth > 0) {
-                    konvaChild.attrs.stroke = child.stroke || '#000000';
-                    konvaChild.attrs.strokeWidth = child.strokeWidth;
-                }
-                
-                // Determinar el tipo de elemento Konva basado en el tipo de Polotno
-                switch (child.type) {
-                    case 'text':
-                        konvaChild.className = 'Text';
-                        konvaChild.attrs.text = child.text || '';
-                        konvaChild.attrs.fontSize = child.fontSize || 16;
-                        konvaChild.attrs.fontFamily = child.fontFamily || 'Arial';
-                        konvaChild.attrs.fill = child.fill || '#000000';
-                        konvaChild.attrs.align = child.align || 'left';
+                return firstPage.children.map((child, index) => {
+                    const isMaskedImage = child.type === 'image' && child.clipSrc && child.clipSrc.trim() !== '';
+                    const isEmbeddedSvgImage = child.type === 'image' && child.src && child.src.includes('data:image/svg+xml');
+                    
+                    if (figureTypes.includes(child.type) || isMaskedImage || isEmbeddedSvgImage) {
+                        // Buscar SVG correspondiente usando el índice de SVG actual
+                        const correspondingSvg = separatedSvgs[svgIndex];
+                        const currentSvgIndex = svgIndex; // Guardar el índice actual antes de incrementar
+                        svgIndex++; // Incrementar para el próximo SVG
                         
-                        // APLICAR CORRECCIÓN VERTICAL AQUÍ
-                        konvaChild.attrs.y = (child.y || 0) + calculateUniversalVerticalCorrection(
+                        if (correspondingSvg && correspondingSvg.svgData) {
+                            console.log(`🎨 Reemplazando elemento ${child.type} en posición ${index} con SVG ${correspondingSvg.filename}`);
+                            console.log(`📍 Coordenadas originales: x=${child.x}, y=${child.y}, width=${child.width}, height=${child.height}`);
+                            console.log(`🔄 Transformaciones: rotation=${child.rotation}, scaleX=${child.scaleX}, scaleY=${child.scaleY}`);
+                            // Crear elemento Group que contendrá el SVG como imagen
+                            const svgElement = {
+                                attrs: {
+                                    x: child.x || 0,
+                                    y: child.y || 0,
+                                    width: child.width || 100,
+                                    height: child.height || 100,
+                                    rotation: child.rotation || 0,
+                                    scaleX: child.scaleX || 1,
+                                    scaleY: child.scaleY || 1,
+                                    opacity: child.opacity !== undefined ? child.opacity : 1,
+                                    svgId: `svg_${currentSvgIndex}`,
+                                    isSvgElement: true
+                                },
+                                className: 'Group'
+                            };
+                            return svgElement;
+                        } else {
+                            console.log(`⚠️ No se encontró SVG para elemento ${child.type} en posición ${index}`);
+                            // Si no hay SVG correspondiente, crear placeholder
+                            return {
+                                attrs: {
+                                    x: child.x || 0,
+                                    y: child.y || 0,
+                                    width: child.width || 100,
+                                    height: child.height || 100,
+                                    fill: '#f0f0f0',
+                                    stroke: '#cccccc',
+                                    strokeWidth: 1,
+                                    rotation: child.rotation || 0,
+                                    scaleX: child.scaleX || 1,
+                                    scaleY: child.scaleY || 1,
+                                    opacity: child.opacity !== undefined ? child.opacity : 1
+                                },
+                                className: 'Rect'
+                            };
+                        }
+                    }
+                    
+                    // Procesar elementos normales (texto, imágenes sin máscara)
+                    if (child.type === 'text') {
+                        // Calcular corrección vertical
+                        const verticalCorrection = calculateUniversalVerticalCorrection(
                             child.fontSize || 16, 
                             child.fontFamily || 'Arial'
                         );
                         
-                        // Mapear fontWeight='bold' a fontStyle='bold' para Konva
-                        if (child.fontWeight === 'bold') {
-                            konvaChild.attrs.fontStyle = 'bold';
-                        }
-                        
-                        // Aplicar clase CSS de fallback para fuentes personalizadas
-                        const fontFamily = child.fontFamily || 'Arial';
-                        if (fontData.customFonts && fontData.customFonts.includes(fontFamily)) {
-                            const className = fontFamily.replace(/\s+/g, '-').toLowerCase();
-                            konvaChild.attrs.className = `font-${className}`;
-                        }
-                        
-                        // POSICIONAMIENTO CORRECTO: Usar coordenadas originales de Polotno
-                        // Konva maneja automáticamente el centrado cuando align="center"
-                        // NO se debe modificar la posición X para texto centrado
-                        break;
-                        
-                    case 'image':
-                        konvaChild.className = 'Image';
-                        // Nota: Las imágenes necesitan ser cargadas por separado
-                        if (child.src) {
-                            konvaChild.attrs.src = child.src;
-                        }
-                        break;
-                        
-
-                        
-                    case 'svg':
-                        // Para elementos SVG, usar un grupo con el contenido SVG
-                        konvaChild.className = 'Group';
-                        // Nota: En una implementación real, necesitarías parsear el SVG
-                        // Por ahora, creamos un rectángulo como placeholder
-                        konvaChild.children = [{
-                            className: 'Rect',
+                        return {
                             attrs: {
-                                x: 0,
-                                y: 0,
-                                width: child.width || 100,
-                                height: child.height || 100,
-                                fill: child.fill || '#cccccc',
-                                stroke: child.stroke || '#000000',
-                                strokeWidth: child.strokeWidth || 1
-                            }
-                        }];
-                        break;
-                        
-                    default:
-                        konvaChild.className = 'Rect';
-                        konvaChild.attrs.fill = '#cccccc';
-                }
-                
-                return konvaChild;
-            })
+                                x: child.x || 0,
+                                y: (child.y || 0) + verticalCorrection,
+                                text: child.text || '',
+                                fontSize: child.fontSize || 16,
+                                fontFamily: child.fontFamily || 'Arial',
+                                fill: child.fill || '#000000',
+                                align: child.align || 'left',
+                                width: child.width,
+                                height: child.height,
+                                rotation: child.rotation || 0,
+                                scaleX: child.scaleX || 1,
+                                scaleY: child.scaleY || 1,
+                                opacity: child.opacity !== undefined ? child.opacity : 1
+                            },
+                            className: 'Text'
+                        };
+                    } else if (child.type === 'image') {
+                        return {
+                            attrs: {
+                                x: child.x || 0,
+                                y: child.y || 0,
+                                width: child.width,
+                                height: child.height,
+                                rotation: child.rotation || 0,
+                                scaleX: child.scaleX || 1,
+                                scaleY: child.scaleY || 1,
+                                opacity: child.opacity !== undefined ? child.opacity : 1,
+                                src: child.src
+                            },
+                            className: 'Image'
+                        };
+                    } else if (child.type === 'svg') {
+                        // Para SVGs, crear un placeholder por ahora
+                        return {
+                            attrs: {
+                                x: child.x || 0,
+                                y: child.y || 0,
+                                width: child.width,
+                                height: child.height,
+                                fill: '#cccccc',
+                                stroke: '#999999',
+                                strokeWidth: 1
+                            },
+                            className: 'Rect'
+                        };
+                    }
+                    
+                    return null;
+                }).filter(Boolean);
+            })()
         }]
     };
     
+    // Contar elementos reemplazados por SVGs
+    const figureTypes = ['figure', 'mask', 'shape', 'rect', 'circle', 'ellipse', 'polygon', 'star', 'line', 'arrow'];
+    const replacedElements = firstPage.children.filter(child => {
+        const isMaskedImage = child.type === 'image' && child.clipSrc && child.clipSrc.trim() !== '';
+        const isEmbeddedSvgImage = child.type === 'image' && child.src && child.src.includes('data:image/svg+xml');
+        return figureTypes.includes(child.type) || isMaskedImage || isEmbeddedSvgImage;
+    });
+    
+    const replacedElementsComments = replacedElements.map((element, index) => {
+        const correspondingSvg = separatedSvgs[index];
+        const status = correspondingSvg ? 'reemplazado con SVG' : 'placeholder';
+        return `<!-- Elemento ${element.type} - Posición: x=${element.x}, y=${element.y}, rotación=${element.rotation || 0}° - ${status} -->`;
+    }).join('\n    ');
+    
+    console.log(`📊 Estadísticas de reemplazo: ${separatedSvgs.length} SVGs disponibles, ${replacedElements.length} elementos a reemplazar`);
+
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -496,15 +520,25 @@ async function renderWithKonva(designData, designName) {
     <div class="info">
         <h2>Diseño ${designName} - Konva Native</h2>
         <p>Dimensiones: ${designData.width}x${designData.height}px</p>
+        ${replacedElements.length > 0 ? `<p style="color: #4CAF50; font-size: 12px;">Elementos reemplazados con SVGs: ${Math.min(separatedSvgs.length, replacedElements.length)}/${replacedElements.length}</p>` : ''}
+        ${separatedSvgs.length > 0 ? `<p style="color: #2196F3; font-size: 12px;">SVGs disponibles: ${separatedSvgs.length}</p>` : ''}
     </div>
+    
+    ${replacedElementsComments.length > 0 ? replacedElementsComments : '<!-- No hay elementos reemplazados -->'}
     
     <div id="canvas-container"></div>
     
     <script>
         // JSON del diseño en formato Konva
-        const konvaJson = ${JSON.stringify(JSON.stringify(konvaStage))};
+        const konvaJson = ${JSON.stringify(konvaStage)};
+        
+        // SVGs separados para evitar problemas de escape
+        const svgData = {
+            ${separatedSvgs.map((svg, index) => `"svg_${index}": ${JSON.stringify(svg.svgData)}`).join(',\n            ')}
+        };
         
         console.log('Creando stage con JSON:', konvaJson);
+        console.log('SVGs disponibles:', Object.keys(svgData).length);
         
         try {
             // Crear el stage usando Konva.Node.create()
@@ -522,6 +556,48 @@ async function renderWithKonva(designData, designName) {
                         stage.batchDraw();
                     };
                     img.src = src;
+                }
+            });
+            
+            // Manejar elementos SVG embebidos (buscar Groups con isSvgElement)
+            const allGroups = stage.find('Group');
+            const svgElements = allGroups.filter(group => group.getAttr('isSvgElement'));
+            console.log('🔍 Elementos SVG encontrados:', svgElements.length);
+            
+            svgElements.forEach(svgNode => {
+                const svgId = svgNode.getAttr('svgId');
+                const svgDataContent = svgData[svgId];
+                console.log('📋 Procesando SVG:', svgId, 'Datos disponibles:', !!svgDataContent);
+                console.log('📍 Posición del Group: x=' + svgNode.x() + ', y=' + svgNode.y() + ', width=' + svgNode.getAttr('width') + ', height=' + svgNode.getAttr('height'));
+                console.log('🔄 Transformaciones del Group: rotation=' + svgNode.rotation() + ', scaleX=' + svgNode.scaleX() + ', scaleY=' + svgNode.scaleY());
+                
+                if (svgDataContent) {
+                    // Crear un elemento imagen desde el SVG
+                    const img = new Image();
+                    img.onload = () => {
+                        // Crear un nodo Image y agregarlo al Group
+                        const imageNode = new Konva.Image({
+                            x: 0, // Relativo al Group (el Group ya tiene las coordenadas correctas)
+                            y: 0, // Relativo al Group (el Group ya tiene las coordenadas correctas)
+                            width: svgNode.getAttr('width'),
+                            height: svgNode.getAttr('height'),
+                            image: img,
+                            // Mantener las transformaciones del Group padre
+                            scaleX: 1,
+                            scaleY: 1,
+                            rotation: 0 // La rotación se maneja en el Group padre
+                        });
+                        
+                        // Limpiar el Group y agregar la imagen
+                        svgNode.destroyChildren();
+                        svgNode.add(imageNode);
+                        stage.batchDraw();
+                    };
+                    
+                    // Convertir SVG a data URL
+                    const svgBlob = new Blob([svgDataContent], { type: 'image/svg+xml' });
+                    const url = URL.createObjectURL(svgBlob);
+                    img.src = url;
                 }
             });
             
@@ -554,7 +630,7 @@ async function generateKonvaHtml(designId, outputPath) {
     }
     
     const jsonData = JSON.parse(design.content);
-    const html = await renderWithKonva(jsonData, `design-${designId}-container`);
+    const html = await renderWithKonva(jsonData, `design-${designId}-container`, designId);
     
     fs.writeFileSync(outputPath, html);
     

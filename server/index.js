@@ -14,6 +14,7 @@ const designsRoutes = require('./routes/designs');
 const uploadsRoutes = require('./routes/uploads');
 const exportRoutes = require('./routes/export');
 const figuresSeparationRoutes = require('./routes/figuresSeparation');
+const autoSvgExportRoutes = require('./routes/autoSvgExport');
 
 const app = express();
 const server = createServer(app);
@@ -60,6 +61,7 @@ app.use('/api/designs', designsRoutes);
 app.use('/api/uploads', uploadsRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/figures-separation', figuresSeparationRoutes);
+app.use('/api/auto-svg-export', autoSvgExportRoutes);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

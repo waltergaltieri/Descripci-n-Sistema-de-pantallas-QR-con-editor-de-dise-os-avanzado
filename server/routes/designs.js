@@ -2,6 +2,8 @@ const express = require('express');
 const { db } = require('../config/database');
 const { authenticateToken, requireAdmin, optionalAuth } = require('../middleware/auth');
 const konvaRenderer = require('../utils/konvaRenderer');
+const { separateFiguresFromDesign } = require('../utils/figuresSeparator');
+const autoSvgExporter = require('../utils/autoSvgExporter');
 
 const router = express.Router();
 
@@ -13,8 +15,8 @@ const router = express.Router();
  */
 async function generateAndSaveHtml(designId, content, designName) {
     try {
-        // Generar HTML usando konvaRenderer
-        const html = await konvaRenderer.renderWithKonva(content, designName);
+        // Generar HTML usando konvaRenderer, pasando el ID del diseño para obtener SVGs
+        const html = await konvaRenderer.renderWithKonva(content, designName, designId);
         
         // Actualizar el campo html_content en la base de datos
         await db().run(
@@ -249,38 +251,130 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
       );
       
       // Generar y guardar HTML automáticamente si se actualizó el contenido
-      if (syncedContent && updatedDesign.content) {
-        try {
-          const parsedContent = typeof updatedDesign.content === 'string' 
-            ? JSON.parse(updatedDesign.content) 
-            : updatedDesign.content;
-          await generateAndSaveHtml(id, parsedContent, updatedDesign.name);
-        } catch (error) {
-          console.error('Error generando HTML en actualización:', error);
-        }
+      if (syncedContent) {
+        await generateAndSaveHtml(id, syncedContent, updatedDesign.name);
       }
       
       // Emitir evento de actualización
       const io = req.app.get('io');
       io.emit('designs-updated', { action: 'updated', design: updatedDesign });
       
-      // Notificar a las pantallas que usan este diseño
-      const assignedScreens = await db().all(
-        'SELECT screen_id FROM design_assignments WHERE design_id = ?',
-        [id]
-      );
-      
-      assignedScreens.forEach(row => {
-        io.to(`screen-${row.screen_id}`).emit('design-content-updated', {
-          designId: id,
-          content: updatedDesign.content
-        });
-      });
-      
       res.json(updatedDesign);
     
   } catch (error) {
     console.error('Error al actualizar diseño:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Publicar diseño - Generar HTML y notificar pantallas
+router.post('/:id/publish', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const design = await db().get(
+      'SELECT * FROM designs WHERE id = ?',
+      [id]
+    );
+    
+    if (!design) {
+      return res.status(404).json({ error: 'Diseño no encontrado' });
+    }
+    
+    // Generar y guardar HTML
+    if (design.content) {
+      try {
+        const parsedContent = typeof design.content === 'string' 
+          ? JSON.parse(design.content) 
+          : design.content;
+        
+        // Ejecutar separación de figuras y exportación automática a SVG antes de generar HTML
+        try {
+          console.log(`🔄 Iniciando separación de figuras y exportación SVG para diseño ${id} antes de publicar...`);
+          const svgExportResult = await autoSvgExporter.separateAndExportToSVG(id, {
+            namePrefix: `${design.name} - Figura`,
+            exportPrefix: `${design.name.toLowerCase().replace(/\s+/g, '-')}-figura`
+          });
+          
+          if (svgExportResult.success && svgExportResult.statistics.successfulExports > 0) {
+            console.log(`✅ Separación y exportación SVG completada: ${svgExportResult.statistics.successfulExports} archivos SVG generados`);
+            console.log(`📁 Archivos SVG guardados en server/exports/`);
+          } else {
+            console.log(`ℹ️ No se encontraron figuras o máscaras para separar en el diseño ${id}`);
+          }
+        } catch (separationError) {
+          // La separación no es crítica para la publicación, solo registrar el error
+          console.warn(`⚠️ Error en separación de figuras y exportación SVG (no crítico):`, separationError.message);
+        }
+        
+        const htmlResult = await generateAndSaveHtml(id, parsedContent, design.name);
+        
+        if (!htmlResult.success) {
+          return res.status(500).json({ error: 'Error generando HTML: ' + htmlResult.error });
+        }
+        
+        // Actualizar timestamp de publicación
+        await db().run(
+          'UPDATE designs SET updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+          [id]
+        );
+        
+        // Obtener diseño actualizado
+        const updatedDesign = await db().get(
+          'SELECT * FROM designs WHERE id = ?',
+          [id]
+        );
+        
+        // Emitir evento de publicación
+        const io = req.app.get('io');
+        io.emit('designs-updated', { action: 'published', design: updatedDesign });
+        
+        // Actualizar HTML en todas las pantallas asignadas
+        const assignedScreens = await db().all(
+          'SELECT screen_id FROM design_assignments WHERE design_id = ?',
+          [id]
+        );
+        
+        // Obtener el HTML generado desde la base de datos (ya incluye SVGs integrados)
+        const designWithHtml = await db().get(
+          'SELECT html_content FROM designs WHERE id = ?',
+          [id]
+        );
+        
+        // Actualizar el HTML en cada pantalla usando el HTML ya generado
+        for (const row of assignedScreens) {
+          await db().run(
+            'UPDATE screens SET design_html = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            [designWithHtml.html_content, row.screen_id]
+          );
+          
+          // Notificar a la pantalla específica
+          io.to(`screen-${row.screen_id}`).emit('design-content-updated', {
+            designId: id,
+            content: designWithHtml.html_content,
+            isHtml: true
+          });
+        }
+        
+        console.log(`✅ HTML actualizado en ${assignedScreens.length} pantallas asignadas`);
+        
+        res.json({ 
+          success: true, 
+          message: 'Diseño publicado correctamente',
+          design: updatedDesign,
+          htmlLength: htmlResult.htmlLength
+        });
+        
+      } catch (error) {
+        console.error('Error en proceso de publicación:', error);
+        res.status(500).json({ error: 'Error en el proceso de publicación' });
+      }
+    } else {
+      res.status(400).json({ error: 'El diseño no tiene contenido para publicar' });
+    }
+    
+  } catch (error) {
+    console.error('Error al publicar diseño:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -514,6 +608,121 @@ router.post('/from-template', authenticateToken, requireAdmin, async (req, res) 
   } catch (error) {
     console.error('Error al crear diseño desde plantilla:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Obtener SVGs separados de un diseño
+router.get('/:id/separated-svgs', async (req, res) => {
+  try {
+    const designId = parseInt(req.params.id);
+    
+    if (isNaN(designId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de diseño inválido' 
+      });
+    }
+    
+    // Obtener el diseño con los SVGs
+    const design = await db().get(
+      'SELECT id, name, separated_svgs FROM designs WHERE id = ?',
+      [designId]
+    );
+    
+    if (!design) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Diseño no encontrado' 
+      });
+    }
+    
+    // Parsear los SVGs si existen
+    let svgs = [];
+    if (design.separated_svgs) {
+      try {
+        svgs = JSON.parse(design.separated_svgs);
+      } catch (parseError) {
+        console.error('Error parseando SVGs:', parseError);
+        svgs = [];
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      designId: design.id,
+      designName: design.name,
+      svgs: svgs,
+      count: svgs.length
+    });
+    
+  } catch (error) {
+    console.error('Error obteniendo SVGs separados:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error interno del servidor' 
+    });
+  }
+});
+
+// Obtener un SVG específico de un diseño
+router.get('/:id/separated-svgs/:svgIndex', async (req, res) => {
+  try {
+    const designId = parseInt(req.params.id);
+    const svgIndex = parseInt(req.params.svgIndex);
+    
+    if (isNaN(designId) || isNaN(svgIndex)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'ID de diseño o índice de SVG inválido' 
+      });
+    }
+    
+    // Obtener el diseño con los SVGs
+    const design = await db().get(
+      'SELECT id, name, separated_svgs FROM designs WHERE id = ?',
+      [designId]
+    );
+    
+    if (!design) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Diseño no encontrado' 
+      });
+    }
+    
+    // Parsear los SVGs
+    let svgs = [];
+    if (design.separated_svgs) {
+      try {
+        svgs = JSON.parse(design.separated_svgs);
+      } catch (parseError) {
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Error parseando SVGs guardados' 
+        });
+      }
+    }
+    
+    // Verificar que el índice existe
+    if (svgIndex < 0 || svgIndex >= svgs.length) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Índice de SVG no encontrado' 
+      });
+    }
+    
+    const svg = svgs[svgIndex];
+    
+    // Retornar el SVG como contenido XML
+    res.set('Content-Type', 'image/svg+xml');
+    res.send(svg.svgData);
+    
+  } catch (error) {
+    console.error('Error obteniendo SVG específico:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error interno del servidor' 
+    });
   }
 });
 

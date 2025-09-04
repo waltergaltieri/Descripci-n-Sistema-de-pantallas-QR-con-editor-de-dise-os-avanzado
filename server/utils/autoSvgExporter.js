@@ -54,7 +54,7 @@ function calculateOptimizedCanvasDimensions(designContent) {
 class AutoSvgExporter {
   constructor() {
     this.browser = null;
-    this.clientUrl = process.env.CLIENT_URL || 'http://localhost:3001';
+    this.clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
   }
 
   /**
@@ -299,23 +299,13 @@ class AutoSvgExporter {
       
       console.log('📋 SVG híbrido generado exitosamente');
 
-       // Crear directorio de exportación si no existe
-       const exportsDir = path.join(__dirname, '../exports');
-       if (!fs.existsSync(exportsDir)) {
-         fs.mkdirSync(exportsDir, { recursive: true });
-       }
-
-       // Guardar SVG en archivo
-       const filepath = path.join(exportsDir, filename);
-       fs.writeFileSync(filepath, svgData, 'utf8');
-       
-       console.log(`💾 SVG guardado en: ${filepath}`);
+       // En lugar de guardar en archivo, retornar los datos SVG para guardar en BD
+       console.log(`💾 SVG generado para diseño ${designId}, listo para guardar en base de datos`);
        
        return {
           success: true,
           designId: designId,
           filename: filename,
-          filepath: filepath,
           svgData: svgData
         };
       
@@ -327,6 +317,58 @@ class AutoSvgExporter {
         designId: designId,
         error: error.message
       };
+    }
+  }
+
+  /**
+   * Guarda los SVGs generados en la base de datos
+   * @param {number} originalDesignId - ID del diseño original
+   * @param {Array} svgResults - Array de resultados SVG
+   * @returns {Promise<boolean>} - Éxito de la operación
+   */
+  async saveSvgsToDatabase(originalDesignId, svgResults) {
+    try {
+      const db = await open({
+        filename: path.join(__dirname, '../database.sqlite'),
+        driver: sqlite3.Database
+      });
+
+      // Preparar datos de SVGs para guardar como JSON
+      const svgsData = svgResults
+        .filter(result => result.success)
+        .map(result => ({
+          filename: result.filename,
+          svgData: result.svgData,
+          designId: result.designId,
+          generatedAt: new Date().toISOString()
+        }));
+
+      // Usar transacción atómica para evitar estado intermedio sin SVGs
+      console.log(`🔄 Actualizando SVGs para diseño ${originalDesignId} usando transacción atómica...`);
+      await db.run('BEGIN TRANSACTION');
+      
+      try {
+        // Actualizar directamente con los nuevos SVGs (reemplaza los anteriores)
+        await db.run(
+          'UPDATE designs SET separated_svgs = ? WHERE id = ?',
+          [JSON.stringify(svgsData), originalDesignId]
+        );
+        
+        await db.run('COMMIT');
+        console.log(`💾 ${svgsData.length} SVGs actualizados exitosamente en base de datos para diseño ${originalDesignId}`);
+        console.log('✅ Transacción completada - SVGs anteriores reemplazados atómicamente');
+        
+      } catch (transactionError) {
+        await db.run('ROLLBACK');
+        throw transactionError;
+      }
+
+      await db.close();
+      return true;
+      
+    } catch (error) {
+      console.error('❌ Error guardando SVGs en base de datos:', error);
+      return false;
     }
   }
 
@@ -381,8 +423,16 @@ class AutoSvgExporter {
       // Cerrar navegador
       await this.closeBrowser();
       
-      // Paso 3: Limpiar diseños internos después de exportación exitosa
-      console.log('🧹 Paso 3: Limpiando diseños internos después de exportación...');
+      // Paso 3: Guardar SVGs en la base de datos
+      console.log('💾 Paso 3: Guardando SVGs en la base de datos...');
+      const dbSaveSuccess = await this.saveSvgsToDatabase(originalDesignId, exportResults);
+      
+      if (!dbSaveSuccess) {
+        console.warn('⚠️ Error guardando SVGs en base de datos, pero continuando con limpieza...');
+      }
+      
+      // Paso 4: Limpiar diseños internos después de exportación exitosa
+      console.log('🧹 Paso 4: Limpiando diseños internos después de exportación...');
       const cleanupResults = [];
       
       for (const exportResult of exportResults) {
@@ -419,6 +469,7 @@ class AutoSvgExporter {
       console.log(`   📋 Figuras separadas: ${separatedDesignIds.length}`);
       console.log(`   ✅ Exportaciones exitosas: ${successfulExports.length}`);
       console.log(`   ❌ Exportaciones fallidas: ${failedExports.length}`);
+      console.log(`   💾 SVGs guardados en BD: ${dbSaveSuccess ? 'Sí' : 'No'}`);
       console.log(`   🧹 Diseños internos limpiados: ${cleanedDesigns.length}`);
       
       return {
@@ -427,11 +478,13 @@ class AutoSvgExporter {
          separatedDesignIds: separatedDesignIds,
          exportResults: exportResults,
          cleanupResults: cleanupResults,
+         dbSaveSuccess: dbSaveSuccess,
          statistics: {
            totalSeparated: separatedDesignIds.length,
            successfulExports: successfulExports.length,
            failedExports: failedExports.length,
            cleanedDesigns: cleanedDesigns.length,
+           svgsSavedToDb: dbSaveSuccess,
            successRate: ((successfulExports.length / separatedDesignIds.length) * 100).toFixed(1) + '%',
            cleanupRate: separatedDesignIds.length > 0 ? ((cleanedDesigns.length / separatedDesignIds.length) * 100).toFixed(1) + '%' : '0%'
          }

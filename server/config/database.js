@@ -41,10 +41,33 @@ async function createTables() {
         description TEXT,
         content TEXT NOT NULL,
         thumbnail TEXT,
+        is_internal INTEGER DEFAULT 0,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    
+    // Migración: Agregar campo is_internal si no existe
+    try {
+      await db.exec(`ALTER TABLE designs ADD COLUMN is_internal INTEGER DEFAULT 0`);
+      console.log('✅ Campo is_internal agregado a la tabla designs');
+    } catch (error) {
+      // El campo ya existe, ignorar error
+      if (!error.message.includes('duplicate column name')) {
+        console.log('ℹ️ Campo is_internal ya existe en la tabla designs');
+      }
+    }
+
+    // Migración: Agregar campo separated_svgs para almacenar SVGs generados
+    try {
+      await db.exec(`ALTER TABLE designs ADD COLUMN separated_svgs TEXT`);
+      console.log('✅ Campo separated_svgs agregado a la tabla designs');
+    } catch (error) {
+      // El campo ya existe, ignorar error
+      if (!error.message.includes('duplicate column name')) {
+        console.log('ℹ️ Campo separated_svgs ya existe en la tabla designs');
+      }
+    }
     
     // Tabla de pantallas
     await db.exec(`
@@ -55,10 +78,41 @@ async function createTables() {
         display_order INTEGER DEFAULT 0,
         is_active INTEGER DEFAULT 1,
         refresh_interval INTEGER DEFAULT 30,
+        width INTEGER DEFAULT 1920,
+        height INTEGER DEFAULT 1080,
+        design_html TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
+
+    // Migración: Agregar campos width, height y design_html si no existen
+    try {
+      await db.exec(`ALTER TABLE screens ADD COLUMN width INTEGER DEFAULT 1920`);
+      console.log('✅ Campo width agregado a la tabla screens');
+    } catch (error) {
+      if (!error.message.includes('duplicate column name')) {
+        console.log('ℹ️ Campo width ya existe en la tabla screens');
+      }
+    }
+
+    try {
+      await db.exec(`ALTER TABLE screens ADD COLUMN height INTEGER DEFAULT 1080`);
+      console.log('✅ Campo height agregado a la tabla screens');
+    } catch (error) {
+      if (!error.message.includes('duplicate column name')) {
+        console.log('ℹ️ Campo height ya existe en la tabla screens');
+      }
+    }
+
+    try {
+      await db.exec(`ALTER TABLE screens ADD COLUMN design_html TEXT`);
+      console.log('✅ Campo design_html agregado a la tabla screens');
+    } catch (error) {
+      if (!error.message.includes('duplicate column name')) {
+        console.log('ℹ️ Campo design_html ya existe en la tabla screens');
+      }
+    }
     
     // Tabla de asignaciones diseño-pantalla
     await db.exec(`

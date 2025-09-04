@@ -9,7 +9,7 @@ const { db } = require('../config/database');
 class SeparateShapesExporter {
   constructor() {
     this.browser = null;
-    this.clientUrl = process.env.CLIENT_URL || 'http://localhost:3001';
+    this.clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
   }
 
   /**

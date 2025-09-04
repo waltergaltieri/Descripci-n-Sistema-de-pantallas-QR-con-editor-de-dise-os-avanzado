@@ -15,7 +15,7 @@ router.get('/', optionalAuth, async (req, res) => {
           s.*,
           d.id as design_id,
           d.name as design_name,
-          d.content as design_content
+          s.design_html as design_content
         FROM screens s
         LEFT JOIN design_assignments da ON s.id = da.screen_id
         LEFT JOIN designs d ON da.design_id = d.id
@@ -29,7 +29,7 @@ router.get('/', optionalAuth, async (req, res) => {
           s.*,
           d.id as design_id,
           d.name as design_name,
-          d.content as design_content
+          s.design_html as design_content
         FROM screens s
         LEFT JOIN design_assignments da ON s.id = da.screen_id
         LEFT JOIN designs d ON da.design_id = d.id
@@ -57,7 +57,7 @@ router.get('/:id', async (req, res) => {
         s.*,
         d.id as design_id,
         d.name as design_name,
-        d.content as design_content,
+        s.design_html as design_content,
         d.updated_at as design_updated_at
       FROM screens s
       LEFT JOIN design_assignments da ON s.id = da.screen_id
@@ -225,14 +225,27 @@ router.post('/:id/assign-design', authenticateToken, requireAdmin, async (req, r
     
     // Verificar que la pantalla y el diseño existen
     const screenCheck = await db().get('SELECT id FROM screens WHERE id = ?', [id]);
-    const designCheck = await db().get('SELECT id FROM designs WHERE id = ?', [designId]);
+    const design = await db().get('SELECT * FROM designs WHERE id = ?', [designId]);
     
     if (!screenCheck) {
       return res.status(404).json({ error: 'Pantalla no encontrada' });
     }
     
-    if (!designCheck) {
+    if (!design) {
       return res.status(404).json({ error: 'Diseño no encontrado' });
+    }
+    
+    // Generar HTML del diseño usando konvaRenderer
+    const konvaRenderer = require('../utils/konvaRenderer');
+    let designHtml = null;
+    
+    try {
+      const designContent = JSON.parse(design.content);
+      designHtml = await konvaRenderer.renderWithKonva(designContent, design.name, designId);
+      console.log(`✅ HTML generado para diseño ${design.name} (${designHtml.length} caracteres)`);
+    } catch (error) {
+      console.error('Error generando HTML del diseño:', error);
+      return res.status(500).json({ error: 'Error generando HTML del diseño' });
     }
     
     // Eliminar asignación anterior si existe
@@ -244,12 +257,18 @@ router.post('/:id/assign-design', authenticateToken, requireAdmin, async (req, r
       [id, designId]
     );
     
+    // Guardar el HTML generado en la pantalla
+    await db().run(
+      'UPDATE screens SET design_html = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [designHtml, id]
+    );
+    
     // Emitir evento de actualización a la pantalla específica
     const io = req.app.get('io');
-    io.to(`screen-${id}`).emit('design-updated', { screenId: id, designId });
+    io.to(`screen-${id}`).emit('design-updated', { screenId: id, designId, html: designHtml });
     io.emit('screens-updated', { action: 'design-assigned', screenId: id, designId });
     
-    res.json({ message: 'Diseño asignado exitosamente' });
+    res.json({ message: 'Diseño asignado exitosamente', htmlGenerated: true });
     
   } catch (error) {
     console.error('Error al asignar diseño:', error);

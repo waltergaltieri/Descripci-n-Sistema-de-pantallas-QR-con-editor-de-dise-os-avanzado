@@ -1,0 +1,45 @@
+{
+  "attrs": {
+    "width": 1366,
+    "height": 768
+  },
+  "className": "Stage",
+  "children": [
+    {
+      "attrs": {},
+      "className": "Layer",
+      "children": [
+        {
+          "attrs": {
+            "x": 40.712891462888884,
+            "y": 123.09517261776088,
+            "width": 521.8096547644761,
+            "height": 521.8096547644783,
+            "rotation": 0,
+            "scaleX": 1,
+            "scaleY": 1,
+            "opacity": 1,
+            "svgId": "svg_1",
+            "isSvgElement": true
+          },
+          "className": "Group"
+        },
+        {
+          "attrs": {
+            "x": 683,
+            "y": 109.46240912190068,
+            "width": 655.9127103849137,
+            "height": 549.0751817561987,
+            "rotation": 0,
+            "scaleX": 1,
+            "scaleY": 1,
+            "opacity": 1,
+            "svgId": "svg_2",
+            "isSvgElement": true
+          },
+          "className": "Group"
+        }
+      ]
+    }
+  ]
+}
