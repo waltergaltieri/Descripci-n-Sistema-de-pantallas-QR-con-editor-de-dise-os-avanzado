@@ -320,7 +320,7 @@ export const internalEditorUtils = {
       return await Promise.race([
         polotnoStore.toDataURL({ pixelRatio }),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Thumbnail generation timeout')), 10000)
+          setTimeout(() => reject(new Error('Thumbnail generation timeout')), 600000)
         )
       ]);
     } catch (error) {
@@ -341,7 +341,7 @@ export const internalEditorUtils = {
       return await Promise.race([
         polotnoStore.toDataURL({ pixelRatio }),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('PNG export timeout')), 15000)
+          setTimeout(() => reject(new Error('PNG export timeout')), 600000)
         )
       ]);
     } catch (error) {

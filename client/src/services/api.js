@@ -3,7 +3,7 @@ import axios from 'axios';
 // Configuración base de axios
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
-  timeout: 60000, // Aumentado a 60 segundos para payloads grandes
+  timeout: 600000, // Aumentado a 10 minutos para operaciones complejas
   maxContentLength: 100 * 1024 * 1024, // 100MB
   maxBodyLength: 100 * 1024 * 1024, // 100MB
   headers: {
