@@ -94,12 +94,38 @@ const ScreenDisplay = () => {
       );
     }
 
+    // Obtener dimensiones de la pantalla
+    const screenWidth = screen.width || 1920;
+    const screenHeight = screen.height || 1080;
+
+    // Si el contenido es HTML directo (generado por Konva), renderizarlo directamente
+    if (screen.design_content.includes('<!DOCTYPE html>')) {
+      return (
+        <div 
+          className="design-renderer h-full w-full"
+          style={{
+            width: `${screenWidth}px`,
+            height: `${screenHeight}px`,
+            transform: `scale(${Math.min(window.innerWidth / screenWidth, window.innerHeight / screenHeight)})`,
+            transformOrigin: 'top left'
+          }}
+        >
+          <iframe
+            srcDoc={screen.design_content}
+            style={{
+              width: '100%',
+              height: '100%',
+              border: 'none',
+              background: 'white'
+            }}
+            title="Diseño renderizado"
+          />
+        </div>
+      );
+    }
+
     try {
       const content = JSON.parse(screen.design_content);
-      
-      // Obtener dimensiones de la pantalla
-      const screenWidth = screen.width || 1920;
-      const screenHeight = screen.height || 1080;
       
       // Nuevo formato de GrapesJS con HTML y CSS
       if (content.html && content.css) {

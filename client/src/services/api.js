@@ -71,6 +71,7 @@ export const designsService = {
   update: (id, data) => api.put(`/designs/${id}`, data),
   delete: (id) => api.delete(`/designs/${id}`),
   duplicate: (id, name) => api.post(`/designs/${id}/duplicate`, { name }),
+  publish: (id) => api.post(`/designs/${id}/publish`),
   getTemplates: () => api.get('/designs/templates/predefined'),
   createFromTemplate: (data) => api.post('/designs/from-template', data),
 };

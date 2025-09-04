@@ -8,7 +8,8 @@ import Dashboard from './components/Dashboard/Dashboard';
 import ScreensManager from './components/Screens/ScreensManager';
 import DesignsManager from './components/Designs/DesignsManager';
 import DesignEditor from './components/Designs/DesignEditor';
-
+import InternalDesignEditor from './components/InternalEditor/InternalDesignEditor';
+import HiddenInternalEditor from './components/InternalEditor/HiddenInternalEditor';
 import ScreenDisplay from './components/Screens/ScreenDisplay';
 import Layout from './components/Layout/Layout';
 
@@ -32,6 +33,12 @@ function App() {
         <Route 
           path="/screen-display/:id" 
           element={<ScreenDisplay />} 
+        />
+        
+        {/* Ruta oculta para editor interno (solo Puppeteer) */}
+        <Route 
+          path="/internal-editor/hidden" 
+          element={<HiddenInternalEditor />} 
         />
         
         {/* Rutas protegidas del panel de administración */}
@@ -86,7 +93,24 @@ function App() {
           } 
         />
         
-
+        {/* Rutas del editor interno */}
+        <Route 
+          path="/internal-designs/editor/:id" 
+          element={
+            <ProtectedRoute>
+              <InternalDesignEditor />
+            </ProtectedRoute>
+          } 
+        />
+        
+        <Route 
+          path="/internal-designs/editor" 
+          element={
+            <ProtectedRoute>
+              <InternalDesignEditor />
+            </ProtectedRoute>
+          } 
+        />
         
         {/* Ruta por defecto */}
         <Route 

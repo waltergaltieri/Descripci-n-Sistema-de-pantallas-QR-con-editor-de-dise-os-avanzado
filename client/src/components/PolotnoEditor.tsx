@@ -1105,45 +1105,17 @@ const PolotnoEditor: React.FC = observer(() => {
     //   console.error('❌ Error cargando script de investigación:', err);
     // });
 
-    // Script de diagnóstico para problemas de arrastre - Activado
-    import('../debug-canvas-drag').then(() => {
-      console.log('🔧 Script de diagnóstico de canvas cargado');
-      console.log('💡 Ejecuta debugCanvasDrag() en la consola para diagnosticar');
-      console.log('💡 Ejecuta enableDragForAllElements() para habilitar arrastre');
-      
-      // Hacer el store disponible globalmente para diagnóstico
-      (window as any).polotnoStore = polotnoStore;
-      
-      // TEMPORALMENTE DESHABILITADO: Ejecutar corrección automática de problemas de arrastre
-       // setTimeout(() => {
-       //   try {
-       //     console.log('🔧 Ejecutando corrección automática de arrastre...');
-       //     const result = fixAllCanvasDragIssues(polotnoStore as any);
-       //     if (result.fixes.fixed > 0) {
-       //       console.log(`✅ Se corrigieron ${result.fixes.fixed} elementos con problemas de arrastre`);
-       //     }
-           
-       //     // Configurar verificación periódica cada 5 segundos
-       //     const dragFixInterval = setInterval(() => {
-       //       try {
-       //         const periodicResult = fixAllCanvasDragIssues(polotnoStore as any);
-       //         if (periodicResult.fixes.fixed > 0) {
-       //           console.log(`🔄 Corrección periódica: ${periodicResult.fixes.fixed} elementos corregidos`);
-       //         }
-       //       } catch (error) {
-       //         console.warn('Error en corrección periódica:', error);
-       //       }
-       //     }, 5000);
-           
-       //     // Limpiar intervalo cuando el componente se desmonte
-       //     (window as any).dragFixInterval = dragFixInterval;
-       //   } catch (error) {
-       //     console.error('❌ Error en corrección automática:', error);
-       //   }
-       // }, 1000);
-    }).catch(err => {
-      console.error('❌ Error cargando script de diagnóstico:', err);
-    });
+    // Script de diagnóstico para problemas de arrastre - Desactivado
+    // import('../debug-canvas-drag').then(() => {
+    //   console.log('🔧 Script de diagnóstico de canvas cargado');
+    //   console.log('💡 Ejecuta debugCanvasDrag() en la consola para diagnosticar');
+    //   console.log('💡 Ejecuta enableDragForAllElements() para habilitar arrastre');
+    //   
+    //   // Hacer el store disponible globalmente para diagnóstico
+    //   (window as any).polotnoStore = polotnoStore;
+    // }).catch(err => {
+    //   console.error('❌ Error cargando script de diagnóstico:', err);
+    // });
     
     // DESACTIVAR sistemas anteriores para evitar conflictos
     // const cleanupCentering = initializeForcedCentering();
@@ -1164,7 +1136,6 @@ const PolotnoEditor: React.FC = observer(() => {
        // if (cleanupStructural) {
        //   cleanupStructural();
        // }
-      clearInterval(interval);
       // Limpiar también el intervalo de corrección de arrastre
       if ((window as any).dragFixInterval) {
         clearInterval((window as any).dragFixInterval);

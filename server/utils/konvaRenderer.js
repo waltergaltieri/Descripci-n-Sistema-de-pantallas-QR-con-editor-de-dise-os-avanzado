@@ -332,6 +332,16 @@ async function renderWithKonva(designData, designName, designId = null) {
     
     // Convertir el JSON de Polotno al formato que espera Konva.Node.create()
     const firstPage = designData.pages[0];
+    
+    // Obtener el color de fondo del diseño
+    const backgroundValue = firstPage.background || '#ffffff';
+    
+    // Determinar si es una imagen o un color
+    const isImageBackground = backgroundValue.startsWith('http');
+    const canvasBackgroundStyle = isImageBackground 
+        ? `url('${backgroundValue}') center/cover no-repeat` 
+        : backgroundValue;
+    
     const konvaStage = {
         attrs: {
             width: designData.width,
@@ -509,7 +519,7 @@ async function renderWithKonva(designData, designName, designId = null) {
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         #canvas-container {
-            background: white;
+            background: ${canvasBackgroundStyle};
             border: 1px solid #ddd;
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
