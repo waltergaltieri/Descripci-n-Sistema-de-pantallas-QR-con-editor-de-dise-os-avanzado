@@ -10,19 +10,21 @@ import { Button, Card, HTMLSelect, NumericInput, Popover, Position, Menu, MenuIt
 import { observer } from 'mobx-react-lite';
 import { reaction } from 'mobx';
 import { polotnoStore } from '../store/editorStore';
+import { PolotnoAnimationsPanel } from './PolotnoAnimationsPanel';
 // import '../utils/forcePanelWidth'; // Desactivado temporalmente para evitar conflictos
 import { fixAllCanvasDragIssues } from '../utils/fixCanvasDrag';
-import { initializeForcedCentering } from '../utils/forceCenterCanvas';
-import { setupEmergencyCentering } from '../utils/emergencyCentering';
-import { setupAbsoluteCentering } from '../utils/absoluteCentering';
+// import { initializeForcedCentering } from '../utils/forceCenterCanvas';
+// import { setupEmergencyCentering } from '../utils/emergencyCentering';
+// import { setupAbsoluteCentering } from '../utils/absoluteCentering';
 // import { setupStructuralCenteringFix } from '../utils/structuralCenteringFix';
-import { debugWorkspaceCentering, monitorWorkspaceChanges, applyManualWorkspaceCentering } from '../debug-workspace-centering';
+// import { debugWorkspaceCentering, monitorWorkspaceChanges, applyManualWorkspaceCentering } from '../debug-workspace-centering';
 import '../test-panel-toggle'; // Script de prueba para depuración
 import '../test-specific-classes';
 import '../ultimate-centering-test'; // Script de testing definitivo
 import '../force-centering-javascript'; // Forzado de centrado mediante JavaScript
 import '../direct-centering-javascript'; // Solución JavaScript directa basada en inspección
 import '../hide-templates-tab'; // Script para ocultar la pestaña de Templates
+import '../debug-polotno-stage'; // Debug para acceso al stage de Konva
 // import '../fix-image-resize'; // Corrección para el redimensionamiento de imágenes - DESACTIVADO: causa errores de MobX State Tree
 // import '../image-resize-patch'; // Parche adicional para redimensionamiento de imágenes - DESACTIVADO: causa errores de MobX State Tree
 // import '../debug-contextual-controls'; // Diagnóstico de controles contextuales
@@ -930,19 +932,19 @@ const ColorPickerContextMenu = ({ store, onClose }: { store: any, onClose: () =>
   );
 };
 
-// Componente personalizado para controles de acción en el toolbar - OCULTO POR SOLICITUD DEL USUARIO
+// Componente personalizado para controles de acción en el toolbar - REACTIVADO
 const ActionControls = observer(({ store }: { store: any }) => {
-  // const [showAnimationsPanel, setShowAnimationsPanel] = useState(false);
+  const [showAnimationsPanel, setShowAnimationsPanel] = useState(false);
   
   // Verificar si hay elementos seleccionados usando useMemo para evitar re-renders
-  // const hasSelection = useMemo(() => store.selectedElements.length > 0, [store.selectedElements.length]);
+  const hasSelection = useMemo(() => store.selectedElements.length > 0, [store.selectedElements.length]);
   
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      {/* Botón de animaciones - OCULTO POR SOLICITUD DEL USUARIO */}
-      {/* {hasSelection && (
+      {/* Botón de animaciones - REACTIVADO */}
+      {hasSelection && (
         <Popover
-          content={<AnimationsPanel store={store} onClose={() => setShowAnimationsPanel(false)} />}
+          content={<PolotnoAnimationsPanel store={store} onClose={() => setShowAnimationsPanel(false)} />}
           position={Position.BOTTOM_LEFT}
           isOpen={showAnimationsPanel}
           onClose={() => setShowAnimationsPanel(false)}
@@ -952,10 +954,10 @@ const ActionControls = observer(({ store }: { store: any }) => {
             small
             intent={showAnimationsPanel ? 'primary' : 'none'}
             onClick={() => setShowAnimationsPanel(!showAnimationsPanel)}
-            title="Agregar animaciones al elemento seleccionado"
+            title="Agregar animaciones al elemento seleccionado (siempre en bucle)"
           />
         </Popover>
-      )} */}
+      )}
     </div>
   );
 });
@@ -1079,6 +1081,8 @@ const PolotnoEditor: React.FC = observer(() => {
     
     updateSelectionClass();
   }, [hasSelection]);
+
+  // Las animaciones solo se ven en el HTML exportado, no en el editor
 
   // Efecto para arreglar el div problemático de herramientas de texto
   useEffect(() => {

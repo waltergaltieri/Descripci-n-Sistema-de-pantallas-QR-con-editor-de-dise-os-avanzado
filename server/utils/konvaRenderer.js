@@ -2,6 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const { open } = require('sqlite');
 const sqlite3 = require('sqlite3');
+const { 
+  generateAnimationKeyframes, 
+  generateContinuousAnimations,
+  extractAnimations, 
+  generateAnimationCSS
+} = require('./animationsEngine');
 
 /**
  * Obtiene los SVGs separados de un diseño desde la base de datos
@@ -446,6 +452,11 @@ function calculateUniversalVerticalCorrection(fontSize, fontFamily = 'Arial') {
 async function renderWithKonva(designData, designName, designId = null) {
     // Obtener SVGs separados si se proporciona el ID del diseño
     const separatedSvgs = designId ? await getSeparatedSvgs(designId) : [];
+    
+    // Extraer animaciones del diseño
+    const animations = extractAnimations(designData);
+    console.log('🎬 Animaciones extraídas:', animations.length);
+    
     // Extraer fuentes únicas del diseño
     const fontData = extractUniqueFonts(designData);
     console.log('🔤 Fuentes extraídas:', fontData);
@@ -517,7 +528,8 @@ async function renderWithKonva(designData, designName, designId = null) {
                                     scaleY: child.scaleY || 1,
                                     opacity: child.opacity !== undefined ? child.opacity : 1,
                                     svgId: `svg_${currentSvgIndex}`,
-                                    isSvgElement: true
+                                    isSvgElement: true,
+                                    elementId: child.id // Agregar ID para animaciones
                                 },
                                 className: 'Group'
                             };
@@ -569,7 +581,8 @@ async function renderWithKonva(designData, designName, designId = null) {
                                 rotation: child.rotation || 0,
                                 scaleX: child.scaleX || 1,
                                 scaleY: child.scaleY || 1,
-                                opacity: child.opacity !== undefined ? child.opacity : 1
+                                opacity: child.opacity !== undefined ? child.opacity : 1,
+                                elementId: child.id // Agregar ID para animaciones
                             },
                             className: 'Text'
                         };
@@ -584,7 +597,8 @@ async function renderWithKonva(designData, designName, designId = null) {
                                 scaleX: child.scaleX || 1,
                                 scaleY: child.scaleY || 1,
                                 opacity: child.opacity !== undefined ? child.opacity : 1,
-                                src: child.src
+                                src: child.src,
+                                elementId: child.id // Agregar ID para animaciones
                             },
                             className: 'Image'
                         };
@@ -634,9 +648,15 @@ async function renderWithKonva(designData, designName, designId = null) {
     <title>Diseño ${designName} - Konva</title>
     ${googleFontsLinks}
     <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+    <script src="/konva-animations.js"></script>
     <style>
         ${customFontFaces}
         ${fallbackFontClasses}
+        
+        /* Keyframes de animaciones */
+        ${generateAnimationKeyframes()}
+        ${generateContinuousAnimations()}
+        
         body {
             margin: 0;
             padding: 0;
@@ -710,10 +730,16 @@ async function renderWithKonva(designData, designName, designId = null) {
         console.log('Creando stage con JSON:', konvaJson);
         console.log('SVGs disponibles:', Object.keys(svgData).length);
         
+        // Declarar stage globalmente para que esté disponible en animaciones
+        var stage;
+        
         try {
             // Crear el stage usando Konva.Node.create()
-            const stage = Konva.Node.create(konvaJson, 'canvas-container');
+            stage = Konva.Node.create(konvaJson, 'canvas-container');
             console.log('Stage creado exitosamente:', stage);
+            
+            // Hacer el stage accesible globalmente
+            window.konvaStage = stage;
             
             // Manejar la carga de imágenes si es necesario
             const images = stage.find('Image');
@@ -729,7 +755,7 @@ async function renderWithKonva(designData, designName, designId = null) {
                 }
             });
             
-            // Aplicar propiedades de fuente a elementos de texto
+            // Aplicar propiedades de fuente a elementos de texto y agregar data-element-id
             const textNodes = stage.find('Text');
             console.log('📝 Elementos de texto encontrados:', textNodes.length);
             
@@ -737,6 +763,7 @@ async function renderWithKonva(designData, designName, designId = null) {
                 const fontWeight = textNode.getAttr('fontWeight');
                 const fontStyle = textNode.getAttr('fontStyle');
                 const fontFamily = textNode.getAttr('fontFamily');
+                const elementId = textNode.getAttr('elementId');
                 
                 console.log('🔤 Texto:', textNode.text().substring(0, 20) + '...', 
                            'Familia:', fontFamily, 
@@ -761,6 +788,19 @@ async function renderWithKonva(designData, designName, designId = null) {
                 // Aplicar el estilo completo o normal si está vacío
                 const finalStyle = fullFontStyle.trim() || 'normal';
                 textNode.fontStyle(finalStyle);
+                
+                // Agregar data-element-id al elemento DOM
+                if (elementId) {
+                    const domElement = textNode.getStage().container().querySelector('canvas').parentElement;
+                    if (domElement) {
+                        textNode.on('draw', function() {
+                            const canvas = textNode.getStage().container().querySelector('canvas');
+                            if (canvas && !canvas.hasAttribute('data-element-id-' + elementId)) {
+                                canvas.setAttribute('data-element-id-' + elementId, 'true');
+                            }
+                        });
+                    }
+                }
                 
                 console.log('🎨 Estilo aplicado:', finalStyle);
             });
@@ -812,6 +852,20 @@ async function renderWithKonva(designData, designName, designId = null) {
             document.getElementById('canvas-container').innerHTML = 
                 '<p style="color: red;">Error: ' + error.message + '</p>';
         }
+        
+        // Aplicar animaciones después de que el stage esté listo
+        setTimeout(function() {
+          if (typeof window.applyKonvaAnimations === 'function' && window.konvaStage) {
+            const animationsData = ${JSON.stringify(animations)};
+            console.log('🎬 Aplicando animaciones al stage...');
+            window.applyKonvaAnimations(window.konvaStage, animationsData);
+          } else {
+            console.error('❌ No se puede aplicar animaciones:', {
+              funcionDisponible: typeof window.applyKonvaAnimations === 'function',
+              stageDisponible: !!window.konvaStage
+            });
+          }
+        }, 500);
     </script>
 </body>
 </html>`;

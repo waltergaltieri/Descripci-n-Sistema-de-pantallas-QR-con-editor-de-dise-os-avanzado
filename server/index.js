@@ -43,7 +43,35 @@ const limiter = rateLimit({
 });
 
 // Middleware
-app.use(helmet());
+// Configurar Helmet con CSP personalizado para permitir Konva y scripts inline
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'", // Necesario para scripts inline de Konva
+        "https://unpkg.com", // Para cargar Konva desde CDN
+      ],
+      styleSrc: [
+        "'self'",
+        "'unsafe-inline'", // Para estilos inline
+        "https://fonts.googleapis.com"
+      ],
+      fontSrc: [
+        "'self'",
+        "https://fonts.gstatic.com"
+      ],
+      imgSrc: [
+        "'self'",
+        "data:",
+        "blob:",
+        "https:"
+      ],
+      connectSrc: ["'self'"]
+    }
+  }
+}));
 app.use(limiter);
 app.use(cors());
 app.use(express.json({ limit: '100mb', parameterLimit: 50000 }));
@@ -53,6 +81,9 @@ app.use(express.urlencoded({ extended: true, limit: '100mb', parameterLimit: 500
 
 // Static files for uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Static files for public assets (animations, etc.)
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Routes
 app.use('/api/auth', authRoutes);

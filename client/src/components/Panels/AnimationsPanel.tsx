@@ -93,11 +93,13 @@ const AnimationItem: React.FC<AnimationItemProps> = ({
       {isExpanded && (
         <div className="animation-controls">
           <div className="control-group">
-            <label className="control-label">Tipo</label>
+            <label className="control-label" htmlFor="animation-type">Tipo</label>
             <select
+              id="animation-type"
               value={animation.type}
               onChange={(e) => updateAnimation({ type: e.target.value as AnimationType })}
               className="select-input"
+              aria-label="Tipo de animación"
             >
               {ANIMATION_TYPES.map(type => (
                 <option key={type.value} value={type.value}>
@@ -109,8 +111,9 @@ const AnimationItem: React.FC<AnimationItemProps> = ({
           
           <div className="control-row">
             <div className="control-group">
-              <label className="control-label">Duración (ms)</label>
+              <label className="control-label" htmlFor="animation-duration">Duración (ms)</label>
               <input
+                id="animation-duration"
                 type="number"
                 min="100"
                 max="10000"
@@ -118,12 +121,14 @@ const AnimationItem: React.FC<AnimationItemProps> = ({
                 value={animation.duration}
                 onChange={(e) => updateAnimation({ duration: parseInt(e.target.value) || 1000 })}
                 className="number-input"
+                aria-label="Duración de la animación en milisegundos"
               />
             </div>
             
             <div className="control-group">
-              <label className="control-label">Retraso (ms)</label>
+              <label className="control-label" htmlFor="animation-delay">Retraso (ms)</label>
               <input
+                id="animation-delay"
                 type="number"
                 min="0"
                 max="10000"
@@ -131,16 +136,19 @@ const AnimationItem: React.FC<AnimationItemProps> = ({
                 value={animation.delay}
                 onChange={(e) => updateAnimation({ delay: parseInt(e.target.value) || 0 })}
                 className="number-input"
+                aria-label="Retraso antes de iniciar la animación en milisegundos"
               />
             </div>
           </div>
           
           <div className="control-group">
-            <label className="control-label">Suavizado</label>
+            <label className="control-label" htmlFor="animation-easing">Suavizado</label>
             <select
+              id="animation-easing"
               value={animation.easing}
               onChange={(e) => updateAnimation({ easing: e.target.value as EasingType })}
               className="select-input"
+              aria-label="Tipo de suavizado"
             >
               {EASING_TYPES.map(easing => (
                 <option key={easing.value} value={easing.value}>
@@ -152,8 +160,9 @@ const AnimationItem: React.FC<AnimationItemProps> = ({
           
           <div className="control-row">
             <div className="control-group">
-              <label className="control-label">Repeticiones</label>
+              <label className="control-label" htmlFor="animation-repeat">Repeticiones</label>
               <input
+                id="animation-repeat"
                 type="number"
                 min="1"
                 max="100"
@@ -164,15 +173,18 @@ const AnimationItem: React.FC<AnimationItemProps> = ({
                 }}
                 className="number-input"
                 placeholder="0 = infinito"
+                aria-label="Número de repeticiones de la animación"
               />
             </div>
             
             <div className="control-group">
-              <label className="control-label">Dirección</label>
+              <label className="control-label" htmlFor="animation-direction">Dirección</label>
               <select
+                id="animation-direction"
                 value={animation.direction}
                 onChange={(e) => updateAnimation({ direction: e.target.value as any })}
                 className="select-input"
+                aria-label="Dirección de la animación"
               >
                 <option value="normal">Normal</option>
                 <option value="reverse">Reversa</option>
@@ -196,14 +208,16 @@ const AnimationItem: React.FC<AnimationItemProps> = ({
           {/* Controles específicos para marquee */}
           {animation.type === 'marquee' && (
             <div className="control-group">
-              <label className="control-label">Velocidad (px/s)</label>
+              <label className="control-label" htmlFor="animation-speed">Velocidad (px/s)</label>
               <input
+                id="animation-speed"
                 type="number"
                 min="10"
                 max="500"
                 value={animation.speed || 50}
                 onChange={(e) => updateAnimation({ speed: parseInt(e.target.value) || 50 })}
                 className="number-input"
+                aria-label="Velocidad de la marquesina en píxeles por segundo"
               />
             </div>
           )}
@@ -211,8 +225,9 @@ const AnimationItem: React.FC<AnimationItemProps> = ({
           {/* Controles específicos para motionPath */}
           {animation.type === 'motionPath' && (
             <div className="control-group">
-              <label className="control-label">Trayectoria SVG</label>
+              <label className="control-label" htmlFor="animation-path">Trayectoria SVG</label>
               <textarea
+                id="animation-path"
                 value={animation.path ? JSON.stringify(animation.path) : ''}
                 onChange={(e) => {
                    try {
@@ -225,6 +240,7 @@ const AnimationItem: React.FC<AnimationItemProps> = ({
                 className="textarea-input"
                 placeholder='[{"x": 0, "y": 0}, {"x": 100, "y": 100}]'
                 rows={3}
+                aria-label="Trayectoria de movimiento en formato JSON"
               />
             </div>
           )}

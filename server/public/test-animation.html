@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Animaciones</title>
+    <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+    <script src="/konva-animations.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        .info {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        #container {
+            background: white;
+            border: 2px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h1>🧪 Test de Animaciones Konva</h1>
+        <p>Este es un test simple para verificar que las animaciones funcionan.</p>
+        <p><strong>Deberías ver:</strong> Un texto rojo que pulsa (crece y se encoge) en bucle infinito.</p>
+        <p><strong>Consola:</strong> Abre la consola (F12) para ver los mensajes de debug.</p>
+    </div>
+    
+    <div id="container"></div>
+    
+    <script>
+        console.log('🎬 Iniciando test de animaciones...');
+        
+        // Crear stage de Konva
+        const stage = new Konva.Stage({
+            container: 'container',
+            width: 800,
+            height: 400
+        });
+        
+        const layer = new Konva.Layer();
+        stage.add(layer);
+        
+        // Crear un texto de prueba
+        const text = new Konva.Text({
+            x: 300,
+            y: 150,
+            text: 'PRUEBA',
+            fontSize: 80,
+            fontFamily: 'Arial',
+            fill: 'red',
+            elementId: 'test-element-123' // ID para la animación
+        });
+        
+        layer.add(text);
+        layer.draw();
+        
+        console.log('✅ Stage y texto creados');
+        console.log('📍 Texto:', { x: text.x(), y: text.y(), text: text.text() });
+        
+        // Datos de animación de prueba
+        const animationsData = [
+            {
+                elementId: 'test-element-123',
+                animation: {
+                    type: 'pulse',
+                    duration: 2000,
+                    delay: 0,
+                    loop: true
+                }
+            }
+        ];
+        
+        console.log('🎬 Datos de animación:', animationsData);
+        
+        // Aplicar animaciones después de 1 segundo
+        setTimeout(() => {
+            console.log('⏰ Aplicando animaciones...');
+            
+            if (typeof window.applyKonvaAnimations === 'function') {
+                console.log('✅ Función applyKonvaAnimations encontrada');
+                window.applyKonvaAnimations(stage, animationsData);
+            } else {
+                console.error('❌ Función applyKonvaAnimations NO encontrada');
+                console.log('window.applyKonvaAnimations:', window.applyKonvaAnimations);
+            }
+        }, 1000);
+        
+        console.log('✅ Test configurado. Esperando 1 segundo para aplicar animaciones...');
+    </script>
+</body>
+</html>
