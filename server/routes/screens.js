@@ -282,8 +282,12 @@ router.delete('/:id/remove-design', authenticateToken, requireAdmin, async (req,
     const { id } = req.params;
     
     
-      const result = await db().run(
-        'DELETE FROM design_assignments WHERE screen_id = ? RETURNING *',
+      await db().run(
+        'DELETE FROM design_assignments WHERE screen_id = ?',
+        [id]
+      );
+      await db().run(
+        'UPDATE screens SET design_html = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
         [id]
       );
       

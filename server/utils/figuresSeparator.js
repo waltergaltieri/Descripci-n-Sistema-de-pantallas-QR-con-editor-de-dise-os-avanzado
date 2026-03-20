@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
-const { open } = require('sqlite');
+const { db } = require('../config/database');
 
 /**
  * Identifica si un elemento es una figura/forma geométrica
@@ -291,13 +290,10 @@ async function separateDesignFigures(designId, options = {}) {
 
   try {
     // Conectar a la base de datos
-    const db = await open({
-      filename: path.join(__dirname, '../database.sqlite'),
-      driver: sqlite3.Database
-    });
+    const database = db();
 
     // Obtener el diseño original
-    const originalDesign = await db.get(
+    const originalDesign = await database.get(
       'SELECT id, name, content FROM designs WHERE id = ?',
       [designId]
     );
@@ -374,7 +370,7 @@ async function separateDesignFigures(designId, options = {}) {
       }
       
       // Insertar nuevo diseño en la base de datos
-      const result = await db.run(
+      const result = await database.run(
         `INSERT INTO designs (name, description, content, thumbnail, created_at, updated_at) 
          VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
         [
@@ -390,7 +386,6 @@ async function separateDesignFigures(designId, options = {}) {
       console.log(`✅ Creado: ${designName} (ID: ${result.lastID})`);
     }
     
-    await db.close();
     
     console.log(`\n🎯 Separación completada. Se crearon ${createdDesignIds.length} nuevos diseños.`);
     console.log(`IDs de los nuevos diseños: ${createdDesignIds.join(', ')}`);
@@ -458,13 +453,10 @@ async function separateDesignFiguresInternal(designId, options = {}) {
     console.log(`📋 Configuración: namePrefix="${namePrefix}", optimizeCanvas=${optimizeCanvas}, useInternalEditor=${useInternalEditor}`);
     
     // Conectar a la base de datos
-    const db = await open({
-      filename: path.join(__dirname, '../database.sqlite'),
-      driver: sqlite3.Database
-    });
+    const database = db();
 
     // Obtener el diseño original
-    const originalDesign = await db.get(
+    const originalDesign = await database.get(
       'SELECT id, name, content FROM designs WHERE id = ?',
       [designId]
     );
@@ -550,7 +542,7 @@ async function separateDesignFiguresInternal(designId, options = {}) {
       newContent.metadata.processedAt = new Date().toISOString();
       
       // Insertar nuevo diseño en la base de datos (marcado como interno)
-      const result = await db.run(
+      const result = await database.run(
         `INSERT INTO designs (name, description, content, thumbnail, is_internal, created_at, updated_at) 
          VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
         [
@@ -567,7 +559,6 @@ async function separateDesignFiguresInternal(designId, options = {}) {
       console.log(`✅ INTERNO: Creado ${designName} (ID: ${result.lastID})`);
     }
     
-    await db.close();
     
     console.log(`\n🎯 Separación INTERNA completada. Se crearon ${createdDesignIds.length} nuevos diseños.`);
     console.log(`📋 IDs de los nuevos diseños (MODO INTERNO): ${createdDesignIds.join(', ')}`);

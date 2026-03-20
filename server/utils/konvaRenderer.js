@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { open } = require('sqlite');
-const sqlite3 = require('sqlite3');
+const { db } = require('../config/database');
 const { 
   generateAnimationKeyframes, 
   generateContinuousAnimations,
@@ -16,18 +15,11 @@ const {
  */
 async function getSeparatedSvgs(designId) {
     try {
-        const db = await open({
-            filename: path.join(__dirname, '../database.sqlite'),
-            driver: sqlite3.Database
-        });
-        
-        const design = await db.get(
+        const design = await db().get(
             'SELECT separated_svgs FROM designs WHERE id = ?',
             [designId]
         );
-        
-        await db.close();
-        
+
         if (!design || !design.separated_svgs) {
             return [];
         }

@@ -1,9 +1,8 @@
 const { separateFiguresFromDesignInternal, calculateElementBounds } = require('./figuresSeparator');
-const { open } = require('sqlite');
-const sqlite3 = require('sqlite3');
 const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
+const { db } = require('../config/database');
 
 /**
  * Calcula las dimensiones optimizadas del canvas para todos los elementos de una página
@@ -121,12 +120,7 @@ class AutoSvgExporter {
       console.log('✅ Polotno cargado correctamente');
       
       // Obtener el diseño de la base de datos
-      const db = await open({
-        filename: path.join(__dirname, '../database.sqlite'),
-        driver: sqlite3.Database
-      });
-
-      const design = await db.get(
+      const design = await db().get(
         'SELECT id, name, content FROM designs WHERE id = ?',
         [designId]
       );
@@ -136,7 +130,6 @@ class AutoSvgExporter {
       }
 
       const designContent = JSON.parse(design.content);
-      await db.close();
 
       // Preparar para exportación híbrida (nativa + fallback)
 
@@ -328,11 +321,6 @@ class AutoSvgExporter {
    */
   async saveSvgsToDatabase(originalDesignId, svgResults) {
     try {
-      const db = await open({
-        filename: path.join(__dirname, '../database.sqlite'),
-        driver: sqlite3.Database
-      });
-
       // Preparar datos de SVGs para guardar como JSON
       const svgsData = svgResults
         .filter(result => result.success)
@@ -345,25 +333,24 @@ class AutoSvgExporter {
 
       // Usar transacción atómica para evitar estado intermedio sin SVGs
       console.log(`🔄 Actualizando SVGs para diseño ${originalDesignId} usando transacción atómica...`);
-      await db.run('BEGIN TRANSACTION');
+      await db().exec('BEGIN TRANSACTION');
       
       try {
         // Actualizar directamente con los nuevos SVGs (reemplaza los anteriores)
-        await db.run(
+        await db().run(
           'UPDATE designs SET separated_svgs = ? WHERE id = ?',
           [JSON.stringify(svgsData), originalDesignId]
         );
         
-        await db.run('COMMIT');
+        await db().exec('COMMIT');
         console.log(`💾 ${svgsData.length} SVGs actualizados exitosamente en base de datos para diseño ${originalDesignId}`);
         console.log('✅ Transacción completada - SVGs anteriores reemplazados atómicamente');
         
       } catch (transactionError) {
-        await db.run('ROLLBACK');
+        await db().exec('ROLLBACK');
         throw transactionError;
       }
 
-      await db.close();
       return true;
       
     } catch (error) {
@@ -439,13 +426,7 @@ class AutoSvgExporter {
         if (exportResult.success) {
           try {
             // Eliminar el diseño interno de la base de datos
-            const db = await open({
-              filename: path.join(__dirname, '../database.sqlite'),
-              driver: sqlite3.Database
-            });
-            
-            await db.run('DELETE FROM designs WHERE id = ? AND is_internal = 1', [exportResult.designId]);
-            await db.close();
+            await db().run('DELETE FROM designs WHERE id = ? AND is_internal = 1', [exportResult.designId]);
             
             console.log(`🗑️ Diseño interno ${exportResult.designId} eliminado después de exportación exitosa`);
             cleanupResults.push({ designId: exportResult.designId, cleaned: true });

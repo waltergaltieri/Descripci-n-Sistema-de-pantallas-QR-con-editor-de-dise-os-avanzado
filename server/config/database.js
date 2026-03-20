@@ -1,28 +1,53 @@
+const path = require('node:path');
+const bcrypt = require('bcryptjs');
 const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
-const bcrypt = require('bcryptjs');
-const path = require('path');
+const { Pool } = require('pg');
 
-// Configuración de la conexión a SQLite
-let db;
+const { getDatabaseProviderConfig } = require('./databaseProviderConfig');
+const { getPostgresSchemaStatements } = require('./postgresSchema');
+const {
+  createPostgresAdapter,
+  runWithDatabaseContext: runWithPostgresDatabaseContext
+} = require('./postgresAdapter');
 
-async function initializeDatabase() {
-  db = await open({
-    filename: path.join(__dirname, '..', 'database.sqlite'),
+let databaseConnection = null;
+let databaseProviderConfig = null;
+let databaseContextRunner = async (callback) => callback();
+
+async function initializeDatabaseConnection() {
+  databaseProviderConfig = getDatabaseProviderConfig();
+
+  if (databaseProviderConfig.provider === 'postgres') {
+    if (!databaseProviderConfig.databaseUrl) {
+      throw new Error('DATABASE_URL o SUPABASE_DB_URL es requerido para Postgres/Supabase');
+    }
+
+    const pool = new Pool({
+      connectionString: databaseProviderConfig.databaseUrl,
+      ssl: databaseProviderConfig.ssl ? { rejectUnauthorized: false } : false
+    });
+
+    databaseConnection = createPostgresAdapter({ pool });
+    databaseContextRunner = runWithPostgresDatabaseContext;
+    await databaseConnection.query('SELECT 1');
+    return databaseConnection;
+  }
+
+  databaseConnection = await open({
+    filename: databaseProviderConfig.sqlitePath,
     driver: sqlite3.Database
   });
-  
-  // Habilitar foreign keys
-  await db.exec('PRAGMA foreign_keys = ON');
-  
-  return db;
+
+  await databaseConnection.exec('PRAGMA foreign_keys = ON');
+  databaseContextRunner = async (callback) => callback();
+
+  return databaseConnection;
 }
 
-// Función para crear las tablas necesarias
-async function createTables() {
+async function ensureSqliteTables() {
   try {
-    // Tabla de usuarios (admin)
-    await db.exec(`
+    await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE NOT NULL,
@@ -32,9 +57,8 @@ async function createTables() {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    
-    // Tabla de diseños
-    await db.exec(`
+
+    await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS designs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -42,35 +66,41 @@ async function createTables() {
         content TEXT NOT NULL,
         thumbnail TEXT,
         is_internal INTEGER DEFAULT 0,
+        html_content TEXT,
+        separated_svgs TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    
-    // Migración: Agregar campo is_internal si no existe
+
     try {
-      await db.exec(`ALTER TABLE designs ADD COLUMN is_internal INTEGER DEFAULT 0`);
-      console.log('✅ Campo is_internal agregado a la tabla designs');
+      await databaseConnection.exec(`ALTER TABLE designs ADD COLUMN is_internal INTEGER DEFAULT 0`);
+      console.log('Campo is_internal agregado a la tabla designs');
     } catch (error) {
-      // El campo ya existe, ignorar error
       if (!error.message.includes('duplicate column name')) {
-        console.log('ℹ️ Campo is_internal ya existe en la tabla designs');
+        throw error;
       }
     }
 
-    // Migración: Agregar campo separated_svgs para almacenar SVGs generados
     try {
-      await db.exec(`ALTER TABLE designs ADD COLUMN separated_svgs TEXT`);
-      console.log('✅ Campo separated_svgs agregado a la tabla designs');
+      await databaseConnection.exec(`ALTER TABLE designs ADD COLUMN html_content TEXT`);
+      console.log('Campo html_content agregado a la tabla designs');
     } catch (error) {
-      // El campo ya existe, ignorar error
       if (!error.message.includes('duplicate column name')) {
-        console.log('ℹ️ Campo separated_svgs ya existe en la tabla designs');
+        throw error;
       }
     }
-    
-    // Tabla de pantallas
-    await db.exec(`
+
+    try {
+      await databaseConnection.exec(`ALTER TABLE designs ADD COLUMN separated_svgs TEXT`);
+      console.log('Campo separated_svgs agregado a la tabla designs');
+    } catch (error) {
+      if (!error.message.includes('duplicate column name')) {
+        throw error;
+      }
+    }
+
+    await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS screens (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -86,36 +116,22 @@ async function createTables() {
       )
     `);
 
-    // Migración: Agregar campos width, height y design_html si no existen
-    try {
-      await db.exec(`ALTER TABLE screens ADD COLUMN width INTEGER DEFAULT 1920`);
-      console.log('✅ Campo width agregado a la tabla screens');
-    } catch (error) {
-      if (!error.message.includes('duplicate column name')) {
-        console.log('ℹ️ Campo width ya existe en la tabla screens');
+    for (const alterStatement of [
+      `ALTER TABLE screens ADD COLUMN width INTEGER DEFAULT 1920`,
+      `ALTER TABLE screens ADD COLUMN height INTEGER DEFAULT 1080`,
+      `ALTER TABLE screens ADD COLUMN design_html TEXT`
+    ]) {
+      try {
+        await databaseConnection.exec(alterStatement);
+        console.log(`Migracion aplicada: ${alterStatement}`);
+      } catch (error) {
+        if (!error.message.includes('duplicate column name')) {
+          throw error;
+        }
       }
     }
 
-    try {
-      await db.exec(`ALTER TABLE screens ADD COLUMN height INTEGER DEFAULT 1080`);
-      console.log('✅ Campo height agregado a la tabla screens');
-    } catch (error) {
-      if (!error.message.includes('duplicate column name')) {
-        console.log('ℹ️ Campo height ya existe en la tabla screens');
-      }
-    }
-
-    try {
-      await db.exec(`ALTER TABLE screens ADD COLUMN design_html TEXT`);
-      console.log('✅ Campo design_html agregado a la tabla screens');
-    } catch (error) {
-      if (!error.message.includes('duplicate column name')) {
-        console.log('ℹ️ Campo design_html ya existe en la tabla screens');
-      }
-    }
-    
-    // Tabla de asignaciones diseño-pantalla
-    await db.exec(`
+    await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS design_assignments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         screen_id INTEGER REFERENCES screens(id) ON DELETE CASCADE,
@@ -124,9 +140,8 @@ async function createTables() {
         UNIQUE(screen_id)
       )
     `);
-    
-    // Tabla de archivos subidos
-    await db.exec(`
+
+    await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS uploads (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         filename TEXT NOT NULL,
@@ -139,8 +154,7 @@ async function createTables() {
       )
     `);
 
-    // Perfil del negocio (una instalación por local, preparado para futuro SaaS)
-    await db.exec(`
+    await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS business_profile (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL DEFAULT 'Mi Local',
@@ -154,8 +168,7 @@ async function createTables() {
       )
     `);
 
-    // Categorías de productos del módulo de cartelería
-    await db.exec(`
+    await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE,
@@ -167,8 +180,7 @@ async function createTables() {
       )
     `);
 
-    // Productos del catálogo
-    await db.exec(`
+    await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -183,8 +195,7 @@ async function createTables() {
       )
     `);
 
-    // Galería adicional de imágenes por producto
-    await db.exec(`
+    await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS product_images (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -195,8 +206,35 @@ async function createTables() {
       )
     `);
 
-    // Promociones aplicadas a productos
-    await db.exec(`
+    await databaseConnection.exec(`
+      CREATE TABLE IF NOT EXISTS combos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        conditions_text TEXT,
+        combo_price_cents INTEGER NOT NULL DEFAULT 0 CHECK(combo_price_cents >= 0),
+        currency_code TEXT NOT NULL DEFAULT 'ARS',
+        status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'paused', 'expired')),
+        image_upload_id INTEGER REFERENCES uploads(id) ON DELETE SET NULL,
+        starts_at DATETIME,
+        ends_at DATETIME,
+        no_expiration INTEGER DEFAULT 0,
+        has_countdown INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    try {
+      await databaseConnection.exec(`ALTER TABLE combos ADD COLUMN has_countdown INTEGER DEFAULT 0`);
+      console.log('Campo has_countdown agregado a la tabla combos');
+    } catch (error) {
+      if (!error.message.includes('duplicate column name')) {
+        throw error;
+      }
+    }
+
+    await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS promotions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -228,44 +266,15 @@ async function createTables() {
     `);
 
     try {
-      await db.exec(`ALTER TABLE promotions ADD COLUMN target_combo_id INTEGER REFERENCES combos(id) ON DELETE SET NULL`);
+      await databaseConnection.exec(`ALTER TABLE promotions ADD COLUMN target_combo_id INTEGER REFERENCES combos(id) ON DELETE SET NULL`);
       console.log('Campo target_combo_id agregado a la tabla promotions');
     } catch (error) {
       if (!error.message.includes('duplicate column name')) {
-        console.log('Campo target_combo_id ya existe en la tabla promotions');
+        throw error;
       }
     }
 
-    // Combos del módulo de cartelería
-    await db.exec(`
-      CREATE TABLE IF NOT EXISTS combos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        description TEXT,
-        conditions_text TEXT,
-        combo_price_cents INTEGER NOT NULL DEFAULT 0 CHECK(combo_price_cents >= 0),
-        currency_code TEXT NOT NULL DEFAULT 'ARS',
-        status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'paused', 'expired')),
-        image_upload_id INTEGER REFERENCES uploads(id) ON DELETE SET NULL,
-        starts_at DATETIME,
-        ends_at DATETIME,
-        no_expiration INTEGER DEFAULT 0,
-        has_countdown INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    try {
-      await db.exec(`ALTER TABLE combos ADD COLUMN has_countdown INTEGER DEFAULT 0`);
-      console.log('Campo has_countdown agregado a la tabla combos');
-    } catch (error) {
-      if (!error.message.includes('duplicate column name')) {
-        console.log('Campo has_countdown ya existe en la tabla combos');
-      }
-    }
-
-    await db.exec(`
+    await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS combo_items (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         combo_id INTEGER NOT NULL REFERENCES combos(id) ON DELETE CASCADE,
@@ -276,17 +285,7 @@ async function createTables() {
       )
     `);
 
-    try {
-      await db.exec(`ALTER TABLE promotions ADD COLUMN target_combo_id INTEGER REFERENCES combos(id) ON DELETE SET NULL`);
-      console.log('Campo target_combo_id agregado a la tabla promotions');
-    } catch (error) {
-      if (!error.message.includes('duplicate column name')) {
-        console.log('Campo target_combo_id ya existe en la tabla promotions');
-      }
-    }
-
-    // Menús publicados en web
-    await db.exec(`
+    await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS menus (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -301,7 +300,7 @@ async function createTables() {
       )
     `);
 
-    await db.exec(`
+    await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS menu_blocks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         menu_id INTEGER NOT NULL REFERENCES menus(id) ON DELETE CASCADE,
@@ -320,7 +319,7 @@ async function createTables() {
       )
     `);
 
-    await db.exec(`
+    await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS combo_menu_visibility (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         combo_id INTEGER NOT NULL REFERENCES combos(id) ON DELETE CASCADE,
@@ -330,8 +329,7 @@ async function createTables() {
       )
     `);
 
-    // Links persistentes y su configuración QR
-    await db.exec(`
+    await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS persistent_links (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -347,7 +345,7 @@ async function createTables() {
       )
     `);
 
-    await db.exec(`
+    await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS link_schedule_rules (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         persistent_link_id INTEGER NOT NULL REFERENCES persistent_links(id) ON DELETE CASCADE,
@@ -365,8 +363,7 @@ async function createTables() {
       )
     `);
 
-    // Métricas básicas de visualización de menús
-    await db.exec(`
+    await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS menu_views (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         menu_id INTEGER REFERENCES menus(id) ON DELETE SET NULL,
@@ -378,75 +375,72 @@ async function createTables() {
       )
     `);
 
-    // Índices del módulo de cartelería
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_categories_active_order
-      ON categories(is_active, sort_order, name)
-    `);
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_products_status_category
-      ON products(status, category_id)
-    `);
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_product_images_product
-      ON product_images(product_id, sort_order)
-    `);
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_promotions_status_target
-      ON promotions(status, target_product_id)
-    `);
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_combos_status
-      ON combos(status)
-    `);
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_menus_status
-      ON menus(status)
-    `);
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_menu_blocks_menu_order
-      ON menu_blocks(menu_id, sort_order)
-    `);
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_persistent_links_status
-      ON persistent_links(status)
-    `);
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_link_schedule_rules_link
-      ON link_schedule_rules(persistent_link_id, is_active, start_time, end_time)
-    `);
-    await db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_menu_views_requested_at
-      ON menu_views(requested_at DESC)
-    `);
-    
-    console.log('Tablas creadas correctamente');
+    for (const indexStatement of [
+      `CREATE INDEX IF NOT EXISTS idx_categories_active_order ON categories(is_active, sort_order, name)`,
+      `CREATE INDEX IF NOT EXISTS idx_products_status_category ON products(status, category_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_product_images_product ON product_images(product_id, sort_order)`,
+      `CREATE INDEX IF NOT EXISTS idx_promotions_status_target ON promotions(status, target_product_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_combos_status ON combos(status)`,
+      `CREATE INDEX IF NOT EXISTS idx_menus_status ON menus(status)`,
+      `CREATE INDEX IF NOT EXISTS idx_menu_blocks_menu_order ON menu_blocks(menu_id, sort_order)`,
+      `CREATE INDEX IF NOT EXISTS idx_persistent_links_status ON persistent_links(status)`,
+      `CREATE INDEX IF NOT EXISTS idx_link_schedule_rules_link ON link_schedule_rules(persistent_link_id, is_active, start_time, end_time)`,
+      `CREATE INDEX IF NOT EXISTS idx_menu_views_requested_at ON menu_views(requested_at DESC)`
+    ]) {
+      await databaseConnection.exec(indexStatement);
+    }
+
+    console.log('Tablas SQLite creadas correctamente');
   } catch (error) {
-    console.error('Error al crear tablas:', error);
+    console.error('Error al crear tablas SQLite:', error);
     throw error;
   }
 }
 
-// Función para crear el usuario administrador por defecto
+async function ensurePostgresTables() {
+  try {
+    for (const statement of getPostgresSchemaStatements()) {
+      await databaseConnection.exec(statement);
+    }
+
+    console.log('Esquema Postgres/Supabase verificado correctamente');
+  } catch (error) {
+    console.error('Error al crear tablas Postgres/Supabase:', error);
+    throw error;
+  }
+}
+
+async function createTables() {
+  if (!databaseConnection) {
+    throw new Error('La base de datos no fue inicializada');
+  }
+
+  if (databaseProviderConfig?.provider === 'postgres') {
+    await ensurePostgresTables();
+    return;
+  }
+
+  await ensureSqliteTables();
+}
+
 async function createDefaultAdmin() {
   try {
     const username = process.env.ADMIN_USERNAME || 'admin';
     const password = process.env.ADMIN_PASSWORD || 'admin123';
-    
-    // Verificar si ya existe un admin
-    const existingAdmin = await db.get(
+
+    const existingAdmin = await databaseConnection.get(
       'SELECT id FROM users WHERE username = ?',
       [username]
     );
-    
+
     if (!existingAdmin) {
       const hashedPassword = await bcrypt.hash(password, 10);
-      
-      await db.run(
+
+      await databaseConnection.run(
         'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
         [username, hashedPassword, 'admin']
       );
-      
+
       console.log(`Usuario administrador creado: ${username}`);
     } else {
       console.log('Usuario administrador ya existe');
@@ -459,17 +453,17 @@ async function createDefaultAdmin() {
 
 async function ensureBusinessProfile() {
   try {
-    const existingProfile = await db.get('SELECT id FROM business_profile LIMIT 1');
+    const existingProfile = await databaseConnection.get('SELECT id FROM business_profile LIMIT 1');
 
     if (!existingProfile) {
-      await db.run(
+      await databaseConnection.run(
         `
           INSERT INTO business_profile (name, description, timezone, currency_code)
           VALUES (?, ?, ?, ?)
         `,
         [
           process.env.BUSINESS_NAME || 'Mi Local',
-          'Perfil inicial para el módulo de cartelería digital',
+          'Perfil inicial para el modulo de carteleria digital',
           process.env.BUSINESS_TIMEZONE || 'America/Buenos_Aires',
           process.env.BUSINESS_CURRENCY || 'ARS'
         ]
@@ -483,12 +477,11 @@ async function ensureBusinessProfile() {
   }
 }
 
-// Función para crear diseños de ejemplo
 async function createSampleDesigns() {
   try {
-    const existingDesigns = await db.get('SELECT COUNT(*) as count FROM designs');
-    
-    if (parseInt(existingDesigns.count) === 0) {
+    const existingDesigns = await databaseConnection.get('SELECT COUNT(*) as count FROM designs');
+
+    if (parseInt(existingDesigns.count, 10) === 0) {
       const sampleDesign = {
         sections: [
           {
@@ -511,7 +504,7 @@ async function createSampleDesigns() {
               {
                 id: 'element-2',
                 type: 'text',
-                content: 'Este es un diseño de ejemplo. Puedes editarlo desde el panel de administración.',
+                content: 'Este es un diseno de ejemplo. Puedes editarlo desde el panel de administracion.',
                 fontSize: '18px',
                 color: '#666666',
                 textAlign: 'center'
@@ -520,38 +513,33 @@ async function createSampleDesigns() {
           }
         ]
       };
-      
-      await db.run(
+
+      await databaseConnection.run(
         'INSERT INTO designs (name, description, content) VALUES (?, ?, ?)',
-        ['Diseño de Bienvenida', 'Diseño de ejemplo para nuevas pantallas', JSON.stringify(sampleDesign)]
+        ['Diseno de Bienvenida', 'Diseno de ejemplo para nuevas pantallas', JSON.stringify(sampleDesign)]
       );
-      
-      console.log('Diseño de ejemplo creado');
+
+      console.log('Diseno de ejemplo creado');
     }
   } catch (error) {
-    console.error('Error al crear diseños de ejemplo:', error);
+    console.error('Error al crear disenos de ejemplo:', error);
   }
 }
 
-// Función principal de inicialización
 async function initialize() {
   try {
-    // Inicializar base de datos SQLite
-    await initializeDatabase();
-    console.log('Conexión a SQLite establecida');
-    
-    // Crear tablas
-    await createTables();
-    
-    // Crear usuario administrador
-    await createDefaultAdmin();
+    if (databaseConnection) {
+      return true;
+    }
 
-    // Crear perfil inicial del negocio
+    await initializeDatabaseConnection();
+    console.log(`Conexion a ${databaseProviderConfig.provider} establecida`);
+
+    await createTables();
+    await createDefaultAdmin();
     await ensureBusinessProfile();
-    
-    // Crear diseños de ejemplo
     await createSampleDesigns();
-    
+
     return true;
   } catch (error) {
     console.error('Error al inicializar la base de datos:', error);
@@ -559,15 +547,25 @@ async function initialize() {
   }
 }
 
-// Función para cerrar la conexión
 async function close() {
-  if (db) {
-    await db.close();
+  if (!databaseConnection) {
+    return;
   }
+
+  await databaseConnection.close();
+  databaseConnection = null;
+  databaseProviderConfig = null;
+  databaseContextRunner = async (callback) => callback();
+}
+
+async function runWithDatabaseContext(callback) {
+  return databaseContextRunner(callback);
 }
 
 module.exports = {
-  db: () => db,
+  db: () => databaseConnection,
   initialize,
-  close
+  close,
+  runWithDatabaseContext,
+  getProviderConfig: () => databaseProviderConfig || getDatabaseProviderConfig()
 };

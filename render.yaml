@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: kazescreen-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_PROVIDER
+        value: postgres
+      - key: DATABASE_URL
+        sync: false
+      - key: DB_SSL
+        value: true
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: BUSINESS_NAME
+        value: Mi Local
+      - key: BUSINESS_TIMEZONE
+        value: America/Buenos_Aires
+      - key: BUSINESS_CURRENCY
+        value: ARS
+      - key: UPLOAD_PROVIDER
+        value: local
+      - key: UPLOAD_PATH
+        value: /var/data/uploads
+      - key: MAX_FILE_SIZE
+        value: 5242880
+      - key: SOCKET_CORS_ORIGIN
+        sync: false
+    disk:
+      name: kazescreen-uploads
+      mountPath: /var/data
+      sizeGB: 1

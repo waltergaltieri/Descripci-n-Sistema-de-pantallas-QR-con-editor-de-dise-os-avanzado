@@ -1,16 +1,15 @@
-/**
- * Validador Post-Separación de Figuras
+﻿/**
+ * Validador Post-SeparaciÃ³n de Figuras
  * 
- * Esta función se ejecuta después del proceso de separación de figuras
- * para verificar que todas las figuras estén correctamente contenidas
- * dentro de sus canvas y corregir automáticamente cualquier problema.
+ * Esta funciÃ³n se ejecuta despuÃ©s del proceso de separaciÃ³n de figuras
+ * para verificar que todas las figuras estÃ©n correctamente contenidas
+ * dentro de sus canvas y corregir automÃ¡ticamente cualquier problema.
  */
 
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const { db } = require('../config/database');
 
 /**
- * Calcula los bounds de un elemento usando método simplificado compatible con frontend
+ * Calcula los bounds de un elemento usando mÃ©todo simplificado compatible con frontend
  * @param {Object} element - El elemento a analizar
  * @returns {Object} - Los bounds calculados {minX, maxX, minY, maxY}
  */
@@ -24,16 +23,16 @@ function calculateElementBounds(element) {
     let effectiveHeight = element.height * scaleY;
     
     // Para rotaciones de 90 y 270 grados, intercambiar dimensiones
-    // Este método simplificado coincide mejor con el comportamiento del frontend
+    // Este mÃ©todo simplificado coincide mejor con el comportamiento del frontend
     if (Math.abs((rotation % 360) - 90) < 0.01 || Math.abs((rotation % 360) - 270) < 0.01) {
         const temp = effectiveWidth;
         effectiveWidth = effectiveHeight;
         effectiveHeight = temp;
     }
     
-    // Para otras rotaciones, usar cálculo completo solo si es necesario
+    // Para otras rotaciones, usar cÃ¡lculo completo solo si es necesario
     if (Math.abs(rotation % 90) > 0.01) {
-        // Cálculo completo para rotaciones no múltiplos de 90°
+        // CÃ¡lculo completo para rotaciones no mÃºltiplos de 90Â°
         const centerX = element.width / 2;
         const centerY = element.height / 2;
         const radians = (rotation * Math.PI) / 180;
@@ -62,7 +61,7 @@ function calculateElementBounds(element) {
         return { minX, maxX, minY, maxY };
     }
     
-    // Cálculo simplificado para rotaciones de 0°, 90°, 180°, 270°
+    // CÃ¡lculo simplificado para rotaciones de 0Â°, 90Â°, 180Â°, 270Â°
     const minX = element.x;
     const maxX = element.x + effectiveWidth;
     const minY = element.y;
@@ -72,9 +71,9 @@ function calculateElementBounds(element) {
 }
 
 /**
- * Detecta si un elemento tiene coordenadas negativas (problema visual común)
+ * Detecta si un elemento tiene coordenadas negativas (problema visual comÃºn)
  * @param {Object} element - El elemento a verificar
- * @returns {Object} - Información sobre coordenadas negativas
+ * @returns {Object} - InformaciÃ³n sobre coordenadas negativas
  */
 function hasNegativeCoordinates(element) {
     const hasNegativeX = element.x < 0;
@@ -90,11 +89,11 @@ function hasNegativeCoordinates(element) {
 }
 
 /**
- * Verifica si un elemento está contenido dentro del canvas
+ * Verifica si un elemento estÃ¡ contenido dentro del canvas
  * @param {Object} element - El elemento a verificar
  * @param {number} canvasWidth - Ancho del canvas
  * @param {number} canvasHeight - Alto del canvas
- * @returns {Object} - Resultado de la verificación
+ * @returns {Object} - Resultado de la verificaciÃ³n
  */
 function isElementContained(element, canvasWidth, canvasHeight) {
     const bounds = calculateElementBounds(element);
@@ -105,8 +104,8 @@ function isElementContained(element, canvasWidth, canvasHeight) {
     const rightOk = bounds.maxX <= canvasWidth;
     const bottomOk = bounds.maxY <= canvasHeight;
     
-    // Un elemento con coordenadas negativas siempre se considera problemático visualmente
-    // incluso si matemáticamente sus bounds rotados están dentro del canvas
+    // Un elemento con coordenadas negativas siempre se considera problemÃ¡tico visualmente
+    // incluso si matemÃ¡ticamente sus bounds rotados estÃ¡n dentro del canvas
     const isContained = leftOk && topOk && rightOk && bottomOk && !negativeCoords.hasNegative;
     
     return {
@@ -125,7 +124,7 @@ function isElementContained(element, canvasWidth, canvasHeight) {
 }
 
 /**
- * Centra un elemento en el canvas usando método simplificado compatible con frontend
+ * Centra un elemento en el canvas usando mÃ©todo simplificado compatible con frontend
  * @param {Object} element - El elemento a centrar
  * @param {number} currentWidth - Ancho actual del canvas
  * @param {number} currentHeight - Alto actual del canvas
@@ -135,7 +134,7 @@ function isElementContained(element, canvasWidth, canvasHeight) {
 function centerElementInCanvas(element, currentWidth, currentHeight, padding = 10) {
     const rotation = element.rotation || 0;
     
-    // Calcular dimensiones efectivas considerando rotación
+    // Calcular dimensiones efectivas considerando rotaciÃ³n
     let effectiveWidth = element.width;
     let effectiveHeight = element.height;
     
@@ -145,15 +144,15 @@ function centerElementInCanvas(element, currentWidth, currentHeight, padding = 1
         effectiveHeight = element.width;
     }
     
-    // Calcular las dimensiones mínimas necesarias del canvas
+    // Calcular las dimensiones mÃ­nimas necesarias del canvas
     const minCanvasWidth = effectiveWidth + (padding * 2);
     const minCanvasHeight = effectiveHeight + (padding * 2);
     
-    // Usar las dimensiones mínimas necesarias
+    // Usar las dimensiones mÃ­nimas necesarias
     const newWidth = Math.ceil(minCanvasWidth);
     const newHeight = Math.ceil(minCanvasHeight);
     
-    // Calcular posición centrada simple
+    // Calcular posiciÃ³n centrada simple
     const newX = (newWidth - effectiveWidth) / 2;
     const newY = (newHeight - effectiveHeight) / 2;
     
@@ -178,7 +177,7 @@ function centerElementInCanvas(element, currentWidth, currentHeight, padding = 1
 }
 
 /**
- * Corrige la posición de un elemento que está fuera del canvas
+ * Corrige la posiciÃ³n de un elemento que estÃ¡ fuera del canvas
  * @param {Object} element - El elemento a corregir
  * @param {number} currentWidth - Ancho actual del canvas
  * @param {number} currentHeight - Alto actual del canvas
@@ -188,7 +187,7 @@ function centerElementInCanvas(element, currentWidth, currentHeight, padding = 1
 function fixElementPosition(element, currentWidth, currentHeight, padding = 10) {
     const bounds = calculateElementBounds(element);
     
-    // Calcular ajustes necesarios para que el elemento esté dentro del canvas
+    // Calcular ajustes necesarios para que el elemento estÃ© dentro del canvas
     let adjustX = 0;
     let adjustY = 0;
     
@@ -212,7 +211,7 @@ function fixElementPosition(element, currentWidth, currentHeight, padding = 10) 
         adjustY = currentHeight - bounds.maxY - padding;
     }
     
-    // Si el elemento es más grande que el canvas, centrarlo
+    // Si el elemento es mÃ¡s grande que el canvas, centrarlo
     const elementWidth = bounds.maxX - bounds.minX;
     const elementHeight = bounds.maxY - bounds.minY;
     
@@ -251,7 +250,7 @@ function fixElementPosition(element, currentWidth, currentHeight, padding = 10) 
 }
 
 /**
- * Optimiza el canvas para contener completamente un elemento (función legacy)
+ * Optimiza el canvas para contener completamente un elemento (funciÃ³n legacy)
  * @param {Object} element - El elemento a contener
  * @param {number} currentWidth - Ancho actual del canvas
  * @param {number} currentHeight - Alto actual del canvas
@@ -259,130 +258,92 @@ function fixElementPosition(element, currentWidth, currentHeight, padding = 10) 
  * @returns {Object} - Nuevas dimensiones y ajustes del elemento
  */
 function optimizeCanvasForElement(element, currentWidth, currentHeight, padding = 10) {
-    // Usar la función de corrección de posición para elementos fuera del canvas
+    // Usar la funciÃ³n de correcciÃ³n de posiciÃ³n para elementos fuera del canvas
     return fixElementPosition(element, currentWidth, currentHeight, padding);
 }
 
 /**
- * Valida y corrige un diseño separado
- * @param {number} designId - ID del diseño a validar
- * @param {boolean} autoFix - Si debe corregir automáticamente los problemas
- * @returns {Promise<Object>} - Resultado de la validación
+ * Valida y corrige un diseÃ±o separado
+ * @param {number} designId - ID del diseÃ±o a validar
+ * @param {boolean} autoFix - Si debe corregir automÃ¡ticamente los problemas
+ * @returns {Promise<Object>} - Resultado de la validaciÃ³n
  */
 async function validateAndFixDesign(designId, autoFix = true) {
-    return new Promise((resolve, reject) => {
-        const dbPath = path.join(__dirname, '..', 'database.sqlite');
-        const db = new sqlite3.Database(dbPath);
-        
-        // Obtener el diseño
-        db.get('SELECT * FROM designs WHERE id = ?', [designId], (err, design) => {
-            if (err) {
-                db.close();
-                reject(err);
+    const design = await db().get('SELECT * FROM designs WHERE id = ?', [designId]);
+
+    if (!design) {
+        throw new Error(`Diseño con ID ${designId} no encontrado`);
+    }
+
+    try {
+        const content = JSON.parse(design.content);
+        const result = {
+            designId,
+            designName: design.name,
+            issues: [],
+            fixed: false,
+            originalContent: content
+        };
+
+        if (!content.pages || content.pages.length === 0) {
+            result.issues.push('No se encontraron páginas en el diseño');
+            return result;
+        }
+
+        let contentModified = false;
+
+        content.pages.forEach((page, pageIndex) => {
+            if (!page.children || page.children.length === 0) {
                 return;
             }
-            
-            if (!design) {
-                db.close();
-                reject(new Error(`Diseño con ID ${designId} no encontrado`));
-                return;
-            }
-            
-            try {
-                const content = JSON.parse(design.content);
-                const result = {
-                    designId,
-                    designName: design.name,
-                    issues: [],
-                    fixed: false,
-                    originalContent: content
-                };
-                
-                // Verificar si tiene páginas
-                if (!content.pages || content.pages.length === 0) {
-                    result.issues.push('No se encontraron páginas en el diseño');
-                    db.close();
-                    resolve(result);
-                    return;
-                }
-                
-                let hasIssues = false;
-                let contentModified = false;
-                
-                // Verificar cada página
-                content.pages.forEach((page, pageIndex) => {
-                    if (!page.children || page.children.length === 0) {
-                        return;
+
+            page.children.forEach((element, elementIndex) => {
+                const containmentCheck = isElementContained(element, page.width, page.height);
+
+                if (!containmentCheck.isContained) {
+                    const issue = {
+                        pageIndex,
+                        elementIndex,
+                        elementId: element.id,
+                        elementType: element.type,
+                        bounds: containmentCheck.bounds,
+                        violations: containmentCheck.violations,
+                        canvasSize: { width: page.width, height: page.height }
+                    };
+
+                    result.issues.push(issue);
+
+                    if (autoFix) {
+                        const optimization = optimizeCanvasForElement(element, page.width, page.height);
+
+                        page.width = optimization.newWidth;
+                        page.height = optimization.newHeight;
+                        element.x += optimization.adjustX;
+                        element.y += optimization.adjustY;
+
+                        issue.fixed = true;
+                        issue.newCanvasSize = { width: page.width, height: page.height };
+                        issue.elementAdjustment = { x: optimization.adjustX, y: optimization.adjustY };
+                        contentModified = true;
                     }
-                    
-                    // Verificar cada elemento en la página
-                    page.children.forEach((element, elementIndex) => {
-                        const containmentCheck = isElementContained(element, page.width, page.height);
-                        
-                        if (!containmentCheck.isContained) {
-                            hasIssues = true;
-                            const issue = {
-                                pageIndex,
-                                elementIndex,
-                                elementId: element.id,
-                                elementType: element.type,
-                                bounds: containmentCheck.bounds,
-                                violations: containmentCheck.violations,
-                                canvasSize: { width: page.width, height: page.height }
-                            };
-                            
-                            result.issues.push(issue);
-                            
-                            // Aplicar corrección automática si está habilitada
-                            if (autoFix) {
-                                const optimization = optimizeCanvasForElement(element, page.width, page.height);
-                                
-                                // Actualizar dimensiones del canvas
-                                page.width = optimization.newWidth;
-                                page.height = optimization.newHeight;
-                                
-                                // Ajustar posición del elemento
-                                element.x += optimization.adjustX;
-                                element.y += optimization.adjustY;
-                                
-                                issue.fixed = true;
-                                issue.newCanvasSize = { width: page.width, height: page.height };
-                                issue.elementAdjustment = { x: optimization.adjustX, y: optimization.adjustY };
-                                
-                                contentModified = true;
-                            }
-                        }
-                    });
-                });
-                
-                // Guardar cambios si se modificó el contenido
-                if (contentModified && autoFix) {
-                    const updatedContent = JSON.stringify(content);
-                    const updateQuery = 'UPDATE designs SET content = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
-                    
-                    db.run(updateQuery, [updatedContent, designId], function(updateErr) {
-                        if (updateErr) {
-                            db.close();
-                            reject(updateErr);
-                            return;
-                        }
-                        
-                        result.fixed = true;
-                        result.updatedContent = content;
-                        db.close();
-                        resolve(result);
-                    });
-                } else {
-                    db.close();
-                    resolve(result);
                 }
-                
-            } catch (parseError) {
-                db.close();
-                reject(new Error(`Error al parsear contenido del diseño ${designId}: ${parseError.message}`));
-            }
+            });
         });
-    });
+
+        if (contentModified && autoFix) {
+            await db().run(
+                'UPDATE designs SET content = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+                [JSON.stringify(content), designId]
+            );
+
+            result.fixed = true;
+            result.updatedContent = content;
+        }
+
+        return result;
+    } catch (parseError) {
+        throw new Error(`Error al parsear contenido del diseño ${designId}: ${parseError.message}`);
+    }
 }
 
 /**
@@ -391,70 +352,54 @@ async function validateAndFixDesign(designId, autoFix = true) {
  * @returns {Promise<Array>} - Array con los resultados de validación
  */
 async function validateAllSeparatedDesigns(autoFix = true) {
-    return new Promise((resolve, reject) => {
-        const dbPath = path.join(__dirname, '..', 'database.sqlite');
-        const db = new sqlite3.Database(dbPath);
-        
-        // Obtener todos los diseños separados
-        const query = "SELECT id, name FROM designs WHERE name LIKE 'Figura -%' ORDER BY created_at DESC";
-        
-        db.all(query, [], async (err, designs) => {
-            if (err) {
-                db.close();
-                reject(err);
-                return;
-            }
-            
-            db.close();
-            
-            const results = [];
-            
-            // Validar cada diseño
-            for (const design of designs) {
-                try {
-                    const result = await validateAndFixDesign(design.id, autoFix);
-                    results.push(result);
-                } catch (error) {
-                    results.push({
-                        designId: design.id,
-                        designName: design.name,
-                        error: error.message
-                    });
-                }
-            }
-            
-            resolve(results);
-        });
-    });
-}
+    const designs = await db().all(
+        "SELECT id, name FROM designs WHERE name LIKE 'Figura -%' ORDER BY created_at DESC"
+    );
 
+    const results = [];
+
+    for (const design of designs) {
+        try {
+            const result = await validateAndFixDesign(design.id, autoFix);
+            results.push(result);
+        } catch (error) {
+            results.push({
+                designId: design.id,
+                designName: design.name,
+                error: error.message
+            });
+        }
+    }
+
+    return results;
+}
 /**
- * Genera un reporte detallado de la validación
- * @param {Array} validationResults - Resultados de la validación
+ * Genera un reporte detallado de la validaciÃ³n
+ * @param {Array} validationResults - Resultados de la validaciÃ³n
  * @returns {string} - Reporte formateado
  */
 function generateValidationReport(validationResults) {
-    let report = '=== REPORTE DE VALIDACIÓN POST-SEPARACIÓN ===\n\n';
+    let report = '=== REPORTE DE VALIDACIÃ“N POST-SEPARACIÃ“N ===\n\n';
     
     const totalDesigns = validationResults.length;
     const designsWithIssues = validationResults.filter(r => r.issues && r.issues.length > 0).length;
     const designsFixed = validationResults.filter(r => r.fixed).length;
     const designsWithErrors = validationResults.filter(r => r.error).length;
     
-    report += `📊 RESUMEN:\n`;
-    report += `- Total de diseños validados: ${totalDesigns}\n`;
-    report += `- Diseños con problemas: ${designsWithIssues}\n`;
-    report += `- Diseños corregidos: ${designsFixed}\n`;
-    report += `- Diseños con errores: ${designsWithErrors}\n\n`;
+    report += `ðŸ“Š RESUMEN:\n`;
+    report += `- Total de diseÃ±os validados: ${totalDesigns}\n`;
+    report += `- DiseÃ±os con problemas: ${designsWithIssues}\n`;
+    report += `- DiseÃ±os corregidos: ${designsFixed}\n`;
+    report += `- DiseÃ±os con errores: ${designsWithErrors}\n\n`;
     
     validationResults.forEach((result, index) => {
-        report += `--- DISEÑO ${index + 1} (ID: ${result.designId}) ---\n`;
+        report += `--- DISEÃ‘O ${index + 1} (ID: ${result.designId}) ---\n`;
         report += `Nombre: ${result.designName}\n`;
         
         if (result.error) {
-            report += `❌ Error: ${result.error}\n`;
+            report += `âŒ Error: ${result.error}\n`;
         } else if (result.issues && result.issues.length > 0) {
-            report += `⚠️  Problemas encontrados: ${result.issues.length}\n`;
+            report += `âš ï¸  Problemas encontrados: ${result.issues.length}\n`;
             
             result.issues.forEach((issue, issueIndex) => {
                 report += `\n  Problema ${issueIndex + 1}:\n`;
@@ -468,17 +413,17 @@ function generateValidationReport(validationResults) {
                 if (issue.violations.bottom > 0) report += `  - Se extiende ${issue.violations.bottom.toFixed(2)}px hacia abajo\n`;
                 
                 if (issue.fixed) {
-                    report += `  ✅ CORREGIDO:\n`;
+                    report += `  âœ… CORREGIDO:\n`;
                     report += `  - Nuevo canvas: ${issue.newCanvasSize.width}x${issue.newCanvasSize.height}\n`;
                     report += `  - Ajuste del elemento: x+${issue.elementAdjustment.x.toFixed(2)}, y+${issue.elementAdjustment.y.toFixed(2)}\n`;
                 }
             });
             
             if (result.fixed) {
-                report += `\n✅ Diseño corregido y guardado en la base de datos\n`;
+                report += `\nâœ… DiseÃ±o corregido y guardado en la base de datos\n`;
             }
         } else {
-            report += `✅ Sin problemas detectados\n`;
+            report += `âœ… Sin problemas detectados\n`;
         }
         
         report += `\n${'='.repeat(60)}\n\n`;

@@ -387,23 +387,21 @@ router.post('/:id/duplicate', authenticateToken, requireAdmin, async (req, res) 
     
     
       // Obtener el diseño original
-      const originalResult = await db().run(
+      const original = await db().get(
         'SELECT * FROM designs WHERE id = ?',
         [id]
       );
       
-      if (!originalResult) {
+      if (!original) {
         return res.status(404).json({ error: 'Diseño no encontrado' });
       }
       
-      const original = originalResult;
       const duplicateName = name || `${original.name} (Copia)`;
       
       // Crear el duplicado
       const result = await db().run(`
         INSERT INTO designs (name, description, content, thumbnail)
         VALUES (?, ?, ?, ?)
-        RETURNING *
       `, [
         duplicateName,
         original.description,
@@ -411,7 +409,10 @@ router.post('/:id/duplicate', authenticateToken, requireAdmin, async (req, res) 
         original.thumbnail
       ]);
       
-      const duplicatedDesign = result;
+      const duplicatedDesign = await db().get(
+        'SELECT * FROM designs WHERE id = ?',
+        [result.lastID]
+      );
       
       // Emitir evento de actualización
       const io = req.app.get('io');
