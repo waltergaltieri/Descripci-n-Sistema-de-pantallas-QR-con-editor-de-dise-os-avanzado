@@ -5,7 +5,7 @@ Arquitectura elegida para esta version:
 - Frontend en Vercel
 - Backend en Render
 - Base de datos en Supabase Postgres
-- Uploads locales del backend en disco persistente de Render
+- Uploads locales del backend en almacenamiento efimero de Render
 
 ## Estado actual
 
@@ -48,13 +48,15 @@ Variables ya previstas en el blueprint:
 - `BUSINESS_TIMEZONE=America/Buenos_Aires`
 - `BUSINESS_CURRENCY=ARS`
 - `UPLOAD_PROVIDER=local`
-- `UPLOAD_PATH=/var/data/uploads`
+- `UPLOAD_PATH=/tmp/uploads`
 - `MAX_FILE_SIZE=5242880`
 
-Disco persistente:
+Importante en esta primera salida:
 
-- Mount path: `/var/data`
-- Uploads: `/var/data/uploads`
+- en `free`, Render no permite disco persistente adjunto en este blueprint
+- por eso los uploads locales quedan efimeros y se pueden perder en redeploys o reinicios
+- la base ya esta en Supabase, asi que el sistema funciona igual, pero las imagenes nuevas no son persistentes todavia
+- el paso siguiente recomendado es migrar uploads a Supabase Storage
 
 ## Frontend en Vercel
 
@@ -92,7 +94,7 @@ Todavia no se activo:
 Motivo:
 
 - para activar uploads en Supabase Storage hace falta la `SUPABASE_SERVICE_ROLE_KEY`
-- mientras tanto, el sistema puede desplegarse sin bloquearse usando disco persistente en Render
+- mientras tanto, el sistema puede desplegarse sin bloquearse usando almacenamiento efimero en Render
 
 ## Orden sugerido
 

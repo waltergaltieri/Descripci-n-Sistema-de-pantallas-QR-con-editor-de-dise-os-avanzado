@@ -31,12 +31,8 @@ services:
       - key: UPLOAD_PROVIDER
         value: local
       - key: UPLOAD_PATH
-        value: /var/data/uploads
+        value: /tmp/uploads
       - key: MAX_FILE_SIZE
         value: 5242880
       - key: SOCKET_CORS_ORIGIN
         sync: false
-    disk:
-      name: kazescreen-uploads
-      mountPath: /var/data
-      sizeGB: 1
