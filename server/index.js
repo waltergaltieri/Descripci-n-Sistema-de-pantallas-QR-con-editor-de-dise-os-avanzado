@@ -15,6 +15,9 @@ const uploadsRoutes = require('./routes/uploads');
 const exportRoutes = require('./routes/export');
 const figuresSeparationRoutes = require('./routes/figuresSeparation');
 const autoSvgExportRoutes = require('./routes/autoSvgExport');
+const carteleriaRoutes = require('./routes/carteleria');
+const carteleriaPublicRoutes = require('./routes/carteleriaPublic');
+const { createUploadsStaticMiddleware } = require('./utils/uploadsStatic');
 
 const app = express();
 const server = createServer(app);
@@ -80,7 +83,7 @@ app.use(express.urlencoded({ extended: true, limit: '100mb', parameterLimit: 500
 // Logging middleware removido - debugging completado
 
 // Static files for uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', createUploadsStaticMiddleware(path.join(__dirname, 'uploads')));
 
 // Static files for public assets (animations, etc.)
 app.use(express.static(path.join(__dirname, 'public')));
@@ -93,6 +96,8 @@ app.use('/api/uploads', uploadsRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/figures-separation', figuresSeparationRoutes);
 app.use('/api/auto-svg-export', autoSvgExportRoutes);
+app.use('/api/carteleria/public', carteleriaPublicRoutes);
+app.use('/api/carteleria', carteleriaRoutes);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

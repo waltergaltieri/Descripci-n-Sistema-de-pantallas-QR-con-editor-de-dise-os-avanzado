@@ -13,8 +13,8 @@
   font-weight: 400;
 
   color-scheme: light;
-  color: #213547 !important;
-  background-color: #ffffff !important;
+  color: #213547;
+  background-color: #ffffff;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -43,18 +43,13 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f9fafb !important;
-  color: #213547 !important;
+  background-color: #f9fafb;
+  color: #213547;
 }
 
 /* Force correct colors for all elements */
 div {
   color: inherit;
-}
-
-/* Ensure text is visible */
-h1, h2, h3, h4, h5, h6, p, span, a, button {
-  color: #213547 !important;
 }
 
 input {

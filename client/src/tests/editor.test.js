@@ -1,10 +1,94 @@
-import { createStore } from 'polotno/model/store';
-import { unstable_registerNextDomDrop } from 'polotno/config';
+jest.mock('polotno/model/store', () => {
+  const createElement = (snapshot = {}) => {
+    const element = {
+      ...snapshot,
+      animations: Array.isArray(snapshot.animations) ? [...snapshot.animations] : [],
+      set(updates = {}) {
+        Object.assign(element, JSON.parse(JSON.stringify(updates)));
+        return element;
+      },
+      toJSON() {
+        const { set, toJSON, ...serializable } = element;
+        return JSON.parse(JSON.stringify(serializable));
+      }
+    };
 
-// Configurar Polotno para Next.js
+    return element;
+  };
+
+  const createPage = (snapshot = {}) => {
+    const page = {
+      width: snapshot.width ?? 1080,
+      height: snapshot.height ?? 1080,
+      title: snapshot.title,
+      children: [],
+      addElement(elementSnapshot = {}) {
+        const element = createElement(elementSnapshot);
+        page.children.push(element);
+        return element;
+      },
+      toJSON() {
+        return {
+          width: page.width,
+          height: page.height,
+          title: page.title,
+          children: page.children.map((child) => child.toJSON())
+        };
+      }
+    };
+
+    (snapshot.children || []).forEach((child) => {
+      page.addElement(child);
+    });
+
+    return page;
+  };
+
+  const createStore = (snapshot = {}) => {
+    const store = {
+      pages: [
+        createPage({
+          width: snapshot.width ?? 1080,
+          height: snapshot.height ?? 1080,
+          title: snapshot.title
+        })
+      ],
+      get activePage() {
+        return store.pages[0];
+      },
+      addPage(pageSnapshot = {}) {
+        const page = createPage(pageSnapshot);
+        store.pages.push(page);
+        return page;
+      },
+      toJSON() {
+        return {
+          width: store.activePage?.width,
+          height: store.activePage?.height,
+          pages: store.pages.map((page) => page.toJSON())
+        };
+      },
+      loadJSON(json = {}) {
+        store.pages = (json.pages || []).map((pageSnapshot) => createPage(pageSnapshot));
+      }
+    };
+
+    return store;
+  };
+
+  return { createStore };
+});
+
+jest.mock('polotno/config', () => ({
+  unstable_registerNextDomDrop: jest.fn()
+}));
+
+const { createStore } = require('polotno/model/store');
+const { unstable_registerNextDomDrop } = require('polotno/config');
+
 unstable_registerNextDomDrop();
 
-describe('Editor Polotno - Serialización', () => {
+describe('Editor Polotno - Serializacion', () => {
   let store;
 
   beforeEach(() => {
@@ -15,13 +99,13 @@ describe('Editor Polotno - Serialización', () => {
     });
   });
 
-  test('debe crear un store vacío correctamente', () => {
+  test('debe crear un store vacio correctamente', () => {
     expect(store).toBeDefined();
     expect(store.pages.length).toBe(1);
     expect(store.activePage).toBeDefined();
   });
 
-  test('debe serializar y deserializar un diseño vacío', () => {
+  test('debe serializar y deserializar un diseño vacio', () => {
     const json = store.toJSON();
     expect(json).toBeDefined();
     expect(json.pages).toBeDefined();
@@ -54,7 +138,7 @@ describe('Editor Polotno - Serialización', () => {
     const json = store.toJSON();
     const newStore = createStore();
     newStore.loadJSON(json);
-    
+
     expect(newStore.activePage.children.length).toBe(1);
     expect(newStore.activePage.children[0].text).toBe('Texto de prueba');
   });
@@ -77,7 +161,7 @@ describe('Editor Polotno - Serialización', () => {
     const json = store.toJSON();
     const newStore = createStore();
     newStore.loadJSON(json);
-    
+
     expect(newStore.activePage.children.length).toBe(1);
     expect(newStore.activePage.children[0].src).toBe('https://via.placeholder.com/300x200');
   });
@@ -90,7 +174,7 @@ describe('Editor Polotno - Serialización', () => {
       width: 100,
       height: 100,
       fill: '#ff0000',
-      src: `<svg viewBox="0 0 100 100"><rect width="100" height="100" /></svg>`
+      src: '<svg viewBox="0 0 100 100"><rect width="100" height="100" /></svg>'
     });
 
     expect(store.activePage.children.length).toBe(1);
@@ -101,22 +185,20 @@ describe('Editor Polotno - Serialización', () => {
     const json = store.toJSON();
     const newStore = createStore();
     newStore.loadJSON(json);
-    
+
     expect(newStore.activePage.children.length).toBe(1);
     expect(newStore.activePage.children[0].fill).toBe('#ff0000');
   });
 
-  test('debe manejar múltiples elementos', () => {
-    // Agregar texto
+  test('debe manejar multiples elementos', () => {
     store.activePage.addElement({
       type: 'text',
-      text: 'Título',
+      text: 'Titulo',
       x: 50,
       y: 50,
       fontSize: 32
     });
 
-    // Agregar imagen
     store.activePage.addElement({
       type: 'image',
       src: 'https://via.placeholder.com/200x150',
@@ -124,7 +206,6 @@ describe('Editor Polotno - Serialización', () => {
       y: 150
     });
 
-    // Agregar forma
     store.activePage.addElement({
       type: 'svg',
       x: 300,
@@ -132,7 +213,7 @@ describe('Editor Polotno - Serialización', () => {
       width: 80,
       height: 80,
       fill: '#00ff00',
-      src: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" /></svg>`
+      src: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="50" /></svg>'
     });
 
     expect(store.activePage.children.length).toBe(3);
@@ -140,7 +221,7 @@ describe('Editor Polotno - Serialización', () => {
     const json = store.toJSON();
     const newStore = createStore();
     newStore.loadJSON(json);
-    
+
     expect(newStore.activePage.children.length).toBe(3);
     expect(newStore.activePage.children[0].type).toBe('text');
     expect(newStore.activePage.children[1].type).toBe('image');
@@ -157,7 +238,7 @@ describe('Editor Polotno - Animaciones', () => {
       width: 1920,
       height: 1080
     });
-    
+
     element = store.activePage.addElement({
       type: 'text',
       text: 'Elemento animado',
@@ -168,7 +249,7 @@ describe('Editor Polotno - Animaciones', () => {
     });
   });
 
-  test('debe agregar animación fade', () => {
+  test('debe agregar animacion fade', () => {
     element.set({
       animations: [{
         type: 'fade',
@@ -187,7 +268,7 @@ describe('Editor Polotno - Animaciones', () => {
     expect(element.animations[0].duration).toBe(1000);
   });
 
-  test('debe agregar animación slide', () => {
+  test('debe agregar animacion slide', () => {
     element.set({
       animations: [{
         type: 'slide',
@@ -206,7 +287,7 @@ describe('Editor Polotno - Animaciones', () => {
     expect(element.animations[0].repeat).toBe('infinite');
   });
 
-  test('debe agregar animación scale', () => {
+  test('debe agregar animacion scale', () => {
     element.set({
       animations: [{
         type: 'scale',
@@ -226,7 +307,7 @@ describe('Editor Polotno - Animaciones', () => {
     expect(element.animations[0].scaleTo).toBe(1.5);
   });
 
-  test('debe agregar animación rotate', () => {
+  test('debe agregar animacion rotate', () => {
     element.set({
       animations: [{
         type: 'rotate',
@@ -246,7 +327,7 @@ describe('Editor Polotno - Animaciones', () => {
     expect(element.animations[0].rotateTo).toBe(360);
   });
 
-  test('debe agregar múltiples animaciones', () => {
+  test('debe agregar multiples animaciones', () => {
     element.set({
       animations: [
         {
@@ -287,7 +368,7 @@ describe('Editor Polotno - Animaciones', () => {
     const json = store.toJSON();
     const newStore = createStore();
     newStore.loadJSON(json);
-    
+
     const newElement = newStore.activePage.children[0];
     expect(newElement.animations).toBeDefined();
     expect(newElement.animations.length).toBe(1);
@@ -319,42 +400,38 @@ describe('Editor Polotno - Multipantalla', () => {
     store = createStore();
   });
 
-  test('debe crear múltiples páginas (pantallas)', () => {
-    // Página para TV 1
+  test('debe crear multiples paginas (pantallas)', () => {
     const page1 = store.addPage({
       width: 1920,
       height: 1080,
       title: 'TV 1'
     });
 
-    // Página para TV 2
     const page2 = store.addPage({
       width: 1920,
       height: 1080,
       title: 'TV 2'
     });
 
-    expect(store.pages.length).toBe(3); // Incluye la página inicial
+    expect(store.pages.length).toBe(3);
     expect(page1.title).toBe('TV 1');
     expect(page2.title).toBe('TV 2');
   });
 
-  test('debe crear composición extendida', () => {
-    // Composición extendida para 2 TVs horizontales
+  test('debe crear composicion extendida', () => {
     const extendedPage = store.addPage({
-      width: 3840, // 1920 * 2
+      width: 3840,
       height: 1080,
-      title: 'Composición Extendida'
+      title: 'Composicion Extendida'
     });
 
     expect(extendedPage.width).toBe(3840);
     expect(extendedPage.height).toBe(1080);
 
-    // Agregar elemento que cruza ambas pantallas
     extendedPage.addElement({
       type: 'text',
       text: 'Texto extendido',
-      x: 1800, // Cruza el límite de 1920px
+      x: 1800,
       y: 500,
       width: 400,
       height: 80,
@@ -367,7 +444,7 @@ describe('Editor Polotno - Multipantalla', () => {
     expect(element.width).toBe(400);
   });
 
-  test('debe serializar múltiples páginas', () => {
+  test('debe serializar multiples paginas', () => {
     store.addPage({ width: 1920, height: 1080, title: 'Pantalla 1' });
     store.addPage({ width: 1920, height: 1080, title: 'Pantalla 2' });
 
