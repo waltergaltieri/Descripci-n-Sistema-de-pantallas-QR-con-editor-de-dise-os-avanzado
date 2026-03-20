@@ -80,7 +80,7 @@ const TemplateModal = ({ isOpen, onClose, onSuccess }) => {
       case 'basic':
         return 'bg-blue-100 text-blue-600';
       case 'text':
-        return 'bg-green-100 text-green-600';
+        return 'bg-blue-100 text-blue-600';
       case 'image':
         return 'bg-purple-100 text-purple-600';
       default:

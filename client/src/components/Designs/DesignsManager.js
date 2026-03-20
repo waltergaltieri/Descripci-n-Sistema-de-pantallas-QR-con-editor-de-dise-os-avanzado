@@ -14,7 +14,7 @@ import {
 import { designsService } from '../../services/api';
 import { useSocket } from '../../contexts/SocketContext';
 import TemplateModal from './TemplateModal';
-import DesignPreconfigModal from './Editor/DesignPreconfigModal';
+import DesignPreconfigModal from './DesignPreconfigModal';
 import toast from 'react-hot-toast';
 
 const DesignsManager = () => {
@@ -88,9 +88,12 @@ const DesignsManager = () => {
 
   const handleCreateDesign = async (preconfigData) => {
     try {
+      console.log('=== CREANDO DISEÑO EN MANAGER ===');
+      console.log('Datos recibidos:', preconfigData);
+      
       const designData = {
         name: preconfigData.name,
-        description: preconfigData.description || '',
+        description: '',
         content: {
           elements: [],
           settings: {
@@ -103,6 +106,9 @@ const DesignsManager = () => {
           }
         }
       };
+      
+      console.log('Datos a enviar al servidor:', designData);
+      console.log('Dimensiones en settings:', designData.content.settings.canvasWidth, 'x', designData.content.settings.canvasHeight);
 
       const response = await designsService.create(designData);
       toast.success('Diseño creado correctamente');
@@ -153,7 +159,7 @@ const DesignsManager = () => {
             
             {/* Estado de asignación */}
             {assignedScreensCount > 0 && (
-              <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full flex items-center">
+              <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full flex items-center">
                 <Monitor className="w-3 h-3 mr-1" />
                 {assignedScreensCount} pantalla{assignedScreensCount !== 1 ? 's' : ''}
               </span>
@@ -214,17 +220,7 @@ const DesignsManager = () => {
             </div>
 
             <div className="flex items-center space-x-2">
-              {/* Vista previa */}
-              <button
-                onClick={() => {
-                  // TODO: Implementar vista previa
-                  toast('Vista previa próximamente');
-                }}
-                className="btn btn-outline btn-sm"
-                title="Vista previa"
-              >
-                <Eye className="h-4 w-4" />
-              </button>
+
 
               {/* Eliminar */}
               <button

@@ -3,7 +3,7 @@ import axios from 'axios';
 // Configuración base de axios
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
-  timeout: 60000, // Aumentado a 60 segundos para payloads grandes
+  timeout: 600000, // Aumentado a 10 minutos para operaciones complejas
   maxContentLength: 100 * 1024 * 1024, // 100MB
   maxBodyLength: 100 * 1024 * 1024, // 100MB
   headers: {
@@ -71,6 +71,7 @@ export const designsService = {
   update: (id, data) => api.put(`/designs/${id}`, data),
   delete: (id) => api.delete(`/designs/${id}`),
   duplicate: (id, name) => api.post(`/designs/${id}/duplicate`, { name }),
+  publish: (id) => api.post(`/designs/${id}/publish`),
   getTemplates: () => api.get('/designs/templates/predefined'),
   createFromTemplate: (data) => api.post('/designs/from-template', data),
 };
@@ -122,6 +123,39 @@ export const uploadsService = {
   delete: (id) => api.delete(`/uploads/${id}`),
 };
 
+// Servicios del módulo de cartelería
+export const carteleriaService = {
+  getDashboardMetrics: () => api.get('/carteleria/dashboard/metrics'),
+  getBusinessProfile: () => api.get('/carteleria/business-profile'),
+  updateBusinessProfile: (data) => api.put('/carteleria/business-profile', data),
+  getCategories: () => api.get('/carteleria/categories'),
+  createCategory: (data) => api.post('/carteleria/categories', data),
+  updateCategory: (id, data) => api.put(`/carteleria/categories/${id}`, data),
+  getProducts: (params) => api.get('/carteleria/products', { params }),
+  getProductById: (id) => api.get(`/carteleria/products/${id}`),
+  createProduct: (data) => api.post('/carteleria/products', data),
+  updateProduct: (id, data) => api.put(`/carteleria/products/${id}`, data),
+  getPromotionMenus: () => api.get('/carteleria/menus/options'),
+  getMenus: (params) => api.get('/carteleria/menus', { params }),
+  getMenuById: (id) => api.get(`/carteleria/menus/${id}`),
+  createMenu: (data) => api.post('/carteleria/menus', data),
+  updateMenu: (id, data) => api.put(`/carteleria/menus/${id}`, data),
+  deleteMenu: (id) => api.delete(`/carteleria/menus/${id}`),
+  getPromotions: (params) => api.get('/carteleria/promotions', { params }),
+  getPromotionById: (id) => api.get(`/carteleria/promotions/${id}`),
+  createPromotion: (data) => api.post('/carteleria/promotions', data),
+  updatePromotion: (id, data) => api.put(`/carteleria/promotions/${id}`, data),
+  getCombos: (params) => api.get('/carteleria/combos', { params }),
+  getComboById: (id) => api.get(`/carteleria/combos/${id}`),
+  createCombo: (data) => api.post('/carteleria/combos', data),
+  updateCombo: (id, data) => api.put(`/carteleria/combos/${id}`, data),
+  getPersistentLinks: (params) => api.get('/carteleria/links', { params }),
+  getPersistentLinkById: (id) => api.get(`/carteleria/links/${id}`),
+  createPersistentLink: (data) => api.post('/carteleria/links', data),
+  updatePersistentLink: (id, data) => api.put(`/carteleria/links/${id}`, data),
+  getPublicMenu: (slug) => api.get(`/carteleria/public/${slug}`),
+};
+
 // Utilidades para manejo de errores
 export const handleApiError = (error) => {
   if (error.response) {
@@ -157,8 +191,9 @@ export const getFileUrl = (path) => {
     return path;
   }
   
-  // Construir URL relativa al servidor
-  const baseUrl = process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
+  // Construir URL relativa al servidor usando la misma base que consume la API
+  const apiBaseUrl = process.env.REACT_APP_SERVER_URL || process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+  const baseUrl = apiBaseUrl.replace(/\/api\/?$/, '');
   return `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
 };
 

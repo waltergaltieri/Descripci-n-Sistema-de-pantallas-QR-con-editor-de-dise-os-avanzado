@@ -12,6 +12,12 @@ const authRoutes = require('./routes/auth');
 const screensRoutes = require('./routes/screens');
 const designsRoutes = require('./routes/designs');
 const uploadsRoutes = require('./routes/uploads');
+const exportRoutes = require('./routes/export');
+const figuresSeparationRoutes = require('./routes/figuresSeparation');
+const autoSvgExportRoutes = require('./routes/autoSvgExport');
+const carteleriaRoutes = require('./routes/carteleria');
+const carteleriaPublicRoutes = require('./routes/carteleriaPublic');
+const { createUploadsStaticMiddleware } = require('./utils/uploadsStatic');
 
 const app = express();
 const server = createServer(app);
@@ -40,20 +46,58 @@ const limiter = rateLimit({
 });
 
 // Middleware
-app.use(helmet());
+// Configurar Helmet con CSP personalizado para permitir Konva y scripts inline
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: [
+        "'self'",
+        "'unsafe-inline'", // Necesario para scripts inline de Konva
+        "https://unpkg.com", // Para cargar Konva desde CDN
+      ],
+      styleSrc: [
+        "'self'",
+        "'unsafe-inline'", // Para estilos inline
+        "https://fonts.googleapis.com"
+      ],
+      fontSrc: [
+        "'self'",
+        "https://fonts.gstatic.com"
+      ],
+      imgSrc: [
+        "'self'",
+        "data:",
+        "blob:",
+        "https:"
+      ],
+      connectSrc: ["'self'"]
+    }
+  }
+}));
 app.use(limiter);
 app.use(cors());
 app.use(express.json({ limit: '100mb', parameterLimit: 50000 }));
 app.use(express.urlencoded({ extended: true, limit: '100mb', parameterLimit: 50000 }));
 
+// Logging middleware removido - debugging completado
+
 // Static files for uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', createUploadsStaticMiddleware(path.join(__dirname, 'uploads')));
+
+// Static files for public assets (animations, etc.)
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/screens', screensRoutes);
 app.use('/api/designs', designsRoutes);
 app.use('/api/uploads', uploadsRoutes);
+app.use('/api/export', exportRoutes);
+app.use('/api/figures-separation', figuresSeparationRoutes);
+app.use('/api/auto-svg-export', autoSvgExportRoutes);
+app.use('/api/carteleria/public', carteleriaPublicRoutes);
+app.use('/api/carteleria', carteleriaRoutes);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

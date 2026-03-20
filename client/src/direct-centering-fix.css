@@ -1,0 +1,88 @@
+/* SOLUCIÓN DIRECTA PARA CENTRAR EL WORKSPACE */
+/* Basada en la inspección del elemento real en el navegador */
+
+/* REGLA ESPECÍFICA PARA .polotno-workspace-inner */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace-inner {
+  /* Sobrescribir position: absolute con static para permitir centrado */
+  position: static !important;
+  
+  /* Eliminar left: 0px que lo pega al lado izquierdo */
+  left: auto !important;
+  
+  /* Centrar usando margin auto */
+  margin: 0 auto !important;
+  
+  /* Asegurar que ocupe el ancho necesario */
+  width: fit-content !important;
+  
+  /* Centrar usando flexbox en el padre */
+  display: block !important;
+}
+
+/* REGLA PARA EL CONTENEDOR PADRE */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace {
+  /* El contenedor debe usar flexbox para centrar */
+  display: flex !important;
+  justify-content: center !important;
+  align-items: flex-start !important;
+  
+  /* Asegurar que ocupe todo el ancho */
+  width: 100% !important;
+  height: 100% !important;
+  
+  /* Eliminar cualquier posicionamiento problemático */
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* REGLA PARA .polotno-page-container */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-page-container {
+  /* Asegurar que el contenedor de página esté centrado */
+  position: relative !important;
+  margin: 0 auto !important;
+  left: auto !important;
+  right: auto !important;
+  transform: none !important;
+}
+
+/* REGLA DE MÁXIMA ESPECIFICIDAD PARA SOBRESCRIBIR ESTILOS INLINE */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace .polotno-workspace-inner[style] {
+  position: static !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
+  margin: 0 auto !important;
+}
+
+/* REGLA PARA ELEMENTOS CON POSITION ABSOLUTE DENTRO DEL WORKSPACE */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace-inner > div[style*="position: absolute"] {
+  position: relative !important;
+  left: auto !important;
+  top: auto !important;
+  transform: none !important;
+  margin: 0 auto !important;
+}
+
+/* ASEGURAR QUE EL CANVAS SE CENTRE TAMBIÉN */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace-inner .konvajs-content {
+  margin: 0 auto !important;
+  display: block !important;
+}
+
+/* REGLA DE EMERGENCIA CON SELECTORES MÚLTIPLES */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace-inner,
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace-inner[style*="position"],
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace-inner[style*="left"],
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace-inner[style*="transform"] {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  margin: 0 auto !important;
+  display: block !important;
+  width: fit-content !important;
+}

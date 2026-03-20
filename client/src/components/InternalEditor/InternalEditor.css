@@ -1,0 +1,98 @@
+/* Estilos específicos para el editor interno simplificado */
+
+/* Ocultar todas las pestañas excepto Elements (figuras/shapes) */
+.internal-editor-side-panel [data-id="SidePanelItemTemplates"],
+.internal-editor-side-panel [data-id="SidePanelItemText"],
+.internal-editor-side-panel [data-id="SidePanelItemImages"],
+.internal-editor-side-panel [data-id="SidePanelItemUploads"],
+.internal-editor-side-panel [data-id="SidePanelItemBackground"],
+.internal-editor-side-panel [data-id="SidePanelItemResize"] {
+  display: none !important;
+}
+
+/* También ocultar por posición si los data-id no funcionan */
+.internal-editor-side-panel .polotno-side-panel-tab:nth-child(1), /* Templates */
+.internal-editor-side-panel .polotno-side-panel-tab:nth-child(2), /* Text */
+.internal-editor-side-panel .polotno-side-panel-tab:nth-child(4), /* Images */
+.internal-editor-side-panel .polotno-side-panel-tab:nth-child(5), /* Upload */
+.internal-editor-side-panel .polotno-side-panel-tab:nth-child(6), /* Background */
+.internal-editor-side-panel .polotno-side-panel-tab:nth-child(7)  /* Resize */ {
+  display: none !important;
+}
+
+/* Ocultar funcionalidades adicionales de texto, imágenes y uploads */
+.internal-editor-side-panel [data-testid="text-section"],
+.internal-editor-side-panel [data-testid="image-section"],
+.internal-editor-side-panel [data-testid="upload-section"],
+.internal-editor-side-panel [data-testid="template-section"] {
+  display: none !important;
+}
+
+/* Ocultar herramientas de texto en la toolbar */
+.polotno-toolbar [data-testid="text-tool"],
+.polotno-toolbar [data-testid="image-tool"],
+.polotno-toolbar [data-testid="upload-tool"] {
+  display: none !important;
+}
+
+/* Mantener solo la pestaña de Elements (figuras/shapes) */
+.internal-editor-side-panel [data-id="elements"] {
+  display: block !important;
+}
+
+/* Mantener visible solo la pestaña de Elements (tercera posición) */
+.internal-editor-side-panel .polotno-side-panel-tab:nth-child(3) {
+  display: block !important; /* Elements/Shapes */
+}
+
+/* Asegurar que el panel de elementos esté siempre abierto por defecto */
+.internal-editor-side-panel {
+  min-width: 280px;
+  max-width: 280px;
+}
+
+/* Simplificar la interfaz del panel de elementos */
+.internal-editor-side-panel .polotno-side-panel-content {
+  padding: 10px;
+}
+
+/* Estilo para los botones de figuras */
+.internal-editor-side-panel .polotno-elements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+  gap: 8px;
+  padding: 8px;
+}
+
+.internal-editor-side-panel .polotno-element-button {
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+}
+
+.internal-editor-side-panel .polotno-element-button:hover {
+  border-color: #3b82f6;
+  background-color: #f8fafc;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.internal-editor-side-panel .polotno-element-button svg {
+  width: 24px;
+  height: 24px;
+  margin-bottom: 4px;
+}
+
+.internal-editor-side-panel .polotno-element-button span {
+  font-size: 12px;
+  color: #374151;
+  text-align: center;
+}

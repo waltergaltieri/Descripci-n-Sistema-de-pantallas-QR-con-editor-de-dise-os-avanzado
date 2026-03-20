@@ -1,0 +1,95 @@
+/* SOLUCIÓN DE EMERGENCIA PARA CENTRADO DEL CANVAS */
+/* Estilos CSS agresivos para forzar el centrado cuando el panel lateral está oculto */
+
+/* Cuando el panel lateral está oculto, forzar centrado absoluto */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
+  z-index: 1000 !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+/* Asegurar que el contenedor padre no interfiera */
+.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  left: auto !important;
+  transform: none !important;
+}
+
+/* Sobrescribir cualquier estilo de Polotno que pueda interferir */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace-wrap {
+  position: static !important;
+  transform: none !important;
+  left: auto !important;
+  top: auto !important;
+  margin: 0 !important;
+}
+
+/* Asegurar que el workspace no tenga restricciones de posición */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace-wrap > div {
+  position: static !important;
+  transform: none !important;
+}
+
+/* Centrado alternativo usando flexbox en el contenedor principal */
+.polotno-editor-isolation[data-side-panel="hidden"] {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
+
+/* Resetear cualquier transformación que pueda estar aplicada */
+.polotno-editor-isolation[data-side-panel="hidden"] * {
+  box-sizing: border-box !important;
+}
+
+/* Estilo de respaldo usando grid */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-container {
+  display: grid !important;
+  place-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Asegurar que no hay overflow que pueda afectar el centrado */
+.polotno-editor-isolation[data-side-panel="hidden"] {
+  overflow: hidden !important;
+}
+
+/* Centrado usando position absolute como último recurso */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace.emergency-center {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
+  z-index: 9999 !important;
+}
+
+/* Debug: Resaltar el workspace cuando está centrado */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace {
+  border: 2px solid transparent;
+  /* border: 2px solid red !important; */
+  /* background: rgba(255, 0, 0, 0.1) !important; */
+}
+
+/* Animación suave para el centrado */
+.polotno-workspace {
+  transition: all 0.3s ease !important;
+}
+
+/* Asegurar que el canvas interno no tenga restricciones */
+.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace canvas {
+  position: relative !important;
+  display: block !important;
+  margin: 0 auto !important;
+}

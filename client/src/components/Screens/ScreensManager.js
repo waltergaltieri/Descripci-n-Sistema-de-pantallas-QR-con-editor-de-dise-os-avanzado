@@ -72,7 +72,7 @@ const SortableScreenItem = ({ screen, onEdit, onDelete, onToggleActive, onAssign
 
             {/* Estado */}
             <div className={`w-3 h-3 rounded-full mr-3 ${
-                screen.is_active ? 'bg-green-400' : 'bg-gray-400'
+                screen.is_active ? 'bg-blue-400' : 'bg-gray-400'
               }`} />
 
             {/* Detalles */}
@@ -83,8 +83,8 @@ const SortableScreenItem = ({ screen, onEdit, onDelete, onToggleActive, onAssign
                 </h3>
                 <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
                   screen.is_active 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-gray-100 text-gray-800'
+                    ? 'bg-blue-100 text-blue-800'
+                : 'bg-gray-100 text-gray-800'
                 }`}>
                   {screen.is_active ? 'Activa' : 'Inactiva'}
                 </span>

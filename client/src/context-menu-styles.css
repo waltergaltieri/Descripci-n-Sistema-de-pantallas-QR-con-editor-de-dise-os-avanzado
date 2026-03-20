@@ -1,0 +1,114 @@
+/* Estilos para el menú contextual mejorado */
+.context-menu-container {
+  /* Scrollbar personalizado para WebKit browsers */
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f3f4;
+}
+
+.context-menu-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.context-menu-container::-webkit-scrollbar-track {
+  background: #f1f3f4;
+  border-radius: 4px;
+}
+
+.context-menu-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.context-menu-container::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Animación suave para la aparición del menú */
+.context-menu-container {
+  animation: contextMenuFadeIn 0.15s ease-out;
+  transform-origin: top left;
+}
+
+@keyframes contextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Mejorar la apariencia de los elementos del menú */
+.context-menu-container .bp4-menu {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.context-menu-container .bp4-menu-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  transition: background-color 0.15s ease;
+}
+
+.context-menu-container .bp4-menu-item:hover {
+  background-color: #f5f8ff;
+}
+
+.context-menu-container .bp4-menu-item.bp4-intent-danger:hover {
+  background-color: #fdf2f2;
+  color: #dc3545;
+}
+
+/* Separadores de secciones */
+.context-menu-container .bp4-menu-divider {
+  margin: 4px 0;
+  border-top: 1px solid #e9ecef;
+}
+
+/* Títulos de sección - estilos movidos al final del archivo */
+
+/* Responsive para pantallas pequeñas */
+@media (max-width: 768px) {
+  .context-menu-container {
+    min-width: 180px;
+    max-width: 220px;
+    font-size: 12px;
+  }
+  
+  .context-menu-container .bp4-menu-item {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  
+  .context-menu-container .section-title {
+    font-size: 10px;
+    padding: 6px 12px 3px;
+  }
+}
+
+/* Asegurar que el menú no interfiera con otros elementos */
+.context-menu-container {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Estilos mejorados para los títulos de sección */
+.context-menu-container .section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 12px 4px;
+  margin: 0;
+  border-bottom: 1px solid #f0f0f0;
+  background-color: transparent;
+}

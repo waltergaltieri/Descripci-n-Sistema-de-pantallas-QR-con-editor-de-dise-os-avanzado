@@ -15,7 +15,7 @@ const ElementsPanel = ({ onAddElement }) => {
       name: 'Imagen',
       description: 'Insertar imagen o foto',
       icon: Image,
-      color: 'bg-green-100 text-green-600 hover:bg-green-200'
+      color: 'bg-blue-100 text-blue-600 hover:bg-blue-200'
     },
     {
       type: 'container',

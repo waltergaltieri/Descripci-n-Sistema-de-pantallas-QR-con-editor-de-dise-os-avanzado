@@ -1,52 +1,233 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Save,
   ArrowLeft,
   Plus,
-  Eye,
   Smartphone,
   Monitor,
   Tablet,
   Undo,
   Redo,
   Settings,
-  Loader
+  Loader,
+  Eye,
+  X,
+  ChevronLeft,
+  Download,
+  ChevronDown,
+  FileImage,
+  FileText,
+  File,
+  Sliders,
+  Upload
 } from 'lucide-react';
 import { designsService } from '../../services/api';
 import { useSocket } from '../../contexts/SocketContext';
-import GrapesJSEditor from './Editor/GrapesJSEditor';
-import DesignSettingsModal from './Editor/DesignSettingsModal';
-import DesignPreconfigModal from './Editor/DesignPreconfigModal';
+import PolotnoEditor from '../PolotnoEditor.tsx';
+import DesignConfigModal from './Editor/DesignConfigModal';
+// DesignPreconfigModal eliminado - ahora se maneja desde DesignsManager/Dashboard
 import toast from 'react-hot-toast';
+import { editorUtils, polotnoStore } from '../../store/editorStore';
 
 const DesignEditor = () => {
   const { id: designId } = useParams();
   const navigate = useNavigate();
-  const { emitEvent } = useSocket();
+  const { emit } = useSocket();
+  // Polotno maneja sus propios paneles internamente
   
   // Estados principales
   const [design, setDesign] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [currentEditorData, setCurrentEditorData] = useState(null);
+  // Estados eliminados - creación de diseños ahora se maneja desde DesignsManager/Dashboard
   
   // Estados de modales
-  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
-  const [preconfigModalOpen, setPreconfigModalOpen] = useState(false);
+  const [configModalOpen, setConfigModalOpen] = useState(false);
+  // Estados eliminados - preconfiguración ahora se maneja desde DesignsManager/Dashboard
   
   // Estado para vista previa
   const [previewData, setPreviewData] = useState(null);
   const [showPreview, setShowPreview] = useState(false);
+  
+  // Estados para exportación
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportModalType, setExportModalType] = useState('png');
+  const exportMenuRef = useRef(null);
+  
+  // Cerrar menú de exportación al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target)) {
+        setShowExportMenu(false);
+      }
+    };
+
+    if (showExportMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showExportMenu]);
+  
+  // El estado del panel lateral se maneja directamente con polotnoStore.openedSidePanel
+  
+  // Funciones de exportación
+  const handleExportPNG = async (options = { transparent: false }) => {
+    try {
+      // Si se requiere transparencia, temporalmente remover el fondo
+      let originalBackground = null;
+      if (options.transparent && polotnoStore.activePage) {
+        originalBackground = polotnoStore.activePage.background;
+        polotnoStore.activePage.set({ background: 'transparent' });
+      }
+
+      const dataURL = await polotnoStore.toDataURL({ 
+        pixelRatio: 2,
+        mimeType: 'image/png'
+      });
+
+      // Restaurar el fondo original si se removió
+      if (originalBackground && polotnoStore.activePage) {
+        polotnoStore.activePage.set({ background: originalBackground });
+      }
+
+      const link = document.createElement('a');
+      link.download = `${design?.name || 'diseño'}.png`;
+      link.href = dataURL;
+      link.click();
+      toast.success('PNG exportado correctamente');
+    } catch (error) {
+      console.error('Error al exportar PNG:', error);
+      toast.error('Error al exportar PNG');
+    }
+  };
+  
+  const handleExportJPEG = async () => {
+    try {
+      const dataURL = await polotnoStore.toDataURL({ 
+        pixelRatio: 2, 
+        mimeType: 'image/jpeg', 
+        quality: 0.9 
+      });
+      const link = document.createElement('a');
+      link.download = `${design?.name || 'diseño'}.jpg`;
+      link.href = dataURL;
+      link.click();
+      toast.success('JPEG exportado correctamente');
+    } catch (error) {
+      console.error('Error al exportar JPEG:', error);
+      toast.error('Error al exportar JPEG');
+    }
+  };
+  
+  const handleExportSVG = async () => {
+    try {
+      const activePage = polotnoStore.activePage;
+      if (!activePage) {
+        toast.error('No hay página activa para exportar');
+        return;
+      }
+      
+      // Guardar el fondo actual
+         const originalBackground = activePage.background;
+         
+         // Remover temporalmente el fondo para exportación transparente
+         await polotnoStore.history.transaction(async () => {
+           activePage.set({ background: 'transparent' });
+         });
+         
+         // Exportar SVG sin fondo
+         await polotnoStore.saveAsSVG();
+         
+         // Restaurar el fondo original
+         await polotnoStore.history.transaction(async () => {
+           activePage.set({ background: originalBackground });
+         });
+      
+      toast.success('SVG exportado exitosamente sin fondo');
+    } catch (error) {
+      console.error('Error al exportar SVG:', error);
+      toast.error('Error al exportar SVG');
+    }
+  };
+  
+  const handleExportJSON = () => {
+    try {
+      const json = polotnoStore.toJSON();
+      const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = `${design?.name || 'diseño'}.json`;
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success('JSON exportado correctamente');
+    } catch (error) {
+      console.error('Error al exportar JSON:', error);
+      toast.error('Error al exportar JSON');
+    }
+  };
+  
+  const handleExportPDF = async () => {
+    try {
+      // Para PDF exportamos como PNG de alta resolución
+      const dataURL = await polotnoStore.toDataURL({ 
+        pixelRatio: 2,
+        mimeType: 'image/png'
+      });
+      const link = document.createElement('a');
+      link.download = `${design?.name || 'diseño'}.png`;
+      link.href = dataURL;
+      link.click();
+      toast.success('Imagen exportada correctamente');
+    } catch (error) {
+      console.error('Error al exportar PDF:', error);
+      toast.error('Error al exportar PDF');
+    }
+  };
+  
+  // Debug: función para mostrar dimensiones actuales
+  const showCanvasDimensions = () => {
+    const activePage = polotnoStore.activePage;
+    if (activePage) {
+      alert(`Dimensiones del canvas: ${activePage.width} x ${activePage.height}`);
+      console.log('Canvas dimensions:', activePage.width, 'x', activePage.height);
+      console.log('Total pages:', polotnoStore.pages.length);
+    } else {
+      alert('No hay página activa');
+      console.log('No active page found');
+    }
+  };
+
+  // Función para colapsar/expandir el panel lateral de Polotno
+  const togglePolotnoSidePanel = () => {
+    console.log('Toggle clicked, current openedSidePanel:', polotnoStore.openedSidePanel);
+    
+    if (polotnoStore.openedSidePanel) {
+      polotnoStore.openSidePanel(''); // Cerrar panel
+      console.log('Closing panel');
+    } else {
+      polotnoStore.openSidePanel('photos'); // Abrir panel por defecto
+      console.log('Opening panel with photos');
+    }
+  };
 
   useEffect(() => {
     if (designId) {
       loadDesign();
     } else {
-      // Nuevo diseño - mostrar modal de preconfiguración
-      setPreconfigModalOpen(true);
-      setLoading(false);
+      // Redirigir a designs si no hay ID (la creación se maneja desde DesignsManager)
+      navigate('/designs');
     }
-  }, [designId]);
+  }, [designId, navigate]);
+  
+  // ELIMINADO: useEffect que causaba bucle infinito
+  // La inicialización del canvas se maneja en loadDesign() para diseños existentes
 
   // Prevenir salida accidental con cambios sin guardar
   useEffect(() => {
@@ -69,6 +250,57 @@ const DesignEditor = () => {
       
       setDesign(designData);
       
+      // Cargar contenido JSON en el store de Polotno si existe
+      let contentToLoad = null;
+      
+      if (designData.content) {
+        // Si content es un objeto con propiedad json
+        if (designData.content.json) {
+          contentToLoad = designData.content.json;
+        }
+        // Si content es directamente el JSON de Polotno (nuevo formato)
+        else if (designData.content.pages) {
+          contentToLoad = designData.content;
+        }
+        // Si content es un string, parsearlo
+        else if (typeof designData.content === 'string') {
+          try {
+            const parsed = JSON.parse(designData.content);
+            contentToLoad = parsed.pages ? parsed : parsed.json;
+          } catch (error) {
+            console.error('Error parseando content:', error);
+          }
+        }
+      }
+      
+      if (contentToLoad) {
+        polotnoStore.loadJSON(contentToLoad);
+      } else {
+        // Si no hay contenido JSON, crear página con las dimensiones guardadas
+        // Parsear content si es string (fix para cuando el servidor devuelve content como string)
+        let content = designData.content;
+        if (typeof content === 'string') {
+          try {
+            content = JSON.parse(content);
+          } catch (error) {
+            console.error('Error parseando content:', error);
+            content = {};
+          }
+        }
+        
+        const settings = content?.settings || {};
+        const hasCustomDimensions = settings.canvasWidth && settings.canvasHeight;
+        const width = settings.canvasWidth || 768;
+        const height = settings.canvasHeight || 1366;
+        const backgroundColor = settings.backgroundColor || '#ffffff';
+        
+        if (!hasCustomDimensions) {
+          console.warn('⚠️ DISEÑO SIN DIMENSIONES PERSONALIZADAS - Usando valores por defecto');
+        }
+        
+        editorUtils.createPageWithDimensions(width, height, backgroundColor);
+      }
+      
     } catch (error) {
       console.error('Error cargando diseño:', error);
       toast.error('Error al cargar el diseño');
@@ -78,59 +310,81 @@ const DesignEditor = () => {
     }
   };
 
-  const handlePreconfigConfirm = async (preconfigData) => {
-    try {
-      const designData = {
-        name: preconfigData.name,
-        description: preconfigData.description || '',
-        content: {
-          html: '<div class="container"><h1>Bienvenido a tu diseño</h1><p>Comienza a editar arrastrando elementos desde el panel lateral.</p></div>',
-          css: `
-            .container {
-              padding: 20px;
-              max-width: ${preconfigData.width}px;
-              height: ${preconfigData.height}px;
-              margin: 0 auto;
-              background: #ffffff;
-            }
-            h1 {
-              color: #333;
-              font-family: Arial, sans-serif;
-              margin-bottom: 20px;
-            }
-            p {
-              color: #666;
-              font-family: Arial, sans-serif;
-              line-height: 1.6;
-            }
-          `,
-          components: null,
-          settings: {
-            backgroundColor: '#ffffff',
-            backgroundImage: null,
-            canvasWidth: preconfigData.width,
-            canvasHeight: preconfigData.height,
-            screenSizeName: preconfigData.screenSizeName,
-            orientation: preconfigData.orientation
-          }
-        }
-      };
+  // Función eliminada - ahora se maneja desde DesignsManager/Dashboard
 
-      const response = await designsService.create(designData);
-      setDesign(response.data);
-      setPreconfigModalOpen(false);
-      toast.success('Diseño creado correctamente');
-      
+  // Función eliminada - ahora se maneja desde DesignsManager/Dashboard
+
+  const handleEditorDataChange = (newData) => {
+    setCurrentEditorData(newData);
+  };
+
+  // Función para obtener datos actuales del editor Polotno
+  const getCurrentEditorData = () => {
+    try {
+      const json = editorUtils.saveDesign();
+      return {
+        content: json
+      };
     } catch (error) {
-      console.error('Error creando diseño:', error);
-      toast.error('Error al crear el diseño');
+      console.error('Error obteniendo datos del editor:', error);
+      return null;
     }
   };
 
-  const handlePreconfigCancel = () => {
-    setPreconfigModalOpen(false);
-    navigate('/designs');
+  // Función para generar vista previa
+  const handlePreview = async () => {
+    try {
+      // Obtener dimensiones del canvas actual
+      const activePage = polotnoStore.activePage;
+      if (!activePage) {
+        toast.error('No hay página activa para previsualizar');
+        return;
+      }
+
+      // Generar imagen del canvas actual usando toDataURL
+      const dataURL = await polotnoStore.toDataURL({
+        pixelRatio: 1,
+        mimeType: 'image/png',
+        quality: 0.9
+      });
+
+      // Configurar datos de vista previa
+      setPreviewData({
+        imageUrl: dataURL,
+        width: activePage.width,
+        height: activePage.height,
+        designName: design?.name || 'Diseño sin nombre',
+        screenInfo: design?.screens || []
+      });
+
+      setShowPreview(true);
+    } catch (error) {
+      console.error('Error generando vista previa:', error);
+      toast.error('Error al generar la vista previa');
+    }
   };
+
+  // Función para cerrar vista previa
+  const closePreview = () => {
+    setShowPreview(false);
+    setPreviewData(null);
+  };
+
+  // Manejar tecla ESC para cerrar vista previa
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && showPreview) {
+        closePreview();
+      }
+    };
+
+    if (showPreview) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [showPreview]);
 
   const handleSave = async (editorData, isAutoSave = false) => {
     if (!design) return;
@@ -140,12 +394,7 @@ const DesignEditor = () => {
       
       const designData = {
         ...design,
-        content: {
-          ...design.content,
-          html: editorData?.html || design.content.html,
-          css: editorData?.css || design.content.css,
-          components: editorData?.components || design.content.components
-        }
+        content: editorData?.content || design.content
       };
 
       let response;
@@ -164,7 +413,7 @@ const DesignEditor = () => {
       }
       
       // Emitir evento de actualización
-      emitEvent('design-updated', { designId: response.data.id });
+      emit('design-updated', { designId: response.data.id });
       
     } catch (error) {
       console.error('Error guardando diseño:', error);
@@ -176,35 +425,38 @@ const DesignEditor = () => {
     }
   };
 
+  const handlePublish = async () => {
+    if (!design || !designId) {
+      toast.error('No hay diseño para publicar');
+      return;
+    }
+    
+    try {
+      setSaving(true);
+      
+      const response = await designsService.publish(designId);
+      
+      if (response.data.success) {
+        toast.success('Diseño publicado correctamente');
+        // Emitir evento de publicación
+        emit('design-published', { designId: designId });
+      } else {
+        toast.error('Error al publicar el diseño');
+      }
+      
+    } catch (error) {
+      console.error('Error publicando diseño:', error);
+      toast.error('Error al publicar el diseño');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleBack = () => {
     navigate('/designs');
   };
 
-  const handlePreview = (previewData) => {
-    setPreviewData(previewData);
-    setShowPreview(true);
-    
-    // Abrir en nueva ventana
-    const previewWindow = window.open('', '_blank');
-    if (previewWindow) {
-      previewWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Vista Previa - ${design?.name || 'Diseño'}</title>
-          <style>
-            body { margin: 0; padding: 0; }
-            ${previewData.css}
-          </style>
-        </head>
-        <body>
-          ${previewData.html}
-        </body>
-        </html>
-      `);
-      previewWindow.document.close();
-    }
-  };
+
 
   const getViewportDimensions = () => {
     // Siempre usar las dimensiones del canvas desde la configuración del diseño
@@ -230,17 +482,9 @@ const DesignEditor = () => {
     );
   }
 
-  // Si es un nuevo diseño y no se ha completado la preconfiguración, no mostrar el editor
-  if (!designId && !design) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-gray-100">
-        <DesignPreconfigModal
-          isOpen={preconfigModalOpen}
-          onConfirm={handlePreconfigConfirm}
-          onCancel={handlePreconfigCancel}
-        />
-      </div>
-    );
+  // Si no hay designId, redirigir (la creación se maneja desde DesignsManager)
+  if (!designId) {
+    return null;
   }
 
   return (
@@ -258,6 +502,15 @@ const DesignEditor = () => {
               Volver
             </button>
             
+            {/* Botón de debug */}
+            <button
+              onClick={showCanvasDimensions}
+              className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+              title="Mostrar dimensiones del canvas"
+            >
+              Debug
+            </button>
+            
             <div className="border-l border-gray-300 pl-4">
               <h1 className="text-lg font-semibold text-gray-900">
                 {design?.name || 'Nuevo Diseño'}
@@ -271,28 +524,135 @@ const DesignEditor = () => {
           <div className="flex items-center space-x-3">
             {/* Configuración */}
             <button
-              onClick={() => setSettingsModalOpen(true)}
+              onClick={() => setConfigModalOpen(true)}
               className="btn btn-outline btn-sm"
               title="Configuración del diseño"
             >
               <Settings className="h-4 w-4" />
             </button>
 
-            {/* Vista previa */}
+            {/* Panel Lateral */}
             <button
-              onClick={() => {
-                // TODO: Implementar vista previa
-                toast('Vista previa próximamente');
-              }}
-              className="btn btn-secondary btn-sm flex items-center"
+              onClick={togglePolotnoSidePanel}
+              className={`btn btn-outline btn-sm ${
+                polotnoStore.openedSidePanel 
+                  ? 'text-blue-600 bg-blue-50 border-blue-200' 
+                  : ''
+              }`}
+              title="Mostrar/ocultar panel lateral"
             >
-              <Eye className="h-4 w-4 mr-1" />
-              Vista Previa
+              <ChevronLeft className={`h-4 w-4 transition-transform ${
+                polotnoStore.openedSidePanel ? '' : 'rotate-180'
+              }`} />
+            </button>
+
+            {/* Vista Previa */}
+            <button
+              onClick={handlePreview}
+              className="btn btn-outline btn-sm"
+              title="Vista previa del diseño"
+            >
+              <Eye className="h-4 w-4" />
+            </button>
+
+            {/* Exportar */}
+            <div className="relative" ref={exportMenuRef}>
+              <button
+                onClick={() => setShowExportMenu(!showExportMenu)}
+                className="btn btn-outline btn-sm flex items-center"
+                title="Opciones de exportación"
+              >
+                <Download className="h-4 w-4" />
+                <ChevronDown className="h-3 w-3 ml-1" />
+              </button>
+              
+              {showExportMenu && (
+                <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-w-[200px]">
+                  <button
+                    onClick={() => {
+                      handleExportPNG({ transparent: false });
+                      setShowExportMenu(false);
+                    }}
+                    className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                  >
+                    <FileImage className="h-4 w-4" />
+                    PNG con fondo
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleExportPNG({ transparent: true });
+                      setShowExportMenu(false);
+                    }}
+                    className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                  >
+                    <FileImage className="h-4 w-4" />
+                    PNG sin fondo
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleExportJPEG();
+                      setShowExportMenu(false);
+                    }}
+                    className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                  >
+                    <FileImage className="h-4 w-4" />
+                    JPEG (Rápido)
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleExportSVG();
+                      setShowExportMenu(false);
+                    }}
+                    className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                  >
+                    <File className="h-4 w-4" />
+                    SVG
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleExportJSON();
+                      setShowExportMenu(false);
+                    }}
+                    className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                  >
+                    <FileText className="h-4 w-4" />
+                    JSON
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleExportPDF();
+                      setShowExportMenu(false);
+                    }}
+                    className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-sm"
+                  >
+                    <File className="h-4 w-4" />
+                    PDF
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Publicar */}
+            <button
+              onClick={handlePublish}
+              disabled={saving || !design}
+              className="btn btn-outline btn-sm flex items-center"
+              title="Publicar diseño"
+            >
+              <Upload className="h-4 w-4 mr-1" />
+              {saving ? 'Publicando...' : 'Publicar'}
             </button>
 
             {/* Guardar */}
             <button
-              onClick={() => handleSave(null)}
+              onClick={() => {
+                const editorData = getCurrentEditorData();
+                if (editorData) {
+                  handleSave(editorData);
+                } else {
+                  toast.error('No se pudo obtener los datos del editor');
+                }
+              }}
               disabled={saving}
               className="btn btn-primary btn-sm flex items-center"
             >
@@ -312,32 +672,73 @@ const DesignEditor = () => {
         </div>
       </div>
 
-      {/* Área principal - Editor GrapesJS */}
+      {/* Área principal - Editor Polotno */}
        <div className="flex-1 overflow-hidden">
-         <GrapesJSEditor
-           design={design}
-           onSave={handleSave}
-           onPreview={handlePreview}
-           saving={saving}
-         />
+         <PolotnoEditor />
        </div>
 
       {/* Modal de configuración */}
-      <DesignSettingsModal
-        isOpen={settingsModalOpen}
-        onClose={() => setSettingsModalOpen(false)}
+      <DesignConfigModal
+        isOpen={configModalOpen}
+        onClose={() => setConfigModalOpen(false)}
         design={design}
-        onUpdateDesign={(updatedDesign) => {
+        onUpdate={(updatedDesign, width, height, orientation) => {
           setDesign(updatedDesign);
+          
+          // Actualizar dimensiones del canvas
+          if (width && height) {
+            editorUtils.setCanvasDimensions(width, height);
+          }
+          
+          toast.success('Configuración actualizada correctamente');
         }}
       />
 
-      {/* Modal de preconfiguración para nuevos diseños */}
-      <DesignPreconfigModal
-        isOpen={preconfigModalOpen}
-        onConfirm={handlePreconfigConfirm}
-        onCancel={handlePreconfigCancel}
-      />
+      {/* Modal de Vista Previa */}
+      {showPreview && previewData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90">
+          <div className="relative w-full h-full flex items-center justify-center p-4">
+            {/* Botón cerrar */}
+            <button
+              onClick={closePreview}
+              className="absolute top-4 right-4 z-10 bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-2 rounded-full transition-all duration-200"
+              title="Cerrar vista previa (ESC)"
+            >
+              <X className="h-6 w-6" />
+            </button>
+
+            {/* Información de la pantalla */}
+            <div className="absolute top-4 left-4 z-10 bg-black bg-opacity-50 text-white p-3 rounded-lg">
+              <h3 className="font-semibold text-lg mb-1">{previewData.designName}</h3>
+              <p className="text-sm opacity-90">Resolución: {previewData.width} × {previewData.height}</p>
+              {previewData.screenInfo.length > 0 && (
+                <p className="text-sm opacity-90 mt-1">
+                  Pantallas asignadas: {previewData.screenInfo.length}
+                </p>
+              )}
+            </div>
+
+            {/* Imagen de vista previa */}
+            <div className="max-w-full max-h-full flex items-center justify-center">
+              <img
+                src={previewData.imageUrl}
+                alt="Vista previa del diseño"
+                className="max-w-full max-h-full object-contain shadow-2xl"
+                style={{
+                  maxWidth: '90vw',
+                  maxHeight: '90vh'
+                }}
+              />
+            </div>
+
+            {/* Indicador de escala */}
+            <div className="absolute bottom-4 left-4 z-10 bg-black bg-opacity-50 text-white px-3 py-2 rounded-lg text-sm">
+              Vista previa simulada - Pantalla real: {previewData.width}×{previewData.height}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
