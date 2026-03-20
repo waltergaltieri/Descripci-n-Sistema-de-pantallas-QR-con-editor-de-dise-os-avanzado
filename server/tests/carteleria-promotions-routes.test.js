@@ -15,7 +15,8 @@ const loadRouterWithMocks = (fakeDbConnection) => {
     filename: databaseModulePath,
     loaded: true,
     exports: {
-      db: () => fakeDbConnection
+      db: () => fakeDbConnection,
+      getProviderConfig: () => ({ provider: 'postgres' })
     }
   };
 
@@ -95,6 +96,68 @@ test('create promotion route accepts minimum_spend without crashing', async () =
   assert.equal(jsonBody.id, 77);
   assert.equal(runCalls.length, 1);
   assert.equal(runCalls[0].params[7], 150000);
+
+  cleanupRouterMocks();
+});
+
+test('list combos route uses postgres-safe aggregation', async () => {
+  const allCalls = [];
+  const fakeDbConnection = {
+    async get(sql) {
+      if (sql.includes('COUNT(*) AS count')) {
+        return { count: 1 };
+      }
+
+      return { id: 1 };
+    },
+    async all(sql) {
+      allCalls.push(sql);
+      return [
+        {
+          id: 12,
+          name: 'Combo test',
+          combo_price_cents: 250000,
+          items_count: 2,
+          items_summary: 'A, B',
+          visible_in_menus: 1
+        }
+      ];
+    }
+  };
+
+  const router = loadRouterWithMocks(fakeDbConnection);
+  const routeLayer = router.stack.find(
+    (layer) => layer.route && layer.route.path === '/combos' && layer.route.methods.get
+  );
+
+  const req = {
+    query: {
+      page: '1',
+      limit: '100',
+      status: 'active'
+    }
+  };
+
+  let statusCode = 200;
+  let jsonBody = null;
+  const res = {
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    json(payload) {
+      jsonBody = payload;
+      return this;
+    }
+  };
+
+  await routeLayer.route.stack[0].handle(req, res);
+
+  assert.equal(statusCode, 200);
+  assert.equal(jsonBody.data.length, 1);
+  assert.equal(allCalls.length, 1);
+  assert.equal(allCalls[0].includes('GROUP_CONCAT'), false);
+  assert.equal(allCalls[0].includes('STRING_AGG'), true);
 
   cleanupRouterMocks();
 });

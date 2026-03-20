@@ -1,5 +1,5 @@
 const express = require('express');
-const { db } = require('../config/database');
+const { db, getProviderConfig } = require('../config/database');
 const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const { assembleMenuPayload } = require('../utils/menuAssembler');
 const { findScheduleConflicts } = require('../utils/scheduleValidator');
@@ -96,6 +96,16 @@ const parseJsonField = (value, fallback = {}) => {
 };
 
 const stringifyJsonField = (value, fallback = {}) => JSON.stringify(value || fallback);
+
+const getComboItemsSummarySql = () => {
+  const provider = getProviderConfig()?.provider || 'sqlite';
+
+  if (provider === 'postgres') {
+    return "STRING_AGG(DISTINCT p.name, ', ' ORDER BY p.name)";
+  }
+
+  return 'GROUP_CONCAT(DISTINCT p.name)';
+};
 
 const slugify = (value = '') =>
   String(value)
@@ -1621,12 +1631,14 @@ router.get('/combos', async (req, res) => {
       params
     );
 
+    const itemsSummarySql = getComboItemsSummarySql();
+
     const combos = await db().all(
       `
         SELECT
           c.*,
           COUNT(DISTINCT ci.product_id) AS items_count,
-          GROUP_CONCAT(DISTINCT p.name) AS items_summary,
+          ${itemsSummarySql} AS items_summary,
           COUNT(DISTINCT cmv.menu_id) AS visible_in_menus
         FROM combos c
         LEFT JOIN combo_items ci ON ci.combo_id = c.id
