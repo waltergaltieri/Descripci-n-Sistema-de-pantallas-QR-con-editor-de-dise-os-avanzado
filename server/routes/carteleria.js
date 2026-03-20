@@ -1975,7 +1975,7 @@ router.get('/links', async (req, res) => {
         LEFT JOIN menus m ON m.id = pl.default_menu_id
         LEFT JOIN link_schedule_rules lsr ON lsr.persistent_link_id = pl.id AND lsr.is_active = 1
         ${whereClause}
-        GROUP BY pl.id
+        GROUP BY pl.id, m.name
         ORDER BY pl.updated_at DESC, pl.id DESC
         LIMIT ? OFFSET ?
       `,

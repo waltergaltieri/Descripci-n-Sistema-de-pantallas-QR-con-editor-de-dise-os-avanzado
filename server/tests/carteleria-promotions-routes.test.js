@@ -162,6 +162,68 @@ test('list combos route uses postgres-safe aggregation', async () => {
   cleanupRouterMocks();
 });
 
+test('list links route groups joined menu name for postgres', async () => {
+  const allCalls = [];
+  const fakeDbConnection = {
+    async get(sql) {
+      if (sql.includes('COUNT(*) AS count')) {
+        return { count: 1 };
+      }
+
+      return { id: 1 };
+    },
+    async all(sql) {
+      allCalls.push(sql);
+      return [
+        {
+          id: 3,
+          name: 'Menu mañana',
+          slug: 'menu-manana',
+          qr_config: '{}',
+          default_menu_name: 'Desayuno',
+          rules_count: 2
+        }
+      ];
+    }
+  };
+
+  const router = loadRouterWithMocks(fakeDbConnection);
+  const routeLayer = router.stack.find(
+    (layer) => layer.route && layer.route.path === '/links' && layer.route.methods.get
+  );
+
+  const req = {
+    query: {
+      page: '1',
+      limit: '12',
+      search: '',
+      status: ''
+    }
+  };
+
+  let statusCode = 200;
+  let jsonBody = null;
+  const res = {
+    status(code) {
+      statusCode = code;
+      return this;
+    },
+    json(payload) {
+      jsonBody = payload;
+      return this;
+    }
+  };
+
+  await routeLayer.route.stack[0].handle(req, res);
+
+  assert.equal(statusCode, 200);
+  assert.equal(jsonBody.data.length, 1);
+  assert.equal(allCalls.length, 1);
+  assert.equal(allCalls[0].includes('GROUP BY pl.id, m.name'), true);
+
+  cleanupRouterMocks();
+});
+
 test('create combo route persists countdown flag', async () => {
   const runCalls = [];
   const fakeDbConnection = {

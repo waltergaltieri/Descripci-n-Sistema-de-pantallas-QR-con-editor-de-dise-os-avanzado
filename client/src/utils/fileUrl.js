@@ -3,8 +3,29 @@ export const resolveFileUrl = (path) => {
     return null;
   }
 
-  if (path.startsWith('http')) {
-    return path;
+  const normalizedPath = String(path).trim();
+
+  if (!normalizedPath) {
+    return null;
+  }
+
+  if (
+    normalizedPath.startsWith('http') ||
+    normalizedPath.startsWith('data:') ||
+    normalizedPath.startsWith('blob:')
+  ) {
+    return normalizedPath;
+  }
+
+  if (
+    normalizedPath.startsWith('#') ||
+    normalizedPath.startsWith('linear-gradient(') ||
+    normalizedPath.startsWith('rgb(') ||
+    normalizedPath.startsWith('rgba(') ||
+    normalizedPath.startsWith('hsl(') ||
+    normalizedPath.startsWith('hsla(')
+  ) {
+    return null;
   }
 
   const apiBaseUrl =
@@ -13,5 +34,5 @@ export const resolveFileUrl = (path) => {
     'http://localhost:5000/api';
   const baseUrl = apiBaseUrl.replace(/\/api\/?$/, '');
 
-  return `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+  return `${baseUrl}${normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`}`;
 };
