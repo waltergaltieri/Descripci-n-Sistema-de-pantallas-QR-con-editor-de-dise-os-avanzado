@@ -4,17 +4,13 @@ import { PolotnoContainer, SidePanelWrap, WorkspaceWrap } from 'polotno';
 import { Toolbar } from 'polotno/toolbar/toolbar';
 import { SidePanel } from 'polotno/side-panel';
 import { Workspace } from 'polotno/canvas/workspace';
-import { Button, Card, HTMLSelect, NumericInput, Menu, MenuItem } from '@blueprintjs/core';
+import { Button, MenuItem } from '@blueprintjs/core';
 import { observer } from 'mobx-react-lite';
 import { reaction } from 'mobx';
 import { polotnoStore } from '../../store/internalEditorStore';
 // import '../../utils/forcePanelWidth'; // Desactivado temporalmente para evitar conflictos
 // import { fixAllCanvasDragIssues } from '../../utils/fixCanvasDrag'; // Desactivado para simplificar
-import { initializeForcedCentering } from '../../utils/forceCenterCanvas';
-import { setupEmergencyCentering } from '../../utils/emergencyCentering';
-import { setupAbsoluteCentering } from '../../utils/absoluteCentering';
 // import { setupStructuralCenteringFix } from '../../utils/structuralCenteringFix';
-import { debugWorkspaceCentering, monitorWorkspaceChanges, applyManualWorkspaceCentering } from '../../debug-workspace-centering';
 import '../../test-panel-toggle'; // Script de prueba para depuración
 import '../../test-specific-classes';
 import '../../ultimate-centering-test'; // Script de testing definitivo
@@ -25,6 +21,7 @@ import '../../hide-templates-tab'; // Script para ocultar la pestaña de Templat
 // import '../../image-resize-patch'; // Parche adicional para redimensionamiento de imágenes - DESACTIVADO: causa errores de MobX State Tree
 // import '../../debug-contextual-controls'; // Diagnóstico de controles contextuales
 import '@blueprintjs/core/lib/css/blueprint.css';
+import '../../vendor/blueprint5-polotno.css';
 import '../PolotnoEditor.css';
 import '../../emergency-centering.css';
 import '../../ultimate-centering-fix.css';
@@ -354,7 +351,7 @@ const ActionControls = observer(({ store }: { store: any }) => {
 
 const InternalEditor: React.FC = observer(() => {
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null);
-  const [sidePanelCollapsed, setSidePanelCollapsed] = useState(false);
+  const [sidePanelCollapsed] = useState(false);
   
   useEffect(() => {
     // Configurar valores por defecto para imágenes
