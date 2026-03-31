@@ -1,1345 +1,782 @@
-/* 
- * CSS básico para Polotno Editor
- * Solución simple sin conflictos con Tailwind CSS
- */
+/* ══════════════════════════════════════════════════════
+   Design Studio — Canva-Style Editor CSS
+   ══════════════════════════════════════════════════════ */
 
-/* Contenedor principal del editor */
-.polotno-editor-isolation {
-  width: 100%;
+/* ── Variables ── */
+.ds {
+  --ds-bg: #F5F5F5;
+  --ds-surface: #ffffff;
+  --ds-border: #E5E7EB;
+  --ds-border-strong: #D1D5DB;
+  --ds-text: #111827;
+  --ds-muted: #6B7280;
+  --ds-accent: #2563eb;
+  --ds-accent-soft: rgba(37, 99, 235, 0.08);
+  --ds-accent-strong: rgba(37, 99, 235, 0.15);
+  --ds-danger: #DC2626;
+  --ds-rail-w: 64px;
+  --ds-panel-w: 280px;
+
   height: 100%;
+  min-height: 0;
+  background: var(--ds-bg);
+  color: var(--ds-text);
+}
+
+/* Box-sizing only for OUR elements — never bleed into Polotno/Blueprint internals */
+.ds-rail,
+.ds-rail-items,
+.ds-rail-btn,
+.ds-panel,
+.ds-panel-header,
+.ds-panel-close,
+.ds-panel-body,
+.ds-panel-content,
+.ds-panel-stack,
+.ds-panel-state,
+.ds-main,
+.ds-ctx-toolbar,
+.ds-ctx-left,
+.ds-ctx-center,
+.ds-ctx-right,
+.ds-ctx-divider,
+.ds-icon-btn,
+.ds-chip,
+.ds-btn,
+.ds-layers-anchor,
+.ds-layers-popover,
+.ds-layers-popover-header,
+.ds-layers-popover-body,
+.ds-workspace-wrap,
+.ds-workspace-shell,
+.ds-zoom-controls,
+.ds-zoom-label,
+.ds-empty-state,
+.ds-empty-card,
+.ds-template-list,
+.ds-template-card,
+.ds-template-preview,
+.ds-template-accent,
+.ds-template-text,
+.ds-template-meta,
+.ds-tip-list,
+.ds-tip {
+  box-sizing: border-box;
+}
+
+/* ══════════════════════════════════════════════════════
+   ISOLATION — Undo Tailwind Preflight + index.css resets
+   within Polotno / Blueprint areas.
+
+   Root cause:
+   1. index.css: `* { margin:0; padding:0; box-sizing:border-box }`
+   2. index.css: `input { background:#fff !important; color:#213547 !important }`
+   3. @tailwind base (Preflight): resets button appearance, line-heights,
+      border-styles, list-styles, etc.
+   4. @tailwind base (Preflight): `img, svg, video { display:block }` which
+      breaks inline SVG icons in Blueprint buttons.
+
+   These nuke Blueprint's internal layout rules.
+   `margin:revert` doesn't help because revert goes to user-agent, not
+   to Blueprint.  We must explicitly restore the properties Blueprint needs.
+   ══════════════════════════════════════════════════════ */
+
+/* --- 1b. Prevent text wrapping inside core elements --- */
+.ds-ctx-center button,
+.ds-ctx-center .bp5-button,
+.ds-ctx-center .bp4-button,
+.ds-ctx-center span,
+.ds-ctx-center label,
+.ds-ctx-center input {
+  white-space: nowrap !important;
+}
+
+/* --- 1c. Defeat Native Component Wrapping ---
+   Polotno natively applies flex-wrap: wrap inside TextToolbar/ImageToolbar.
+   Because Blueprint popovers render in body Portals, a wildcard here is 
+   safe and mathematically guarantees no elements will stack vertically. */
+.ds-ctx-center,
+.ds-ctx-center * {
+  flex-wrap: nowrap !important;
+}
+
+/* --- 3. Tailwind Preflight resets SVGs to display:block, which breaks
+         inline icons inside Blueprint buttons. Restore inline. --- */
+.ds-ctx-center svg,
+.ds-panel-body svg,
+.ds-layers-popover-body svg {
+  display: inline !important;
+  vertical-align: middle;
+}
+
+/* --- 4. Tailwind Preflight strips button styling. Blueprint needs these. --- */
+.ds-ctx-center button,
+.ds-ctx-center .bp5-button,
+.ds-ctx-center .bp4-button {
+  /* Blueprint relies on display:none for OverflowList. DO NOT use display !important here. */
+  align-items: center;
+  appearance: none;
+  cursor: pointer;
+  vertical-align: middle;
+  padding: 4px 8px !important;
+  min-height: 24px;
+  margin: 0 !important;
+}
+
+/* --- 4b. Ensure popover targets (like the Position dropdown wrapper) format correctly --- */
+.ds-ctx-center .bp5-popover-target,
+.ds-ctx-center .bp4-popover-target {
+  align-items: center;
+  margin: 0 !important;
+}
+
+/* --- 5. Restore Blueprint input styling over global !important in index.css --- */
+.ds-ctx-center input,
+.ds-ctx-center .bp5-input,
+.ds-ctx-center .bp4-input,
+.ds-ctx-center .bp5-numeric-input input {
+  background-color: inherit !important;
+  color: inherit !important;
+  vertical-align: middle;
+}
+
+/* --- 6. Restore Blueprint select/popover --- */
+.ds-ctx-center select,
+.ds-ctx-center .bp5-html-select select,
+.ds-ctx-center .bp4-html-select select {
+  appearance: none;
+}
+
+/* --- 9. Same isolation for panel body --- */
+.ds-panel-body button,
+.ds-panel-body .bp5-button,
+.ds-panel-body .bp4-button {
+  cursor: pointer;
+}
+
+.ds-panel-body input,
+.ds-panel-body .bp5-input,
+.ds-panel-body .bp4-input {
+  background-color: inherit !important;
+  color: inherit !important;
+}
+
+/* --- 10. Same for layers popover --- */
+.ds-layers-popover-body input,
+.ds-layers-popover-body .bp5-input {
+  background-color: inherit !important;
+  color: inherit !important;
+}
+
+/* ── Layout Grid ── */
+.ds-container {
+  display: grid;
+  grid-template-columns: var(--ds-rail-w) var(--ds-panel-w) minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  background: var(--ds-bg);
+}
+
+/* When panel is closed, the panel column collapses */
+.ds-container:not(:has(.ds-panel)) {
+  grid-template-columns: var(--ds-rail-w) minmax(0, 1fr);
+}
+
+/* ══════════════════════════════════════════════════════
+   SIDEBAR RAIL (64px, always visible)
+   ══════════════════════════════════════════════════════ */
+.ds-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-right: 1px solid var(--ds-border);
+  background: var(--ds-surface);
+  padding: 12px 6px;
+  overflow-y: auto;
+}
+
+.ds-rail-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.ds-rail-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 4px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ds-muted);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+  appearance: none;
+  font: inherit;
+}
+
+.ds-rail-btn span {
+  font-size: 0.65rem;
+  font-weight: 500;
+  line-height: 1;
+  text-align: center;
+}
+
+.ds-rail-btn:hover {
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent);
+}
+
+/* ── Active state: clear accent bg + color ── */
+.ds-rail-btn.is-active {
+  background: var(--ds-accent-strong);
+  color: var(--ds-accent);
+  font-weight: 600;
+}
+
+/* ══════════════════════════════════════════════════════
+   SIDEBAR PANEL (280px, expandable)
+   ══════════════════════════════════════════════════════ */
+.ds-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--ds-border);
+  background: var(--ds-surface);
+}
+
+.ds-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--ds-border);
+  padding: 16px;
+  flex-shrink: 0;
+}
+
+.ds-panel-header h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.ds-panel-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ds-muted);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+  appearance: none;
+}
+
+.ds-panel-close:hover {
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent);
+}
+
+.ds-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* ── Panel content blocks ── */
+.ds-panel-content {
+  padding: 16px;
+}
+
+.ds-panel-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.ds-panel-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--ds-border);
+  border-radius: 12px;
+  background: #F9FAFB;
+  color: var(--ds-muted);
+  font-size: 0.875rem;
+}
+
+/* ── Buttons ── */
+.ds-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  appearance: none;
+}
+
+.ds-btn--primary {
+  background: var(--ds-accent);
+  color: #ffffff;
+}
+
+.ds-btn--primary:hover {
+  background: #1D4ED8;
+}
+
+.ds-btn--ghost {
+  border: 1px solid var(--ds-border);
+  background: var(--ds-surface);
+  color: var(--ds-text);
+}
+
+.ds-btn--ghost:hover {
+  border-color: var(--ds-border-strong);
+  background: #F9FAFB;
+}
+
+.ds-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* ── Template cards ── */
+.ds-template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ds-template-card {
+  border: 1px solid var(--ds-border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--ds-surface);
+}
+
+.ds-template-preview {
   position: relative;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 14px;
+  min-height: 140px;
+  padding: 16px;
+}
+
+.ds-template-accent {
+  width: 48px;
+  height: 6px;
+  border-radius: 999px;
+}
+
+.ds-template-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+  max-width: 200px;
+}
+
+.ds-template-text strong {
+  font-size: 1.1rem;
+  line-height: 1.1;
+  color: #0f172a;
+}
+
+.ds-template-text span {
+  color: #475569;
+  font-size: 0.8rem;
   line-height: 1.4;
-  box-sizing: border-box;
-  background: #f8f9fa;
 }
 
-/* Box sizing básico */
-.polotno-editor-isolation *,
-.polotno-editor-isolation *::before,
-.polotno-editor-isolation *::after {
-  box-sizing: border-box;
+.ds-template-meta {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--ds-border);
 }
 
-/* Tooltips y overlays de Blueprint */
-.bp4-portal,
-.bp4-overlay,
-.bp4-tooltip {
-  z-index: 9999;
+.ds-template-meta h4 {
+  margin: 0;
+  font-size: 0.88rem;
 }
 
-/* SOLUCIÓN ULTRA ESPECÍFICA PARA ÍCONOS SVG */
-.polotno-editor-isolation svg,
-.polotno-editor-isolation .bp4-icon svg,
-.polotno-editor-isolation .bp4-button svg,
-.polotno-editor-isolation [class*="bp4-"] svg {
-  display: inline-block !important;
-  margin: 0 8px !important;
-  vertical-align: middle !important;
-  width: 16px !important;
-  height: 16px !important;
-  flex-shrink: 0 !important;
-  min-width: 16px !important;
-  min-height: 16px !important;
+.ds-template-meta p {
+  margin: 4px 0 0;
+  color: var(--ds-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
 }
 
-/* Botones Blueprint con espaciado forzado */
-.polotno-editor-isolation .bp4-button,
-.polotno-editor-isolation button[class*="bp4-"],
-.polotno-editor-isolation [class*="bp4-button"] {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: 8px !important;
-  padding: 8px 16px !important;
-  margin: 4px !important;
-  min-height: 32px !important;
+/* ── Tips ── */
+.ds-tip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-/* Íconos dentro de botones con margen específico */
-.polotno-editor-isolation .bp4-button svg,
-.polotno-editor-isolation button[class*="bp4-"] svg {
-  margin: 0 6px 0 0 !important;
+.ds-tip {
+  padding: 12px 14px;
+  border: 1px solid var(--ds-border);
+  border-radius: 12px;
 }
 
-/* Toolbar compacta con espaciado mínimo */
-.polotno-editor-isolation .polotno-toolbar,
-.polotno-editor-isolation [class*="toolbar"] {
-  display: flex !important;
-  align-items: center !important;
-  gap: 2px !important;
-  padding: 4px 8px !important;
-  flex-wrap: nowrap !important;
-  min-height: 40px !important;
-  max-height: 40px !important;
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
+.ds-tip strong {
+  display: block;
+  font-size: 0.85rem;
 }
 
-/* Íconos en toolbar */
-.polotno-editor-isolation .polotno-toolbar svg,
-.polotno-editor-isolation [class*="toolbar"] svg {
-  margin: 0 8px !important;
+.ds-tip p {
+  margin: 4px 0 0;
+  color: var(--ds-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
 }
 
-/* Side panel con espaciado */
-.polotno-editor-isolation .polotno-side-panel svg,
-.polotno-editor-isolation [class*="side-panel"] svg {
-  margin: 0 8px 0 0 !important;
+/* ══════════════════════════════════════════════════════
+   MAIN AREA
+   ══════════════════════════════════════════════════════ */
+.ds-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
 }
 
-/* Menu items */
-.polotno-editor-isolation .bp4-menu-item,
-.polotno-editor-isolation [class*="menu-item"] {
-  display: flex !important;
-  align-items: center !important;
-  gap: 12px !important;
-  padding: 12px 16px !important;
-  min-height: 40px !important;
-}
-
-/* Button groups */
-.polotno-editor-isolation .bp4-button-group,
-.polotno-editor-isolation [class*="button-group"] {
-  display: inline-flex !important;
-  gap: 8px !important;
-  margin: 0 12px !important;
-}
-
-/* Contenedores de íconos */
-.polotno-editor-isolation .bp4-icon,
-.polotno-editor-isolation [class*="icon"] {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  min-width: 24px !important;
-  min-height: 24px !important;
-  margin: 0 4px !important;
-}
-
-/* REGLAS ESPECÍFICAS PARA TOOLBAR SUPERIOR */
-.polotno-editor-isolation [class*="polotno-toolbar"] > *,
-.polotno-editor-isolation [class*="toolbar"] > * {
-  margin: 0 1px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  vertical-align: middle !important;
-  height: 28px !important;
-  flex-shrink: 0 !important;
-}
-
-/* Botones específicos en toolbar */
-.polotno-editor-isolation [class*="polotno-toolbar"] button,
-.polotno-editor-isolation [class*="toolbar"] button,
-.polotno-editor-isolation [class*="polotno-toolbar"] .bp4-button,
-.polotno-editor-isolation [class*="toolbar"] .bp4-button {
-  margin: 0 1px !important;
-  padding: 4px 6px !important;
-  min-width: 28px !important;
-  max-width: auto !important;
-  height: 28px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  vertical-align: middle !important;
-  line-height: 1 !important;
-  flex-shrink: 0 !important;
-}
-
-/* Separación específica para íconos en toolbar */
-.polotno-editor-isolation [class*="polotno-toolbar"] svg,
-.polotno-editor-isolation [class*="toolbar"] svg {
-  margin: 0 2px !important;
-  display: inline-block !important;
-  width: 14px !important;
-  height: 14px !important;
-  flex-shrink: 0 !important;
-}
-
-/* Alineación vertical forzada para todos los elementos */
-.polotno-editor-isolation [class*="polotno-toolbar"] * {
-  vertical-align: middle !important;
-  line-height: 32px !important;
-}
-
-/* Elementos de texto en toolbar */
-.polotno-editor-isolation [class*="polotno-toolbar"] span,
-.polotno-editor-isolation [class*="toolbar"] span,
-.polotno-editor-isolation [class*="polotno-toolbar"] div,
-.polotno-editor-isolation [class*="toolbar"] div {
-  height: 28px !important;
-  line-height: 28px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  margin: 0 1px !important;
-  font-size: 12px !important;
-  flex-shrink: 0 !important;
-}
-
-/* Media query para pantallas grandes */
-@media (min-width: 1024px) {
-  .polotno-editor-isolation svg {
-    margin: 0 10px !important;
-  }
-  
-  .polotno-editor-isolation .bp4-button {
-    gap: 10px !important;
-    padding: 10px 20px !important;
-    margin: 6px !important;
-  }
-  
-  .polotno-editor-isolation .polotno-toolbar {
-    gap: 16px !important;
-    padding: 20px !important;
-  }
-  
-  .polotno-editor-isolation [class*="polotno-toolbar"] button,
-  .polotno-editor-isolation [class*="toolbar"] button {
-    margin: 0 10px !important;
-  }
-}
-
-/* Contenedor de Polotno */
-.polotno-editor-container {
+/* ══════════════════════════════════════════════════════
+   CONTEXTUAL TOOLBAR (visible only on selection)
+   ══════════════════════════════════════════════════════ */
+.ds-ctx-toolbar {
+  display: flex;
+  flex-flow: row nowrap;
+  align-items: center;
   width: 100%;
-  height: 100%;
+  min-height: 48px;
+  padding: 4px 16px;
+  border-bottom: 1px solid var(--ds-border);
+  background: var(--ds-surface);
+  overflow: hidden;
+}
+
+/* Left block: pinned, never shrinks */
+.ds-ctx-left {
+  display: flex;
+  flex: 0 0 auto;
+  flex-flow: row nowrap;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Center block: fills space, scrolls horizontally.
+   CRITICAL: min-width:0 prevents flex blowout.
+   We do NOT impose any layout on Polotno's children — only on our wrapper. */
+.ds-ctx-center {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Thin scrollbar */
+  scrollbar-width: thin;
+}
+
+.ds-ctx-center::-webkit-scrollbar {
+  height: 4px;
+}
+.ds-ctx-center::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 2px;
+}
+
+/* Right block: pinned, never shrinks */
+.ds-ctx-right {
+  display: flex;
+  flex: 0 0 auto;
+  flex-flow: row nowrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.ds-ctx-divider {
+  width: 1px;
+  height: 24px;
+  margin: 0 6px;
+  background: var(--ds-border);
+  flex-shrink: 0;
+}
+
+/* ── Icon buttons ── */
+.ds-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ds-muted);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+  appearance: none;
+  font: inherit;
+}
+
+.ds-icon-btn:hover {
+  background: var(--ds-accent-soft);
+  color: var(--ds-accent);
+}
+
+.ds-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.ds-icon-btn--sm {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+}
+
+/* ── Chip buttons (selection actions) ── */
+.ds-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  min-height: 32px;
+  border: 1px solid var(--ds-border);
+  border-radius: 8px;
+  background: var(--ds-surface);
+  color: var(--ds-text);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  appearance: none;
+}
+
+.ds-chip:hover {
+  border-color: var(--ds-border-strong);
+  background: #F9FAFB;
+}
+
+.ds-chip.is-active {
+  background: var(--ds-accent-soft);
+  border-color: var(--ds-accent);
+  color: var(--ds-accent);
+}
+
+.ds-chip--danger {
+  color: var(--ds-danger);
+}
+
+.ds-chip--danger:hover {
+  background: #FEF2F2;
+  border-color: #FECACA;
+}
+
+/* ══════════════════════════════════════════════════════
+   LAYERS POPOVER
+   ══════════════════════════════════════════════════════ */
+.ds-layers-anchor {
   position: relative;
 }
 
-/* Asegurar que el workspace funcione correctamente */
-.polotno-editor-isolation .polotno-workspace {
-  background: white;
+.ds-layers-popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 50;
+  width: 300px;
+  max-height: 360px;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ds-border);
+  border-radius: 12px;
+  background: var(--ds-surface);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
 }
 
-/* Toolbar básica */
-.polotno-editor-isolation .polotno-toolbar {
-  background: #f8f9fa;
-  border-bottom: 1px solid #e1e5e9;
-  padding: 8px;
+.ds-layers-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ds-border);
+  font-size: 0.85rem;
+  font-weight: 600;
+  flex-shrink: 0;
 }
 
-/* Side panel básico */
-.polotno-editor-isolation .polotno-side-panel {
-  background: #f8f9fa;
-  border-right: 1px solid #e1e5e9;
+.ds-layers-popover-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  max-height: 300px;
 }
 
-/* Pages timeline básico */
-.polotno-editor-isolation .polotno-pages-timeline {
-  background: #f8f9fa;
-  border-top: 1px solid #e1e5e9;
-  padding: 8px;
+/* ══════════════════════════════════════════════════════
+   CANVAS WORKSPACE
+   ══════════════════════════════════════════════════════ */
+.ds-workspace-wrap {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  background: var(--ds-bg);
 }
 
-/* Mejoras de contraste para botones con fondo azul oscuro */
-.polotno-editor-isolation .bp4-button.bp4-intent-primary,
-.polotno-editor-isolation .bp4-button[class*="bp4-intent-primary"],
-.polotno-editor-isolation button[class*="bp4-intent-primary"] {
-  color: white !important;
+.ds-workspace-shell {
+  position: relative;
+  height: 100%;
+  min-height: 0;
 }
 
-/* Botones con fondo azul oscuro - mejorar legibilidad */
-.polotno-editor-isolation .bp4-button:not(.bp4-minimal):not(.bp4-outlined) {
-  color: white !important;
+.ds-workspace-shell .polotno-workspace {
+  background: transparent;
 }
 
-/* Botones activos con mejor contraste */
-.polotno-editor-isolation .bp4-button.bp4-active,
-.polotno-editor-isolation .bp4-button[class*="active"] {
-  color: white !important;
-  background-color: #1f4788 !important;
+/* Canvas shadow */
+.ds-workspace-shell .polotno-page-container canvas,
+.ds-workspace-shell .konvajs-content {
+  filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.08));
 }
 
-/* Ocultar elementos automáticos de selección que causan problemas de legibilidad */
-.polotno-editor-isolation .bp4-button span:empty,
-.polotno-editor-isolation .bp4-button svg + span:empty {
+/* Hide native Polotno floating action controls and context menus.
+   If Polotno decides to inject native Tooltips or ActionControls 
+   as absolute positioned bp5-buttons over the canvas (ghost labels), 
+   kill them aggressively within the shell. Our custom UI uses ds-icon-btn. */
+.ds-workspace-shell .bp5-button,
+.ds-workspace-shell .bp4-button,
+.ds-workspace-shell .polotno-action-controls,
+.ds-workspace-shell [class*="action-controls"] {
   display: none !important;
-}
-
-/* Ocultar spans y svgs problemáticos en elementos seleccionados */
-.polotno-editor-isolation [class*="selection"] span:empty,
-.polotno-editor-isolation [class*="selected"] span:empty {
-  display: none !important;
-}
-
-/* Estilos personalizados para el editor Polotno */
-
-/* ESTILOS ESPECÍFICOS PARA EL POPOVER DE HERRAMIENTAS DE TEXTO */
-.bp5-popover-content div[style*="padding: 10px"][style*="display: flex"],
-.bp4-popover-content div[style*="padding: 10px"][style*="display: flex"] {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: nowrap !important;
-  gap: 8px !important;
-  background: #ffffff !important;
-  border: 1px solid #e5e7eb !important;
-  border-radius: 8px !important;
-  padding: 16px 20px !important;
-  margin: 0 !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  min-height: 56px !important;
-  width: auto !important;
-  min-width: fit-content !important;
-  max-width: none !important;
-  overflow-x: auto !important;
-  overflow-y: hidden !important;
-  white-space: nowrap !important;
-}
-
-/* Elementos dentro del popover */
-.bp5-popover-content div[style*="padding: 10px"][style*="display: flex"] > *,
-.bp4-popover-content div[style*="padding: 10px"][style*="display: flex"] > * {
-  flex-shrink: 0 !important;
-  margin: 0 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  vertical-align: middle !important;
-}
-
-/* Elementos span específicos en el popover */
-.bp5-popover-content span,
-.bp4-popover-content span {
-  display: inline-flex !important;
-  align-items: center !important;
-  height: 36px !important;
-  vertical-align: middle !important;
-}
-
-/* Botones con texto específicos */
-.bp5-popover-content .bp5-button .bp5-button-text,
-.bp4-popover-content .bp4-button .bp4-button-text {
-  line-height: 1 !important;
-  vertical-align: middle !important;
-}
-
-/* Botones en el popover */
-.bp5-popover-content .bp5-button,
-.bp4-popover-content .bp4-button {
-  min-width: 32px !important;
-  height: 36px !important;
-  padding: 8px 12px !important;
-  border-radius: 4px !important;
-  font-size: 14px !important;
-  border: 1px solid #e5e7eb !important;
-  background: #f9fafb !important;
-  transition: all 0.2s ease !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  vertical-align: middle !important;
-}
-
-.bp5-popover-content .bp5-button:hover,
-.bp4-popover-content .bp4-button:hover {
-  background: #f3f4f6 !important;
-  border-color: #d1d5db !important;
-}
-
-.bp5-popover-content .bp5-button.bp5-active,
-.bp4-popover-content .bp4-button.bp4-active {
-  background: #3b82f6 !important;
-  color: white !important;
-  border-color: #3b82f6 !important;
-}
-
-/* Inputs numéricos en el popover */
-.bp5-popover-content input[type="number"],
-.bp4-popover-content input[type="number"] {
-  width: 60px !important;
-  height: 36px !important;
-  padding: 6px 8px !important;
-  border: 1px solid #e5e7eb !important;
-  border-radius: 4px !important;
-  font-size: 14px !important;
-}
-
-/* Grupos de control numérico */
-.bp5-popover-content .bp5-control-group,
-.bp4-popover-content .bp4-control-group {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  height: 36px !important;
-}
-
-/* Botones verticales de incremento/decremento */
-.bp5-popover-content .bp5-button-group.bp5-vertical,
-.bp4-popover-content .bp4-button-group.bp4-vertical {
-  display: flex !important;
-  flex-direction: column !important;
-  height: 36px !important;
-  width: 20px !important;
-}
-
-.bp5-popover-content .bp5-button-group.bp5-vertical .bp5-button,
-.bp4-popover-content .bp4-button-group.bp4-vertical .bp4-button {
-  height: 18px !important;
-  min-height: 18px !important;
-  width: 20px !important;
-  min-width: 20px !important;
-  padding: 0 !important;
-  border-radius: 2px !important;
-  font-size: 10px !important;
-}
-
-/* Selectores de fuente */
-.bp5-popover-content .bp5-select,
-.bp4-popover-content .bp4-select {
-  min-width: 120px !important;
-}
-
-.bp5-popover-content .bp5-select select,
-.bp4-popover-content .bp4-select select {
-  height: 32px !important;
-  padding: 4px 8px !important;
-  border: 1px solid #e5e7eb !important;
-  border-radius: 4px !important;
-  font-size: 14px !important;
-  height: 36px !important;
-  margin: 0 2px !important;
-  border-radius: 6px !important;
-  transition: all 0.2s ease !important;
-  background-color: #f8f9fa !important;
-  border: 1px solid #dee2e6 !important;
-}
-
-.bp5-popover-content .bp5-button:hover,
-.bp4-popover-content .bp4-button:hover {
-  background-color: #e9ecef !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
-}
-
-/* Inputs numéricos en el popover */
-.bp5-popover-content .bp5-numeric-input,
-.bp4-popover-content .bp4-numeric-input {
-  width: 65px !important;
-}
-
-.bp5-popover-content .bp5-input,
-.bp4-popover-content .bp4-input {
-  height: 36px !important;
-  border-radius: 6px !important;
-  border: 1px solid #ced4da !important;
-}
-
-/* Selectores de fuente en el popover */
-.bp5-popover-content .bp5-button[style*="fontFamily"],
-.bp4-popover-content .bp4-button[style*="fontFamily"] {
-  min-width: 130px !important;
-  max-width: 170px !important;
-  text-align: left !important;
-  justify-content: space-between !important;
-  padding: 0 12px !important;
-}
-
-/* Button groups en el popover */
-.bp5-popover-content .bp5-button-group,
-.bp4-popover-content .bp4-button-group {
-  border: 1px solid #e5e7eb !important;
-  border-radius: 6px !important;
-  overflow: hidden !important;
-  display: inline-flex !important;
-}
-
-.bp5-popover-content .bp5-button-group .bp5-button,
-.bp4-popover-content .bp4-button-group .bp4-button {
-  border-radius: 0 !important;
-  border-right: 1px solid #e5e7eb !important;
-  margin: 0 !important;
-}
-
-.bp5-popover-content .bp5-button-group .bp5-button:last-child,
-.bp4-popover-content .bp4-button-group .bp4-button:last-child {
-  border-right: none !important;
-}
-
-/* Color picker en el popover */
-.bp5-popover-content .bp5-button[style*="background"],
-.bp4-popover-content .bp4-button[style*="background"] {
-  min-width: 40px !important;
-  width: 40px !important;
-  height: 36px !important;
-  border-radius: 6px !important;
-  border: 2px solid #ffffff !important;
-  box-shadow: 0 0 0 1px #dee2e6 !important;
-}
-
-/* Ocultar elementos automáticos del toolbar */
-.polotno-toolbar [data-id="undo"],
-.polotno-toolbar [data-id="redo"],
-.polotno-toolbar [data-id="zoom"],
-.polotno-toolbar [data-id="hand"] {
-  display: none !important;
-}
-
-/* Ocultar navbar contextual flotante que aparece al seleccionar elementos */
-.bp5-navbar[style*="transform: translate(-50%, -50%)"] {
-  display: none !important;
-}
-
-/* Ocultar contenedor del navbar contextual flotante */
-div[style*="pointer-events: none;"] > .bp5-navbar {
-  display: none !important;
-}
-
-/* Ocultar botones específicos del navbar contextual */
-.bp5-navbar .bp5-button:has(.bp5-icon-clean),
-.bp5-navbar .bp5-button:has(.bp5-icon-duplicate),
-.bp5-navbar .bp5-button:has(.bp5-icon-trash),
-.bp5-navbar .bp5-button:has(.bp5-icon-layers) {
-  display: none !important;
-}
-
-/* Ocultar navbar con altura específica de 34px (contextual) */
-.bp5-navbar[style*="height: 34px"] {
-  display: none !important;
-}
-
-/* Mejorar contraste de botones */
-.polotno-toolbar .bp4-button {
-  background-color: #f8f9fa !important;
-  border: 1px solid #dee2e6 !important;
-  color: #495057 !important;
-}
-
-.polotno-toolbar .bp4-button:hover {
-  background-color: #e9ecef !important;
-  border-color: #adb5bd !important;
-}
-
-.polotno-toolbar .bp4-button.bp4-active,
-.polotno-toolbar .bp4-button[aria-pressed="true"] {
-  background-color: #007bff !important;
-  border-color: #007bff !important;
-  color: white !important;
-}
-
-/* Mejorar legibilidad del SidePanel */
-.polotno-side-panel {
-  background-color: #ffffff !important;
-}
-
-.polotno-side-panel .bp4-card,
-.polotno-side-panel .bp4-elevation-1,
-.polotno-side-panel .bp4-elevation-2 {
-  background-color: #ffffff !important;
-  border: 1px solid #e1e5e9 !important;
-  margin-bottom: 8px !important;
-}
-
-.polotno-side-panel .bp4-text-muted,
-.polotno-side-panel .bp4-label,
-.polotno-side-panel label {
-  color: #495057 !important;
-  background-color: rgba(255, 255, 255, 0.9) !important;
-  padding: 2px 4px !important;
-  border-radius: 3px !important;
-}
-
-.polotno-side-panel .bp4-input,
-.polotno-side-panel .bp4-select select,
-.polotno-side-panel .bp4-slider {
-  background-color: #ffffff !important;
-  border: 1px solid #ced4da !important;
-  color: #495057 !important;
-}
-
-.polotno-side-panel .bp4-button {
-  background-color: #f8f9fa !important;
-  border: 1px solid #dee2e6 !important;
-  color: #495057 !important;
-}
-
-.polotno-side-panel .bp4-button:hover {
-  background-color: #e9ecef !important;
-}
-
-/* Mejorar contraste de texto en paneles de propiedades - SIN FONDOS */
-.polotno-side-panel [class*="property"],
-.polotno-side-panel [class*="control"],
-.polotno-side-panel [class*="section"] {
-  background-color: transparent !important;
-  padding: 12px !important;
-  margin: 8px 4px !important;
-  border-radius: 0 !important;
-  border: none !important;
-  box-shadow: none !important;
-}
-
-/* Mejorar espaciado y visibilidad de controles de texto - SIN FONDOS */
-.polotno-side-panel .bp5-control-group,
-.polotno-side-panel .bp5-button-group {
-  background-color: transparent !important;
-  padding: 8px !important;
-  margin: 4px 0 !important;
-  border-radius: 0 !important;
-  border: none !important;
-}
-
-/* ARREGLO ESPECÍFICO PARA HERRAMIENTAS DE TEXTO - SIN BORDES */
-.polotno-side-panel .text-tools-container {
-  background-color: transparent !important;
-  border: none !important;
-  border-radius: 0 !important;
-  margin: 4px 0 !important;
-  padding: 8px !important;
-  display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 8px !important;
-  align-items: center !important;
-  min-height: auto !important;
-}
-
-.polotno-side-panel .text-tools-container > * {
-  flex-shrink: 0 !important;
-  margin: 0 !important;
-}
-
-/* Mejorar botones en general */
-.polotno-side-panel .bp5-button {
-  margin: 2px !important;
-  min-width: 30px !important;
-  height: 30px !important;
-}
-
-/* CONTENEDOR PRINCIPAL CON FLEXBOX LAYOUT - SIN BORDES DUPLICADOS */
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"],
-.polotno-side-panel div[style="padding: 10px; display: flex;"] {
-  display: flex !important;
-  flex-wrap: nowrap !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
-  gap: 6px !important;
-  padding: 8px !important;
-  background-color: transparent !important;
-  border: none !important;
-  border-radius: 0 !important;
-  margin: 4px 0 !important;
-  min-height: 40px !important;
-  max-width: 100% !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-  overflow: visible !important;
-  position: relative !important;
-}
-
-/* RESETEAR TODOS LOS ELEMENTOS HIJOS - FLEXBOX */
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > *,
-.polotno-side-panel div[style="padding: 10px; display: flex;"] > * {
-  margin: 0 !important;
-  padding: 0 !important;
-  position: static !important;
-  float: none !important;
-  clear: none !important;
-  transform: none !important;
-  top: auto !important;
-  left: auto !important;
-  right: auto !important;
-  bottom: auto !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  box-sizing: border-box !important;
-  overflow: visible !important;
-  flex-shrink: 0 !important;
-  max-width: fit-content !important;
-}
-
-/* ARREGLO ESPECÍFICO PARA BOTONES DE CREACIÓN DE TEXTO - BORDE SUTIL */
-.polotno-side-panel button[style*="width: 100%"] {
-  width: 100% !important;
-  max-width: 100% !important;
-  margin: 2px 0 !important;
-  padding: 12px 16px !important;
-  text-align: left !important;
-  justify-content: flex-start !important;
-  white-space: nowrap !important;
-  overflow: visible !important;
-  text-overflow: ellipsis !important;
-  display: flex !important;
-  align-items: center !important;
-  min-height: 40px !important;
-  box-sizing: border-box !important;
-  border: 1px solid #f1f3f4 !important;
-  border-radius: 6px !important;
-  background-color: #ffffff !important;
-  transition: border-color 0.2s ease !important;
-}
-
-/* Texto dentro de los botones de creación */
-.polotno-side-panel button[style*="width: 100%"] .bp5-button-text {
-  font-size: 14px !important;
-  font-weight: 500 !important;
-  color: #374151 !important;
-  overflow: visible !important;
-  white-space: nowrap !important;
-}
-
-/* Hover effect para los botones de texto */
-.polotno-side-panel button[style*="width: 100%"]:hover {
-  border-color: #d1d5db !important;
-  background-color: #f9fafb !important;
-}
-
-/* ARREGLO PARA GALERÍA DE PLANTILLAS DE TEXTO */
-.polotno-side-panel div[style*="display: grid"] {
-  display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)) !important;
-  gap: 8px !important;
-  padding: 8px !important;
-  max-width: 100% !important;
-  overflow: visible !important;
-}
-
-/* ARREGLO PARA ELEMENTOS DE LA GALERÍA */
-.polotno-side-panel div[style*="display: grid"] > div {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  padding: 4px !important;
-  border: 1px solid #e5e7eb !important;
-  border-radius: 4px !important;
-  cursor: pointer !important;
-  transition: all 0.2s ease !important;
-  max-width: 100% !important;
-  overflow: hidden !important;
-}
-
-.polotno-side-panel div[style*="display: grid"] > div:hover {
-  border-color: #3b82f6 !important;
-  background-color: #f8fafc !important;
-}
-
-/* CONTENEDOR PADRE DEL PANEL LATERAL - CONTROL ESTRICTO */
-.polotno-side-panel {
-  overflow-x: hidden !important;
-  max-width: 100% !important;
-}
-
-.polotno-side-panel > * {
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-/* SELECTORES MUY ESPECÍFICOS PARA ELEMENTOS DEL PANEL LATERAL */
-/* Contenedor principal con clase específica */
-.go3960841851.bp5-navbar.polotno-panel-container {
-  max-width: 280px !important;
-  overflow: hidden !important;
-}
-
-/* Cards de elementos con padding reducido */
-.go3960841851.bp5-navbar.polotno-panel-container .bp5-card.bp5-elevation-0 {
-  padding: 2px !important;
-  margin: 0px 1px 2px !important;
-  max-width: 100% !important;
-  overflow: hidden !important;
-}
-
-/* Contenedor flex de cada elemento */
-.go3960841851.bp5-navbar.polotno-panel-container .bp5-card.bp5-elevation-0 > div[style*="display: flex"] {
-  gap: 2px !important;
-  padding: 0 !important;
-  max-width: 100% !important;
-  overflow: hidden !important;
-}
-
-/* Drag handle más pequeño */
-.go3960841851.bp5-navbar.polotno-panel-container .drag-handle {
-  width: 20px !important;
-  min-width: 20px !important;
-  height: 20px !important;
-  margin-right: 2px !important;
-}
-
-/* Texto del tipo de elemento más pequeño */
-.go3960841851.bp5-navbar.polotno-panel-container .drag-handle + div {
-  width: 40px !important;
-  min-width: 40px !important;
-  max-width: 40px !important;
-  padding: 0px 2px !important;
-  font-size: 11px !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-}
-
-/* Contenedor del texto editable más pequeño */
-.go3960841851.bp5-navbar.polotno-panel-container .bp5-editable-text {
-  max-width: 80px !important;
-  width: 80px !important;
-  min-width: 80px !important;
-}
-
-.go3960841851.bp5-navbar.polotno-panel-container .bp5-editable-text-content {
-  height: 20px !important;
-  line-height: 20px !important;
-  min-width: 80px !important;
-  max-width: 80px !important;
-  font-size: 12px !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-}
-
-/* Botones de acción más pequeños */
-.go3960841851.bp5-navbar.polotno-panel-container .bp5-button.bp5-minimal {
-  width: 20px !important;
-  height: 20px !important;
-  min-width: 20px !important;
-  max-width: 20px !important;
-  padding: 0 !important;
-  margin: 0 1px !important;
-}
-
-/* Iconos dentro de los botones más pequeños */
-.go3960841851.bp5-navbar.polotno-panel-container .bp5-button.bp5-minimal .bp5-icon {
-  width: 12px !important;
-  height: 12px !important;
-}
-
-.go3960841851.bp5-navbar.polotno-panel-container .bp5-button.bp5-minimal .bp5-icon svg {
-  width: 12px !important;
-  height: 12px !important;
-}
-
-/* Ocultar selector de colores completamente */
-.go3960841851.bp5-navbar.polotno-panel-container div[style*="display: flex"][style*="justify-content: space-around"][style*="padding-bottom: 10px"] {
-  display: none !important;
-}
-
-/* Ocultar cualquier selector de colores en el panel lateral */
-.polotno-side-panel div[style*="justify-content: space-around"][style*="padding-bottom"] {
-  display: none !important;
-}
-
-/* Ocultar elementos con colores predefinidos */
-.polotno-side-panel div[style*="background-color"][style*="border-radius"][style*="cursor: pointer"] {
-  display: none !important;
-}
-
-/* Ocultar contenedor de paleta de colores con flexbox-fix - MÁS ESPECÍFICO */
-.polotno-side-panel div.flexbox-fix[style*="margin: 0px -10px; padding: 10px 0px 0px 10px; border-top: 1px solid rgb(238, 238, 238)"],
-.polotno-side-panel div[class="flexbox-fix"][style*="margin: 0px -10px"][style*="padding: 10px 0px 0px 10px"][style*="border-top: 1px solid rgb(238, 238, 238)"],
-div[class="flexbox-fix"][style*="margin: 0px -10px; padding: 10px 0px 0px 10px; border-top: 1px solid rgb(238, 238, 238); display: flex; flex-wrap: wrap; position: relative"] {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  height: 0 !important;
-  overflow: hidden !important;
-}
-
-
-
-/* Color picker - FLEXBOX */
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > span:first-child,
-.polotno-side-panel div[style="padding: 10px; display: flex;"] > span:first-child {
-  width: 24px !important;
-  min-width: 24px !important;
-  max-width: 24px !important;
-  height: 24px !important;
-  overflow: hidden !important;
-  flex-shrink: 0 !important;
-  order: 1 !important;
-}
-
-/* Botones de color picker */
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > span:first-child .bp5-button,
-.polotno-side-panel div[style="padding: 10px; display: flex;"] > span:first-child .bp5-button {
-  width: 24px !important;
-  height: 24px !important;
-  min-width: 24px !important;
-  max-width: 24px !important;
-  border-radius: 4px !important;
-  border: 2px solid #dee2e6 !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-  flex-shrink: 0 !important;
-}
-
-/* Color picker con fondo de color */
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] .bp5-button[style*="background"],
-.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-button[style*="background"] {
-  border: 2px solid #dee2e6 !important;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1) !important;
-}
-
-/* Selector de fuente - FLEXBOX */
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > span:nth-child(2),
-.polotno-side-panel div[style="padding: 10px; display: flex;"] > span:nth-child(2) {
-  width: 80px !important;
-  min-width: 80px !important;
-  max-width: 80px !important;
-  overflow: hidden !important;
-  flex-shrink: 0 !important;
-  order: 2 !important;
-}
-
-/* Botones de selector de fuente */
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > span:nth-child(2) .bp5-button,
-.polotno-side-panel div[style="padding: 10px; display: flex;"] > span:nth-child(2) .bp5-button {
-  width: 80px !important;
-  min-width: 80px !important;
-  max-width: 80px !important;
-  text-align: left !important;
-  justify-content: space-between !important;
-  padding: 0 6px !important;
-  white-space: nowrap !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  box-sizing: border-box !important;
-  flex-shrink: 0 !important;
-}
-
-/* Control numérico de tamaño - FLEXBOX */
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > .bp5-control-group,
-.polotno-side-panel div[style="padding: 10px; display: flex;"] > .bp5-control-group {
-  width: 50px !important;
-  min-width: 50px !important;
-  max-width: 50px !important;
-  overflow: hidden !important;
-  flex-shrink: 0 !important;
-  order: 3 !important;
-}
-
-/* Inputs numéricos dentro del control group */
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] .bp5-numeric-input,
-.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-numeric-input {
-  width: 50px !important;
-  min-width: 50px !important;
-  max-width: 50px !important;
-  flex-shrink: 0 !important;
-}
-
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] .bp5-input,
-.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-input {
-  height: 32px !important;
-  border-radius: 4px !important;
-  border: 1px solid #ced4da !important;
-  padding: 0 8px !important;
-  font-size: 14px !important;
-}
-
-/* Grupos de botones y elementos restantes - FLEXBOX */
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > .bp5-button-group,
-.polotno-side-panel div[style="padding: 10px; display: flex;"] > .bp5-button-group {
-  flex-shrink: 0 !important;
-  order: 4 !important;
-}
-
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > .bp5-button,
-.polotno-side-panel div[style="padding: 10px; display: flex;"] > .bp5-button {
-  flex-shrink: 0 !important;
-  order: 5 !important;
-}
-
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] > span:has(.bp5-button),
-.polotno-side-panel div[style="padding: 10px; display: flex;"] > span:has(.bp5-button) {
-  flex-shrink: 0 !important;
-  order: 6 !important;
-}
-
-/* FORZAR TODOS LOS BOTONES A SER VISIBLES Y NO SUPERPONERSE */
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] .bp5-button,
-.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-button {
-  min-width: 24px !important;
-  height: 24px !important;
-  margin: 0 !important;
-  background-color: #f8f9fa !important;
-  border: 1px solid #dee2e6 !important;
-  position: relative !important;
-  z-index: 10 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  flex-shrink: 0 !important;
-  border-radius: 4px !important;
-}
-
-/* Grupos de botones dentro del grid */
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] .bp5-button-group,
-.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-button-group {
-  display: inline-flex !important;
-  border: 1px solid #dee2e6 !important;
-  border-radius: 4px !important;
-  overflow: hidden !important;
-  background-color: #ffffff !important;
-}
-
-/* Botones dentro de grupos */
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] .bp5-button-group .bp5-button,
-.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-button-group .bp5-button {
-  border-radius: 0 !important;
-  border-right: 1px solid #dee2e6 !important;
-  margin: 0 !important;
-}
-
-.polotno-side-panel div[style*="padding: 10px"][style*="display: flex"] .bp5-button-group .bp5-button:last-child,
-.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-button-group .bp5-button:last-child {
-  border-right: none !important;
-}
-
-/* Asegurar que los popovers no se superpongan */
-.polotno-side-panel div[style="padding: 10px; display: flex;"] .bp5-popover-target {
-  position: relative !important;
-  z-index: 10 !important;
-}
-
-/* Asegurar que el texto sea legible */
-.polotno-side-panel * {
-  color: #212529 !important;
-}
-
-.polotno-side-panel .bp4-text-muted,
-.polotno-side-panel .bp5-text-muted {
-  color: #6c757d !important;
-}
-
-/* Evitar superposición de elementos */
-.polotno-side-panel .bp5-popover-target {
-  z-index: 10 !important;
-  position: relative !important;
-}
-
-.polotno-side-panel .bp5-button {
-  margin: 2px !important;
-  z-index: 5 !important;
-}
-
-/* COMENTADO: No ocultar pestañas del panel lateral cuando hay elementos seleccionados */
-/* Permitir navegación normal del panel lateral incluso con elementos seleccionados */
-/*
-.polotno-editor-has-selection .polotno-side-panel [data-id="templates"],
-.polotno-editor-has-selection .polotno-side-panel [data-id="elements"],
-.polotno-editor-has-selection .polotno-side-panel [data-id="text"],
-.polotno-editor-has-selection .polotno-side-panel [data-id="images"],
-.polotno-editor-has-selection .polotno-side-panel [data-id="background"],
-.polotno-editor-has-selection .polotno-side-panel [data-id="upload"] {
-  display: none !important;
-}
-*/
-
-/* Las reglas para polotno-editor-has-selection se han eliminado ya que la clase no se añade */
-
-/* ========================================
- * SOLUCIÓN ESPECÍFICA PARA CENTRADO DEL WORKSPACE
- * Usando clases específicas para evitar conflictos CSS
- * ======================================== */
-
-/* Clase específica para el contenedor principal del editor */
-.kaze-polotno-editor-container {
-  display: flex !important;
-  width: 100% !important;
-  height: 100% !important;
-  overflow: hidden !important;
-  position: relative !important;
-}
-
-/* Clase específica para el panel lateral con ancho fijo */
-.kaze-side-panel-fixed {
-  width: 300px !important;
-  min-width: 300px !important;
-  max-width: 300px !important;
-  flex-shrink: 0 !important;
-  flex-basis: 300px !important;
-  transition: all 0.3s ease !important;
-}
-
-/* Prevenir estilos inline en el panel lateral */
-.kaze-side-panel-fixed[style] {
-  width: 300px !important;
-  min-width: 300px !important;
-  max-width: 300px !important;
-}
-
-/* REGLAS ESPECÍFICAS PARA OCULTAR/MOSTRAR EL PANEL LATERAL */
-/* Estado específico: Panel lateral VISIBLE */
-.polotno-editor-isolation[data-side-panel="visible"] .kaze-side-panel-fixed {
-  width: 300px !important;
-  min-width: 300px !important;
-  max-width: 300px !important;
-  opacity: 1 !important;
-  visibility: visible !important;
-  display: flex !important;
-  flex-direction: column !important;
-  overflow: visible !important;
-  transform: translateX(0) !important;
-}
-
-/* Estado específico: Panel lateral OCULTO - Completamente oculto */
-.polotno-editor-isolation[data-side-panel="hidden"] .kaze-side-panel-fixed {
-  width: 0 !important;
-  min-width: 0 !important;
-  max-width: 0 !important;
-  opacity: 0 !important;
-  visibility: hidden !important;
-  display: none !important;
-  overflow: hidden !important;
-  transform: translateX(-100%) !important;
-  flex-basis: 0 !important;
-}
-
-/* Clase específica para el workspace wrapper */
-.kaze-workspace-container {
-  flex: 1 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  min-width: 0 !important;
-  position: relative !important;
-  transition: all 0.3s ease !important;
-}
-
-/* Estado específico: Panel lateral VISIBLE */
-.polotno-editor-isolation[data-side-panel="visible"] .kaze-workspace-container {
-  justify-content: flex-start !important;
-  align-items: stretch !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  left: 0 !important;
-  transform: none !important;
-}
-
-/* Estado específico: Panel lateral OCULTO - Centrado perfecto */
-.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container {
-  justify-content: center !important;
-  align-items: center !important;
-  margin: 0 auto !important;
-  padding: 0 !important;
-  /* REMOVIDO: left: 0 que interfiere con el centrado */
-  left: auto !important;
-  right: auto !important;
-  transform: none !important;
-  width: 100% !important;
-  position: relative !important;
-}
-
-/* Centrado específico para el canvas de Polotno cuando panel está oculto - CENTRADO SIMPLE */
-.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container .polotno-workspace {
-  margin: 0 auto !important;
-  left: auto !important;
-  right: auto !important;
-  transform: none !important;
-  position: relative !important;
-  /* Sobrescribir cualquier reseteo previo */
-  top: auto !important;
-  bottom: auto !important;
-  display: block !important;
-}
-
-/* Regla alternativa con aún mayor especificidad */
-.polotno-editor-isolation[data-side-panel="hidden"] .kaze-polotno-editor-container .kaze-workspace-container .polotno-workspace {
-  margin: 0 auto !important;
-  left: auto !important;
-  right: auto !important;
-  transform: none !important;
-  position: relative !important;
-}
-
-/* Centrado para el contenedor del canvas - MÁXIMA PRIORIDAD */
-.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-container .polotno-workspace > div {
-  margin: 0 auto !important;
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  position: relative !important;
-  left: auto !important;
-  transform: none !important;
-}
-
-/* Regla alternativa con mayor especificidad */
-.polotno-editor-isolation[data-side-panel="hidden"] .kaze-polotno-editor-container .kaze-workspace-container .polotno-workspace > div {
-  margin: 0 auto !important;
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-}
-
-/* Clase específica para el workspace interno (canvas) */
-.kaze-workspace-inner {
-  position: relative !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 100% !important;
-  height: 100% !important;
-}
-
-/* Estado específico del canvas cuando panel está oculto */
-.polotno-editor-isolation[data-side-panel="hidden"] .kaze-workspace-inner {
-  margin: 0 auto !important;
-  text-align: center !important;
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-}
-
-/* Estado específico del canvas cuando panel está visible */
-.polotno-editor-isolation[data-side-panel="visible"] .kaze-workspace-inner {
-  margin: 0 !important;
-  text-align: left !important;
-}
-
-/* REGLA PROBLEMÁTICA ELIMINADA - CAUSABA DESPLAZAMIENTO A LA IZQUIERDA */
-/* La regla con position: absolute y transform: translate(-50%, -50%) ha sido eliminada */
-
-/* Centrado específico para el contenedor interno del canvas */
-.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace > div {
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  margin: 0 auto !important;
-  position: relative !important;
-  left: auto !important;
-  transform: none !important;
-}
-
-/* Centrado directo del canvas de Konva */
-.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace canvas {
-  margin: 0 auto !important;
-  display: block !important;
-  position: relative !important;
-  left: auto !important;
-  right: auto !important;
-  transform: none !important;
-}
-
-/* Centrado del contenedor konvajs-content */
-.polotno-editor-isolation[data-side-panel="hidden"] .polotno-workspace .konvajs-content {
-  margin: 0 auto !important;
-  display: block !important;
-  position: relative !important;
-  left: auto !important;
-  right: auto !important;
-  transform: none !important;
-}
-
-/* Regla de respaldo con máxima especificidad */
-.polotno-editor-isolation[data-side-panel="hidden"] .kaze-polotno-editor-container .kaze-workspace-container .polotno-workspace {
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  margin: 0 auto !important;
-}
-
-.polotno-editor-isolation[data-side-panel="hidden"] .kaze-polotno-editor-container .kaze-workspace-container .polotno-workspace canvas {
-  margin: 0 auto !important;
-  display: block !important;
-  left: auto !important;
-  right: auto !important;
-  transform: none !important;
-}
-
-/* ARREGLO ULTRA AGRESIVO PARA RESIZESENSOR INFINITE LOOP */
-/* Deshabilitar completamente ResizeSensor en toda la aplicación */
-[class*="resize-sensor"],
-[class*="ResizeSensor"],
-.resize-sensor,
-.ResizeSensor,
-.bp5-popover .resize-sensor,
-.bp4-popover .resize-sensor,
-.bp5-color-picker .resize-sensor,
-.bp4-color-picker .resize-sensor {
-  display: none !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
-  position: absolute !important;
-  left: -9999px !important;
-  top: -9999px !important;
-  width: 0 !important;
-  height: 0 !important;
-  overflow: hidden !important;
-  z-index: -9999 !important;
-  opacity: 0 !important;
-  transform: scale(0) !important;
-}
-
-/* Estilos adicionales para botones y popovers */
-.polotno-side-panel .bp5-popover-target {
-  z-index: 10 !important;
-  position: relative !important;
-}
-
-.polotno-side-panel .bp5-button {
-  margin: 1px !important;
-  z-index: 5 !important;
-  min-width: 28px !important;
-  height: 28px !important;
-}
-
-/* COMENTADO: No ocultar pestañas del panel lateral cuando hay elementos seleccionados */
-/* Permitir navegación normal del panel lateral incluso con elementos seleccionados */
-/*
-.polotno-editor-has-selection .polotno-side-panel [data-id="templates"],
-.polotno-editor-has-selection .polotno-side-panel [data-id="elements"],
-.polotno-editor-has-selection .polotno-side-panel [data-id="text"],
-.polotno-editor-has-selection .polotno-side-panel [data-id="images"],
-.polotno-editor-has-selection .polotno-side-panel [data-id="background"],
-.polotno-editor-has-selection .polotno-side-panel [data-id="upload"] {
-  display: none !important;
-}
-*/
-
-/* Mostrar solo el panel de propiedades cuando hay selección */
-.polotno-editor-has-selection .polotno-side-panel {
-  visibility: visible;
-  display: block;
-}
-
-/* ARREGLO CRÍTICO: Prevenir crecimiento del panel lateral cuando hay selección */
-.polotno-editor-has-selection .polotno-side-panel-wrap {
-  width: 300px !important;
-  min-width: 300px !important;
-  max-width: 300px !important;
-  flex-shrink: 0 !important;
-  overflow: hidden !important;
-  flex-basis: 300px !important;
-}
-
-/* Reglas CSS duplicadas eliminadas - ya no se necesitan referencias a polotno-editor-has-selection */
-
-/* OCULTAR PESTAÑA DE TEMPLATES DEL PANEL LATERAL */
-.polotno-side-panel [data-id="templates"] {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
   pointer-events: none !important;
 }
 
-/* Ocultar solo la primera pestaña (Templates) del panel lateral */
-/* Usar nth-child(1) para seleccionar específicamente la primera pestaña */
-.polotno-side-tabs-container .polotno-side-panel-tab:nth-child(1) {
+/* Hide portal-injected legacy Polotno popovers */
+body > .polotno-action-controls,
+body > .polotno-context-menu {
   display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
   pointer-events: none !important;
 }
 
-/* Selector más específico para la pestaña de Templates */
-.polotno-side-tabs-inner > .polotno-side-panel-tab:first-child {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
+/* Selection highlight — Polotno's native selection handles are used;\n   no additional CSS override needed to avoid breaking resize/rotate handles */
+
+/* ── Zoom Controls ── */
+.ds-zoom-controls {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--ds-border);
+  border-radius: 10px;
+  background: var(--ds-surface);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  z-index: 5;
 }
 
-/* OCULTAR PESTAÑA DE RESIZE DEL PANEL LATERAL */
-/* Ocultar la última pestaña (Resize) del panel lateral */
-.polotno-side-tabs-container .polotno-side-panel-tab:last-child {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
+.ds-zoom-label {
+  min-width: 44px;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ds-text);
+  user-select: none;
 }
 
-/* Selector más específico para la pestaña de Resize */
-.polotno-side-tabs-inner > .polotno-side-panel-tab:last-child {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
+/* ── Empty State ── */
+.ds-empty-state {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
 }
 
-/* Fin del archivo */
+.ds-empty-card {
+  max-width: 300px;
+  padding: 20px 24px;
+  border: 1px solid var(--ds-border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ds-muted);
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+}
+
+.ds-empty-card h3 {
+  margin: 8px 0 0;
+  color: var(--ds-text);
+  font-size: 0.95rem;
+}
+
+.ds-empty-card p {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+/* Panel sidebar: gentle Blueprint panel overrides */
+.ds-panel-body .bp5-card,
+.ds-panel-body .bp4-card {
+  box-shadow: none;
+}
+
+/* ══════════════════════════════════════════════════════
+   RESPONSIVE — Desktop Only (min 1280×720)
+   ══════════════════════════════════════════════════════ */
+
+@media (max-width: 1366px) {
+  .ds-container {
+    --ds-panel-w: 260px;
+  }
+}
+
+@media (max-width: 1280px) {
+  .ds-container {
+    --ds-panel-w: 240px;
+  }
+}
+
+@media (max-width: 1120px) {
+  /* Panel becomes overlay on narrow screens */
+  .ds-container {
+    grid-template-columns: var(--ds-rail-w) minmax(0, 1fr);
+  }
+
+  .ds-panel {
+    position: absolute;
+    left: var(--ds-rail-w);
+    top: 0;
+    bottom: 0;
+    z-index: 10;
+    width: var(--ds-panel-w);
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.08);
+  }
+}

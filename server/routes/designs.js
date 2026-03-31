@@ -2,38 +2,81 @@ const express = require('express');
 const { db } = require('../config/database');
 const { authenticateToken, requireAdmin, optionalAuth } = require('../middleware/auth');
 const konvaRenderer = require('../utils/konvaRenderer');
-const { separateFiguresFromDesign } = require('../utils/figuresSeparator');
 const autoSvgExporter = require('../utils/autoSvgExporter');
+const {
+  normalizeDesignContent,
+  decorateDesignRecord,
+  getPredefinedDesignTemplates
+} = require('../utils/designContent');
 
 const router = express.Router();
 
-/**
- * Función helper para generar y guardar HTML en la base de datos
- * @param {number} designId - ID del diseño
- * @param {object} content - Contenido JSON del diseño
- * @param {string} designName - Nombre del diseño
- */
 async function generateAndSaveHtml(designId, content, designName) {
-    try {
-        // Generar HTML usando konvaRenderer, pasando el ID del diseño para obtener SVGs
-        const html = await konvaRenderer.renderWithKonva(content, designName, designId);
-        
-        // Actualizar el campo html_content en la base de datos
-        await db().run(
-            'UPDATE designs SET html_content = ? WHERE id = ?',
-            [html, designId]
-        );
-        
-        console.log(`✅ HTML generado y guardado para diseño ID ${designId} (${html.length} caracteres)`);
-        return { success: true, htmlLength: html.length };
-        
-    } catch (error) {
-        console.error(`❌ Error generando HTML para diseño ID ${designId}:`, error);
-        return { success: false, error: error.message };
-    }
+  try {
+    const normalizedContent = normalizeDesignContent(content);
+    const html = await konvaRenderer.renderWithKonva(normalizedContent, designName, designId);
+
+    await db().run(
+      'UPDATE designs SET html_content = ? WHERE id = ?',
+      [html, designId]
+    );
+
+    console.log(`HTML generado y guardado para diseño ID ${designId} (${html.length} caracteres)`);
+    return { success: true, htmlLength: html.length };
+  } catch (error) {
+    console.error(`Error generando HTML para diseño ID ${designId}:`, error);
+    return { success: false, error: error.message };
+  }
 }
 
-// Obtener todos los diseños (excluyendo diseños internos)
+async function getAssignedScreensMap() {
+  const assignments = await db().all(`
+    SELECT
+      da.design_id,
+      s.id,
+      s.name
+    FROM design_assignments da
+    JOIN screens s ON s.id = da.screen_id
+  `);
+
+  return assignments.reduce((map, row) => {
+    if (!map.has(row.design_id)) {
+      map.set(row.design_id, []);
+    }
+
+    map.get(row.design_id).push({
+      id: row.id,
+      name: row.name
+    });
+
+    return map;
+  }, new Map());
+}
+
+async function getAssignedScreensForDesign(designId) {
+  return db().all(`
+    SELECT
+      s.id,
+      s.name
+    FROM design_assignments da
+    JOIN screens s ON s.id = da.screen_id
+    WHERE da.design_id = ?
+  `, [designId]);
+}
+
+async function getDecoratedDesignById(designId) {
+  const design = await db().get('SELECT * FROM designs WHERE id = ?', [designId]);
+
+  if (!design) {
+    return null;
+  }
+
+  const assignedScreens = await getAssignedScreensForDesign(designId);
+  return decorateDesignRecord(design, assignedScreens);
+}
+
+const syncContentDimensions = (content) => normalizeDesignContent(content);
+
 router.get('/', optionalAuth, async (req, res) => {
   try {
     const result = await db().all(`
@@ -46,28 +89,19 @@ router.get('/', optionalAuth, async (req, res) => {
       GROUP BY d.id
       ORDER BY d.updated_at DESC
     `);
-    
-    // Parsear el contenido JSON para cada diseño
-    const parsedResult = result.map(design => {
-      if (design.content && typeof design.content === 'string') {
-        try {
-          design.content = JSON.parse(design.content);
-        } catch (error) {
-          console.error('Error parsing design content:', error);
-          design.content = null;
-        }
-      }
-      return design;
-    });
-       
-     res.json(parsedResult);
+
+    const assignmentsMap = await getAssignedScreensMap();
+    const parsedResult = result.map((design) =>
+      decorateDesignRecord(design, assignmentsMap.get(design.id) || [])
+    );
+
+    res.json(parsedResult);
   } catch (error) {
     console.error('Error al obtener diseños:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Obtener todos los diseños incluyendo internos (solo para administradores)
 router.get('/all-including-internal', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const result = await db().all(`
@@ -79,20 +113,12 @@ router.get('/all-including-internal', authenticateToken, requireAdmin, async (re
       GROUP BY d.id
       ORDER BY d.updated_at DESC
     `);
-    
-    // Parsear el contenido JSON para cada diseño
-    const parsedResult = result.map(design => {
-      if (design.content && typeof design.content === 'string') {
-        try {
-          design.content = JSON.parse(design.content);
-        } catch (error) {
-          console.error('Error parsing design content:', error);
-          design.content = null;
-        }
-      }
-      return design;
-    });
-      
+
+    const assignmentsMap = await getAssignedScreensMap();
+    const parsedResult = result.map((design) =>
+      decorateDesignRecord(design, assignmentsMap.get(design.id) || [])
+    );
+
     res.json(parsedResult);
   } catch (error) {
     console.error('Error al obtener todos los diseños:', error);
@@ -100,544 +126,324 @@ router.get('/all-including-internal', authenticateToken, requireAdmin, async (re
   }
 });
 
-// Obtener un diseño específico por ID
-router.get('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    // Obtener el diseño
-    const design = await db().get(
-      'SELECT * FROM designs WHERE id = ?',
-      [id]
-    );
-    
-    if (!design) {
-      return res.status(404).json({ error: 'Diseño no encontrado' });
-    }
-    
-    // Obtener pantallas asignadas
-    const assignedScreens = await db().all(`
-      SELECT s.id as screen_id, s.name as screen_name
-      FROM design_assignments da
-      JOIN screens s ON da.screen_id = s.id
-      WHERE da.design_id = ?
-    `, [id]);
-    
-    design.assigned_screens = assignedScreens;
-    
-    // Parsear el contenido JSON antes de devolver
-      if (design.content && typeof design.content === 'string') {
-        try {
-          design.content = JSON.parse(design.content);
-        } catch (error) {
-          console.error('Error parsing design content:', error);
-          design.content = null;
-        }
-      }
-      
-      res.json(design);
-  } catch (error) {
-    console.error('Error al obtener diseño:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-// Función para sincronizar dimensiones del content con las páginas
-const syncContentDimensions = (content) => {
-  if (!content || typeof content !== 'object') {
-    return content;
-  }
-  
-  // Si hay páginas, usar las dimensiones de la primera página
-  if (content.pages && content.pages.length > 0) {
-    const firstPage = content.pages[0];
-    if (firstPage.width && firstPage.height) {
-      content.width = firstPage.width;
-      content.height = firstPage.height;
-      console.log(`✅ Dimensiones sincronizadas: ${firstPage.width}x${firstPage.height}`);
-    }
-  }
-  
-  return content;
-};
-
-// Crear nuevo diseño
-router.post('/', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const { name, description, content, thumbnail } = req.body;
-    
-    if (!name) {
-      return res.status(400).json({ error: 'El nombre es requerido' });
-    }
-    
-    if (!content) {
-      return res.status(400).json({ error: 'El contenido del diseño es requerido' });
-    }
-    
-    // Sincronizar dimensiones antes de guardar
-    const syncedContent = syncContentDimensions(content);
-    
-    
-      const result = await db().run(`
-        INSERT INTO designs (name, description, content, thumbnail)
-        VALUES (?, ?, ?, ?)
-      `, [name, description, JSON.stringify(syncedContent), thumbnail]);
-      
-      const newDesign = await db().get(
-        'SELECT * FROM designs WHERE id = ?',
-        [result.lastID]
-      );
-      
-      // Parsear el contenido JSON antes de devolver
-      if (newDesign.content && typeof newDesign.content === 'string') {
-        try {
-          newDesign.content = JSON.parse(newDesign.content);
-        } catch (error) {
-          console.error('Error parsing design content:', error);
-          newDesign.content = null;
-        }
-      }
-      
-      // Generar y guardar HTML automáticamente
-      if (newDesign.content) {
-        await generateAndSaveHtml(result.lastID, newDesign.content, newDesign.name);
-      }
-      
-      // Emitir evento de actualización
-      const io = req.app.get('io');
-      io.emit('designs-updated', { action: 'created', design: newDesign });
-      
-      res.status(201).json(newDesign);
-    
-  } catch (error) {
-    console.error('Error al crear diseño:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-// Actualizar diseño
-router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, description, content, thumbnail } = req.body;
-    
-    // Sincronizar dimensiones si se está actualizando el contenido
-    const syncedContent = content ? syncContentDimensions(content) : null;
-    
-    
-      const result = await db().run(`
-        UPDATE designs SET
-          name = COALESCE(?, name),
-          description = COALESCE(?, description),
-          content = COALESCE(?, content),
-          thumbnail = COALESCE(?, thumbnail),
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `, [
-        name, 
-        description, 
-        syncedContent ? JSON.stringify(syncedContent) : null, 
-        thumbnail, 
-        id
-      ]);
-      
-      if (result.changes === 0) {
-        return res.status(404).json({ error: 'Diseño no encontrado' });
-      }
-      
-      const updatedDesign = await db().get(
-        'SELECT * FROM designs WHERE id = ?',
-        [id]
-      );
-      
-      // Generar y guardar HTML automáticamente si se actualizó el contenido
-      if (syncedContent) {
-        await generateAndSaveHtml(id, syncedContent, updatedDesign.name);
-      }
-      
-      // Emitir evento de actualización
-      const io = req.app.get('io');
-      io.emit('designs-updated', { action: 'updated', design: updatedDesign });
-      
-      res.json(updatedDesign);
-    
-  } catch (error) {
-    console.error('Error al actualizar diseño:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-// Publicar diseño - Generar HTML y notificar pantallas
-router.post('/:id/publish', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const design = await db().get(
-      'SELECT * FROM designs WHERE id = ?',
-      [id]
-    );
-    
-    if (!design) {
-      return res.status(404).json({ error: 'Diseño no encontrado' });
-    }
-    
-    // Generar y guardar HTML
-    if (design.content) {
-      try {
-        const parsedContent = typeof design.content === 'string' 
-          ? JSON.parse(design.content) 
-          : design.content;
-        
-        // Ejecutar separación de figuras y exportación automática a SVG antes de generar HTML
-        try {
-          console.log(`🔄 Iniciando separación de figuras y exportación SVG para diseño ${id} antes de publicar...`);
-          const svgExportResult = await autoSvgExporter.separateAndExportToSVG(id, {
-            namePrefix: `${design.name} - Figura`,
-            exportPrefix: `${design.name.toLowerCase().replace(/\s+/g, '-')}-figura`
-          });
-          
-          if (svgExportResult.success && svgExportResult.statistics.successfulExports > 0) {
-            console.log(`✅ Separación y exportación SVG completada: ${svgExportResult.statistics.successfulExports} archivos SVG generados`);
-            console.log(`📁 Archivos SVG guardados en server/exports/`);
-          } else {
-            console.log(`ℹ️ No se encontraron figuras o máscaras para separar en el diseño ${id}`);
-          }
-        } catch (separationError) {
-          // La separación no es crítica para la publicación, solo registrar el error
-          console.warn(`⚠️ Error en separación de figuras y exportación SVG (no crítico):`, separationError.message);
-        }
-        
-        const htmlResult = await generateAndSaveHtml(id, parsedContent, design.name);
-        
-        if (!htmlResult.success) {
-          return res.status(500).json({ error: 'Error generando HTML: ' + htmlResult.error });
-        }
-        
-        // Actualizar timestamp de publicación
-        await db().run(
-          'UPDATE designs SET updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-          [id]
-        );
-        
-        // Obtener diseño actualizado
-        const updatedDesign = await db().get(
-          'SELECT * FROM designs WHERE id = ?',
-          [id]
-        );
-        
-        // Emitir evento de publicación
-        const io = req.app.get('io');
-        io.emit('designs-updated', { action: 'published', design: updatedDesign });
-        
-        // Actualizar HTML en todas las pantallas asignadas
-        const assignedScreens = await db().all(
-          'SELECT screen_id FROM design_assignments WHERE design_id = ?',
-          [id]
-        );
-        
-        // Obtener el HTML generado desde la base de datos (ya incluye SVGs integrados)
-        const designWithHtml = await db().get(
-          'SELECT html_content FROM designs WHERE id = ?',
-          [id]
-        );
-        
-        // Actualizar el HTML en cada pantalla usando el HTML ya generado
-        for (const row of assignedScreens) {
-          await db().run(
-            'UPDATE screens SET design_html = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-            [designWithHtml.html_content, row.screen_id]
-          );
-          
-          // Notificar a la pantalla específica
-          io.to(`screen-${row.screen_id}`).emit('design-content-updated', {
-            designId: id,
-            content: designWithHtml.html_content,
-            isHtml: true
-          });
-        }
-        
-        console.log(`✅ HTML actualizado en ${assignedScreens.length} pantallas asignadas`);
-        
-        res.json({ 
-          success: true, 
-          message: 'Diseño publicado correctamente',
-          design: updatedDesign,
-          htmlLength: htmlResult.htmlLength
-        });
-        
-      } catch (error) {
-        console.error('Error en proceso de publicación:', error);
-        res.status(500).json({ error: 'Error en el proceso de publicación' });
-      }
-    } else {
-      res.status(400).json({ error: 'El diseño no tiene contenido para publicar' });
-    }
-    
-  } catch (error) {
-    console.error('Error al publicar diseño:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-// Duplicar diseño
-router.post('/:id/duplicate', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name } = req.body;
-    
-    
-      // Obtener el diseño original
-      const original = await db().get(
-        'SELECT * FROM designs WHERE id = ?',
-        [id]
-      );
-      
-      if (!original) {
-        return res.status(404).json({ error: 'Diseño no encontrado' });
-      }
-      
-      const duplicateName = name || `${original.name} (Copia)`;
-      
-      // Crear el duplicado
-      const result = await db().run(`
-        INSERT INTO designs (name, description, content, thumbnail)
-        VALUES (?, ?, ?, ?)
-      `, [
-        duplicateName,
-        original.description,
-        original.content,
-        original.thumbnail
-      ]);
-      
-      const duplicatedDesign = await db().get(
-        'SELECT * FROM designs WHERE id = ?',
-        [result.lastID]
-      );
-      
-      // Emitir evento de actualización
-      const io = req.app.get('io');
-      io.emit('designs-updated', { action: 'created', design: duplicatedDesign });
-      
-      res.status(201).json(duplicatedDesign);
-    
-  } catch (error) {
-    console.error('Error al duplicar diseño:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-// Eliminar diseño
-router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    
-      // Verificar si el diseño está asignado a alguna pantalla
-      const assignmentCheck = await db().get(
-        'SELECT COUNT(*) as count FROM design_assignments WHERE design_id = ?',
-        [id]
-      );
-      
-      if (parseInt(assignmentCheck.count) > 0) {
-        return res.status(400).json({ 
-          error: 'No se puede eliminar el diseño porque está asignado a una o más pantallas' 
-        });
-      }
-      
-      const result = await db().run(
-        'DELETE FROM designs WHERE id = ?',
-        [id]
-      );
-      
-      if (result.changes === 0) {
-        return res.status(404).json({ error: 'Diseño no encontrado' });
-      }
-      
-      // Emitir evento de actualización
-      const io = req.app.get('io');
-      io.emit('designs-updated', { action: 'deleted', designId: id });
-      
-      res.json({ message: 'Diseño eliminado exitosamente' });
-    
-  } catch (error) {
-    console.error('Error al eliminar diseño:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-// Obtener plantillas predefinidas
 router.get('/templates/predefined', async (req, res) => {
   try {
-    const templates = [
-      {
-        id: 'template-welcome',
-        name: 'Plantilla de Bienvenida',
-        description: 'Diseño simple con título y texto de bienvenida',
-        thumbnail: null,
-        content: {
-          sections: [
-            {
-              id: 'section-1',
-              type: 'section',
-              columns: 1,
-              backgroundColor: '#ffffff',
-              padding: '40px',
-              elements: [
-                {
-                  id: 'element-1',
-                  type: 'text',
-                  content: 'Bienvenido',
-                  fontSize: '48px',
-                  fontWeight: 'bold',
-                  color: '#2563eb',
-                  textAlign: 'center',
-                  marginBottom: '20px'
-                },
-                {
-                  id: 'element-2',
-                  type: 'text',
-                  content: 'Este es un mensaje de bienvenida personalizable',
-                  fontSize: '24px',
-                  color: '#64748b',
-                  textAlign: 'center'
-                }
-              ]
-            }
-          ]
-        }
-      },
-      {
-        id: 'template-info',
-        name: 'Plantilla Informativa',
-        description: 'Diseño con dos columnas para información',
-        thumbnail: null,
-        content: {
-          sections: [
-            {
-              id: 'section-1',
-              type: 'section',
-              columns: 2,
-              backgroundColor: '#f8fafc',
-              padding: '30px',
-              elements: [
-                {
-                  id: 'element-1',
-                  type: 'text',
-                  content: 'Información Principal',
-                  fontSize: '32px',
-                  fontWeight: 'bold',
-                  color: '#1e293b',
-                  marginBottom: '15px',
-                  column: 1
-                },
-                {
-                  id: 'element-2',
-                  type: 'text',
-                  content: 'Aquí puedes agregar información detallada sobre tu contenido.',
-                  fontSize: '18px',
-                  color: '#475569',
-                  column: 1
-                },
-                {
-                  id: 'element-3',
-                  type: 'text',
-                  content: 'Información Secundaria',
-                  fontSize: '32px',
-                  fontWeight: 'bold',
-                  color: '#1e293b',
-                  marginBottom: '15px',
-                  column: 2
-                },
-                {
-                  id: 'element-4',
-                  type: 'text',
-                  content: 'Contenido adicional en la segunda columna.',
-                  fontSize: '18px',
-                  color: '#475569',
-                  column: 2
-                }
-              ]
-            }
-          ]
-        }
-      }
-    ];
-    
-    res.json(templates);
+    res.json(getPredefinedDesignTemplates());
   } catch (error) {
     console.error('Error al obtener plantillas:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Crear diseño desde plantilla
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const design = await getDecoratedDesignById(id);
+
+    if (!design) {
+      return res.status(404).json({ error: 'Diseño no encontrado' });
+    }
+
+    res.json(design);
+  } catch (error) {
+    console.error('Error al obtener diseño:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+router.post('/', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { name, description, content, thumbnail } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ error: 'El nombre es requerido' });
+    }
+
+    if (!content) {
+      return res.status(400).json({ error: 'El contenido del diseño es requerido' });
+    }
+
+    const syncedContent = syncContentDimensions(content);
+    const result = await db().run(`
+      INSERT INTO designs (name, description, content, thumbnail)
+      VALUES (?, ?, ?, ?)
+    `, [name, description, JSON.stringify(syncedContent), thumbnail]);
+
+    const newDesign = await getDecoratedDesignById(result.lastID);
+
+    if (newDesign?.content) {
+      await generateAndSaveHtml(result.lastID, newDesign.content, newDesign.name);
+    }
+
+    const io = req.app.get('io');
+    io.emit('designs-updated', { action: 'created', design: newDesign });
+
+    res.status(201).json(newDesign);
+  } catch (error) {
+    console.error('Error al crear diseño:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, content, thumbnail } = req.body;
+
+    const syncedContent = content ? syncContentDimensions(content) : null;
+
+    const result = await db().run(`
+      UPDATE designs SET
+        name = COALESCE(?, name),
+        description = COALESCE(?, description),
+        content = COALESCE(?, content),
+        thumbnail = COALESCE(?, thumbnail),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, [
+      name,
+      description,
+      syncedContent ? JSON.stringify(syncedContent) : null,
+      thumbnail,
+      id
+    ]);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Diseño no encontrado' });
+    }
+
+    const updatedDesign = await getDecoratedDesignById(id);
+
+    if (syncedContent) {
+      await generateAndSaveHtml(id, syncedContent, updatedDesign.name);
+    }
+
+    const io = req.app.get('io');
+    io.emit('designs-updated', { action: 'updated', design: updatedDesign });
+
+    res.json(updatedDesign);
+  } catch (error) {
+    console.error('Error al actualizar diseño:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+router.post('/:id/publish', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const design = await db().get('SELECT * FROM designs WHERE id = ?', [id]);
+
+    if (!design) {
+      return res.status(404).json({ error: 'Diseño no encontrado' });
+    }
+
+    if (!design.content) {
+      return res.status(400).json({ error: 'El diseño no tiene contenido para publicar' });
+    }
+
+    const parsedContent = normalizeDesignContent(design.content);
+
+    try {
+      try {
+        console.log(`Iniciando separación de figuras y exportación SVG para diseño ${id} antes de publicar...`);
+        const svgExportResult = await autoSvgExporter.separateAndExportToSVG(id, {
+          namePrefix: `${design.name} - Figura`,
+          exportPrefix: `${design.name.toLowerCase().replace(/\s+/g, '-')}-figura`
+        });
+
+        if (svgExportResult.success && svgExportResult.statistics.successfulExports > 0) {
+          console.log(`Separación y exportación SVG completada: ${svgExportResult.statistics.successfulExports} archivos SVG generados`);
+        } else {
+          console.log(`No se encontraron figuras o máscaras para separar en el diseño ${id}`);
+        }
+      } catch (separationError) {
+        console.warn('Error en separación de figuras y exportación SVG (no crítico):', separationError.message);
+      }
+
+      const htmlResult = await generateAndSaveHtml(id, parsedContent, design.name);
+
+      if (!htmlResult.success) {
+        return res.status(500).json({ error: `Error generando HTML: ${htmlResult.error}` });
+      }
+
+      await db().run(
+        'UPDATE designs SET updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [id]
+      );
+
+      const updatedDesign = await getDecoratedDesignById(id);
+      const io = req.app.get('io');
+
+      io.emit('designs-updated', { action: 'published', design: updatedDesign });
+
+      const assignedScreens = await db().all(
+        'SELECT screen_id FROM design_assignments WHERE design_id = ?',
+        [id]
+      );
+
+      const designWithHtml = await db().get(
+        'SELECT html_content FROM designs WHERE id = ?',
+        [id]
+      );
+
+      for (const row of assignedScreens) {
+        await db().run(
+          'UPDATE screens SET design_html = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+          [designWithHtml.html_content, row.screen_id]
+        );
+
+        io.to(`screen-${row.screen_id}`).emit('design-content-updated', {
+          screenId: Number(row.screen_id),
+          designId: Number(id),
+          content: designWithHtml.html_content,
+          isHtml: true
+        });
+      }
+
+      console.log(`HTML actualizado en ${assignedScreens.length} pantallas asignadas`);
+
+      res.json({
+        success: true,
+        message: 'Diseño publicado correctamente',
+        design: updatedDesign,
+        htmlLength: htmlResult.htmlLength
+      });
+    } catch (error) {
+      console.error('Error en proceso de publicación:', error);
+      res.status(500).json({ error: 'Error en el proceso de publicación' });
+    }
+  } catch (error) {
+    console.error('Error al publicar diseño:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+router.post('/:id/duplicate', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    const original = await db().get('SELECT * FROM designs WHERE id = ?', [id]);
+
+    if (!original) {
+      return res.status(404).json({ error: 'Diseño no encontrado' });
+    }
+
+    const duplicateName = name || `${original.name} (Copia)`;
+    const duplicatedContent = JSON.stringify(normalizeDesignContent(original.content));
+
+    const result = await db().run(`
+      INSERT INTO designs (name, description, content, thumbnail)
+      VALUES (?, ?, ?, ?)
+    `, [
+      duplicateName,
+      original.description,
+      duplicatedContent,
+      original.thumbnail
+    ]);
+
+    const duplicatedDesign = await getDecoratedDesignById(result.lastID);
+
+    const io = req.app.get('io');
+    io.emit('designs-updated', { action: 'created', design: duplicatedDesign });
+
+    res.status(201).json(duplicatedDesign);
+  } catch (error) {
+    console.error('Error al duplicar diseño:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const assignmentCheck = await db().get(
+      'SELECT COUNT(*) as count FROM design_assignments WHERE design_id = ?',
+      [id]
+    );
+
+    if (Number.parseInt(assignmentCheck.count, 10) > 0) {
+      return res.status(400).json({
+        error: 'No se puede eliminar el diseño porque está asignado a una o más pantallas'
+      });
+    }
+
+    const result = await db().run(
+      'DELETE FROM designs WHERE id = ?',
+      [id]
+    );
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'Diseño no encontrado' });
+    }
+
+    const io = req.app.get('io');
+    io.emit('designs-updated', { action: 'deleted', designId: Number(id) });
+
+    res.json({ message: 'Diseño eliminado exitosamente' });
+  } catch (error) {
+    console.error('Error al eliminar diseño:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 router.post('/from-template', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { templateId, name, description } = req.body;
-    
+
     if (!templateId || !name) {
       return res.status(400).json({ error: 'ID de plantilla y nombre son requeridos' });
     }
-    
-    // Obtener plantillas predefinidas
-    const templatesResponse = await fetch(`${req.protocol}://${req.get('host')}/api/designs/templates/predefined`);
-    const templates = await templatesResponse.json();
-    
-    const template = templates.find(t => t.id === templateId);
-    
+
+    const template = getPredefinedDesignTemplates().find((item) => item.id === templateId);
+
     if (!template) {
       return res.status(404).json({ error: 'Plantilla no encontrada' });
     }
-    
-    
-      const result = await db().run(`
-        INSERT INTO designs (name, description, content, thumbnail)
-        VALUES (?, ?, ?, ?)
-      `, [name, description, JSON.stringify(template.content), template.thumbnail]);
-      
-      const newDesign = await db().get(
-        'SELECT * FROM designs WHERE id = ?',
-        [result.lastID]
-      );
-      
-      // Emitir evento de actualización
-      const io = req.app.get('io');
-      io.emit('designs-updated', { action: 'created', design: newDesign });
-      
-      res.status(201).json(newDesign);
-    
+
+    const normalizedContent = normalizeDesignContent(template.content);
+    const result = await db().run(`
+      INSERT INTO designs (name, description, content, thumbnail)
+      VALUES (?, ?, ?, ?)
+    `, [name, description, JSON.stringify(normalizedContent), template.thumbnail]);
+
+    const newDesign = await getDecoratedDesignById(result.lastID);
+
+    const io = req.app.get('io');
+    io.emit('designs-updated', { action: 'created', design: newDesign });
+
+    res.status(201).json(newDesign);
   } catch (error) {
     console.error('Error al crear diseño desde plantilla:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Obtener SVGs separados de un diseño
 router.get('/:id/separated-svgs', async (req, res) => {
   try {
-    const designId = parseInt(req.params.id);
-    
-    if (isNaN(designId)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'ID de diseño inválido' 
+    const designId = parseInt(req.params.id, 10);
+
+    if (Number.isNaN(designId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de diseño inválido'
       });
     }
-    
-    // Obtener el diseño con los SVGs
+
     const design = await db().get(
       'SELECT id, name, separated_svgs FROM designs WHERE id = ?',
       [designId]
     );
-    
+
     if (!design) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Diseño no encontrado' 
+      return res.status(404).json({
+        success: false,
+        message: 'Diseño no encontrado'
       });
     }
-    
-    // Parsear los SVGs si existen
+
     let svgs = [];
     if (design.separated_svgs) {
       try {
@@ -647,82 +453,75 @@ router.get('/:id/separated-svgs', async (req, res) => {
         svgs = [];
       }
     }
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       designId: design.id,
       designName: design.name,
-      svgs: svgs,
+      svgs,
       count: svgs.length
     });
-    
   } catch (error) {
     console.error('Error obteniendo SVGs separados:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error interno del servidor' 
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
     });
   }
 });
 
-// Obtener un SVG específico de un diseño
 router.get('/:id/separated-svgs/:svgIndex', async (req, res) => {
   try {
-    const designId = parseInt(req.params.id);
-    const svgIndex = parseInt(req.params.svgIndex);
-    
-    if (isNaN(designId) || isNaN(svgIndex)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'ID de diseño o índice de SVG inválido' 
+    const designId = parseInt(req.params.id, 10);
+    const svgIndex = parseInt(req.params.svgIndex, 10);
+
+    if (Number.isNaN(designId) || Number.isNaN(svgIndex)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de diseño o índice de SVG inválido'
       });
     }
-    
-    // Obtener el diseño con los SVGs
+
     const design = await db().get(
       'SELECT id, name, separated_svgs FROM designs WHERE id = ?',
       [designId]
     );
-    
+
     if (!design) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Diseño no encontrado' 
+      return res.status(404).json({
+        success: false,
+        message: 'Diseño no encontrado'
       });
     }
-    
-    // Parsear los SVGs
+
     let svgs = [];
     if (design.separated_svgs) {
       try {
         svgs = JSON.parse(design.separated_svgs);
       } catch (parseError) {
-        return res.status(500).json({ 
-          success: false, 
-          message: 'Error parseando SVGs guardados' 
+        return res.status(500).json({
+          success: false,
+          message: 'Error parseando SVGs guardados'
         });
       }
     }
-    
-    // Verificar que el índice existe
+
     if (svgIndex < 0 || svgIndex >= svgs.length) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Índice de SVG no encontrado' 
+      return res.status(404).json({
+        success: false,
+        message: 'Índice de SVG no encontrado'
       });
     }
-    
+
     const svg = svgs[svgIndex];
-    
-    // Retornar el SVG como contenido XML
+
     res.set('Content-Type', 'image/svg+xml');
     res.send(svg.svgData);
-    
   } catch (error) {
     console.error('Error obteniendo SVG específico:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error interno del servidor' 
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
     });
   }
 });

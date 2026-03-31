@@ -1,7 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
-import toast from 'react-hot-toast';
 
 const SocketContext = createContext();
 
@@ -16,78 +15,64 @@ export const useSocket = () => {
 export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
-  const { user, token } = useAuth();
+  const { token } = useAuth();
 
   useEffect(() => {
-    // Solo conectar si hay un usuario autenticado
-    if (user && token) {
-      const newSocket = io(process.env.REACT_APP_SERVER_URL || 'http://localhost:5000', {
-        auth: {
-          token
-        },
-        transports: ['websocket', 'polling']
-      });
+    const newSocket = io(process.env.REACT_APP_SERVER_URL || 'http://localhost:5000', {
+      auth: token ? { token } : undefined,
+      transports: ['websocket', 'polling']
+    });
 
-      newSocket.on('connect', () => {
-        console.log('Conectado al servidor Socket.io');
-        setConnected(true);
-      });
+    newSocket.on('connect', () => {
+      console.log('Conectado al servidor Socket.io');
+      setConnected(true);
+    });
 
-      newSocket.on('disconnect', () => {
-        console.log('Desconectado del servidor Socket.io');
-        setConnected(false);
-      });
+    newSocket.on('disconnect', () => {
+      console.log('Desconectado del servidor Socket.io');
+      setConnected(false);
+    });
 
-      newSocket.on('connect_error', (error) => {
-        console.error('Error de conexión Socket.io:', error);
-        setConnected(false);
-      });
+    newSocket.on('connect_error', (error) => {
+      console.error('Error de conexion Socket.io:', error);
+      setConnected(false);
+    });
 
-      // Eventos globales del sistema
-      newSocket.on('screens-updated', (data) => {
-        console.log('Pantallas actualizadas:', data);
-        // Este evento será manejado por los componentes específicos
-      });
+    newSocket.on('screens-updated', (data) => {
+      console.log('Pantallas actualizadas:', data);
+    });
 
-      newSocket.on('designs-updated', (data) => {
-        console.log('Diseños actualizados:', data);
-        // Este evento será manejado por los componentes específicos
-      });
+    newSocket.on('designs-updated', (data) => {
+      console.log('Disenos actualizados:', data);
+    });
 
-      setSocket(newSocket);
+    setSocket(newSocket);
 
-      return () => {
-        newSocket.close();
-        setSocket(null);
-        setConnected(false);
-      };
-    } else {
-      // Si no hay usuario, cerrar conexión existente
-      if (socket) {
-        socket.close();
-        setSocket(null);
-        setConnected(false);
-      }
-    }
-  }, [user, token]);
+    return () => {
+      newSocket.close();
+      setSocket(null);
+      setConnected(false);
+    };
+  }, [token]);
 
-  // Función para unirse a una sala de pantalla específica
+  const normalizeScreenId = (screenId) => String(screenId).replace(/^screen-/, '');
+
   const joinScreen = (screenId) => {
     if (socket && connected) {
-      socket.emit('join-screen', screenId);
-      console.log(`Uniéndose a la pantalla ${screenId}`);
+      const normalizedId = normalizeScreenId(screenId);
+      socket.emit('join-screen', normalizedId);
+      console.log(`Uniendose a la pantalla ${normalizedId}`);
     }
   };
 
-  // Función para salir de una sala de pantalla
   const leaveScreen = (screenId) => {
     if (socket && connected) {
-      socket.emit('leave-screen', screenId);
-      console.log(`Saliendo de la pantalla ${screenId}`);
+      const normalizedId = normalizeScreenId(screenId);
+      socket.emit('leave-screen', normalizedId);
+      console.log(`Saliendo de la pantalla ${normalizedId}`);
     }
   };
 
-  // Función para emitir eventos personalizados
   const emit = (event, data) => {
     if (socket && connected) {
       socket.emit(event, data);
@@ -96,7 +81,6 @@ export const SocketProvider = ({ children }) => {
     }
   };
 
-  // Función para escuchar eventos
   const on = (event, callback) => {
     if (socket) {
       socket.on(event, callback);
@@ -105,38 +89,43 @@ export const SocketProvider = ({ children }) => {
     return () => {};
   };
 
-  // Función para escuchar eventos una sola vez
   const once = (event, callback) => {
     if (socket) {
       socket.once(event, callback);
     }
   };
 
-  // Función para dejar de escuchar eventos
   const off = (event, callback) => {
     if (socket) {
       socket.off(event, callback);
     }
   };
 
-  // Hook personalizado para escuchar eventos específicos
   const useSocketEvent = (event, callback, dependencies = []) => {
+    const callbackRef = useRef(callback);
+    const dependencyKey = JSON.stringify(dependencies);
+
+    useEffect(() => {
+      callbackRef.current = callback;
+    }, [callback, dependencyKey]);
+
     useEffect(() => {
       if (socket && connected) {
-        socket.on(event, callback);
-        return () => socket.off(event, callback);
+        const handler = (...args) => callbackRef.current?.(...args);
+        socket.on(event, handler);
+        return () => socket.off(event, handler);
       }
-    }, [socket, connected, event, ...dependencies]);
+      return undefined;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [socket, connected, event]);
   };
 
-  // Función para notificar cambios en pantallas
   const notifyScreenUpdate = (action, data) => {
     if (socket && connected) {
       socket.emit('screen-update', { action, data });
     }
   };
 
-  // Función para notificar cambios en diseños
   const notifyDesignUpdate = (action, data) => {
     if (socket && connected) {
       socket.emit('design-update', { action, data });
@@ -157,9 +146,5 @@ export const SocketProvider = ({ children }) => {
     notifyDesignUpdate
   };
 
-  return (
-    <SocketContext.Provider value={value}>
-      {children}
-    </SocketContext.Provider>
-  );
+  return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
 };

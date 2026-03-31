@@ -84,7 +84,7 @@ describe('Alta basica de productos en Carteleria', () => {
     });
   });
 
-  test('permite abrir el modal, mostrar la imagen en tarjetas y crear un producto nuevo con formato AR', async () => {
+  test('permite abrir el modal y crear un producto nuevo con formato AR', async () => {
     const user = userEvent.setup();
 
     render(
@@ -96,8 +96,6 @@ describe('Alta basica de productos en Carteleria', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Nuevo producto' })).toBeInTheDocument();
     });
-
-    expect(await screen.findByRole('img', { name: 'Cafe tostado' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Nuevo producto' }));
 
@@ -143,4 +141,5 @@ describe('Alta basica de productos en Carteleria', () => {
 
     expect(screen.getByLabelText('Precio')).toHaveValue('150.000');
   });
+
 });

@@ -5,7 +5,6 @@ import {
   Palette, 
   Plus, 
   Activity, 
-  Users, 
   Eye,
   AlertCircle,
   TrendingUp

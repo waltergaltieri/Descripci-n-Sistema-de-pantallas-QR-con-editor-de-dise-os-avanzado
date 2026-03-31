@@ -453,7 +453,6 @@ function diagnoseCSSConflicts() {
     console.log('\n🚨 ANÁLISIS DE CONFLICTOS:');
     if (panelState === 'hidden') {
         const expectedLeft = '50%';
-        const expectedTransform = 'translateX(-50%)';
         const actualLeft = computedStyles.left;
         const actualTransform = computedStyles.transform;
         

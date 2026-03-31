@@ -30,32 +30,32 @@ const ScreenDisplay = () => {
   // Unirse a la sala de la pantalla para recibir actualizaciones
   useEffect(() => {
     if (screenId) {
-      joinScreen(`screen-${screenId}`);
-      return () => leaveScreen(`screen-${screenId}`);
+      joinScreen(screenId);
+      return () => leaveScreen(screenId);
     }
   }, [screenId, joinScreen, leaveScreen]);
 
   // Escuchar eventos de Socket.io
   useSocketEvent('screen-config-updated', (data) => {
-    if (data.screenId === parseInt(screenId)) {
+    if (data.screenId === parseInt(screenId, 10)) {
       loadScreen();
     }
   });
 
   useSocketEvent('design-updated', (data) => {
-    if (screen && screen.design_id === data.designId) {
+    if (data.screenId === parseInt(screenId, 10)) {
       loadScreen();
     }
   });
 
   useSocketEvent('design-content-updated', (data) => {
-    if (screen && screen.design_id === data.designId) {
+    if (data.screenId === parseInt(screenId, 10)) {
       loadScreen();
     }
   });
 
   useSocketEvent('design-removed', (data) => {
-    if (data.screenId === parseInt(screenId)) {
+    if (data.screenId === parseInt(screenId, 10)) {
       loadScreen();
     }
   });

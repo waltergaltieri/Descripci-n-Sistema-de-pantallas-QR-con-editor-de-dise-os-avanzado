@@ -6,7 +6,6 @@ import {
   Edit, 
   Trash2, 
   Copy, 
-  Eye,
   Monitor,
   Calendar,
   Search
@@ -16,6 +15,7 @@ import { useSocket } from '../../contexts/SocketContext';
 import TemplateModal from './TemplateModal';
 import DesignPreconfigModal from './DesignPreconfigModal';
 import toast from 'react-hot-toast';
+import { buildInitialDesignContent, decorateAssignedScreens } from '../../utils/designContent';
 
 const DesignsManager = () => {
   const navigate = useNavigate();
@@ -40,7 +40,12 @@ const DesignsManager = () => {
     try {
       setLoading(true);
       const response = await designsService.getAll();
-      setDesigns(response.data);
+      setDesigns(
+        response.data.map((design) => ({
+          ...design,
+          assigned_screens: decorateAssignedScreens(design.assigned_screens || [])
+        }))
+      );
     } catch (error) {
       console.error('Error cargando diseños:', error);
       toast.error('Error al cargar los diseños');
@@ -94,17 +99,13 @@ const DesignsManager = () => {
       const designData = {
         name: preconfigData.name,
         description: '',
-        content: {
-          elements: [],
-          settings: {
-            backgroundColor: '#ffffff',
-            backgroundImage: null,
-            canvasWidth: preconfigData.width,
-            canvasHeight: preconfigData.height,
-            screenSizeName: preconfigData.screenSizeName,
-            orientation: preconfigData.orientation
-          }
-        }
+        content: buildInitialDesignContent({
+          width: preconfigData.width,
+          height: preconfigData.height,
+          backgroundColor: '#ffffff',
+          screenSizeName: preconfigData.screenSizeName,
+          orientation: preconfigData.orientation
+        })
       };
       
       console.log('Datos a enviar al servidor:', designData);
@@ -134,7 +135,8 @@ const DesignsManager = () => {
   }, [designs, searchTerm]);
 
   const DesignCard = ({ design }) => {
-    const assignedScreensCount = design.assigned_screens?.length || 0;
+    const assignedScreens = decorateAssignedScreens(design.assigned_screens || []);
+    const assignedScreensCount = Number(design.assigned_screens_count ?? assignedScreens.length ?? 0);
     
     return (
       <div className="card hover:shadow-lg transition-shadow duration-200">
@@ -183,7 +185,7 @@ const DesignsManager = () => {
             <div className="mb-4">
               <p className="text-sm font-medium text-gray-700 mb-2">Asignado a:</p>
               <div className="flex flex-wrap gap-2">
-                {design.assigned_screens.map((screen) => (
+                {assignedScreens.map((screen) => (
                   <span
                     key={screen.id}
                     className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full"

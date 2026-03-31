@@ -1,11 +1,7 @@
 import { createStore } from 'polotno/model/store';
-import { unstable_registerNextDomDrop } from 'polotno/config';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
-
-// Configurar Polotno para Next.js
-// unstable_registerNextDomDrop();
 
 // Crear el store principal de Polotno
 export const polotnoStore = createStore({
@@ -223,9 +219,7 @@ export const useEditorUIStore = create<EditorUIStore>()(subscribeWithSelector(im
   
   deleteElement: (id: string) => {
     polotnoStore.history.transaction(() => {
-      // Use Polotno's official deleteElements method
       polotnoStore.deleteElements([id]);
-      console.log('Element deleted successfully:', id);
     });
   },
   
@@ -262,15 +256,9 @@ export const useEditorUIStore = create<EditorUIStore>()(subscribeWithSelector(im
     polotnoStore.selectElements([]);
   },
   
-  groupElements: () => {
-    // Polotno handles grouping internally
-    console.log('Grouping elements');
-  },
+  groupElements: () => {},
   
-  ungroupElements: () => {
-    // Polotno handles ungrouping internally
-    console.log('Ungrouping elements');
-  },
+  ungroupElements: () => {},
   
   undo: () => {
     polotnoStore.history.undo();
@@ -280,10 +268,7 @@ export const useEditorUIStore = create<EditorUIStore>()(subscribeWithSelector(im
     polotnoStore.history.redo();
   },
   
-  setZoom: (zoom: number) => {
-    // Polotno zoom is handled by the workspace component
-    console.log('Setting zoom to:', zoom);
-  },
+  setZoom: (_zoom: number) => {},
 }))));
 
 // Funciones de utilidad para trabajar con Polotno
@@ -375,23 +360,10 @@ export const editorUtils = {
   },
   
   // Agrupar elementos
-  groupElements: () => {
-    const selectedElements = polotnoStore.selectedElements;
-    if (selectedElements.length > 1) {
-      // Polotno maneja el agrupamiento internamente
-      // Por ahora, simplemente seleccionamos los elementos
-      console.log('Grouping elements:', selectedElements.map(el => el.id));
-    }
-  },
+  groupElements: () => {},
   
   // Desagrupar elementos
-  ungroupElements: () => {
-    const selectedElement = polotnoStore.selectedElements[0];
-    if (selectedElement) {
-      // Polotno maneja el desagrupamiento internamente
-      console.log('Ungrouping element:', selectedElement.id);
-    }
-  },
+  ungroupElements: () => {},
 
   // Configurar dimensiones del canvas
   setCanvasDimensions: (width: number, height: number) => {

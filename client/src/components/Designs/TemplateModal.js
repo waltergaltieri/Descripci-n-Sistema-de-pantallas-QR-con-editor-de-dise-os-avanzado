@@ -46,7 +46,8 @@ const TemplateModal = ({ isOpen, onClose, onSuccess }) => {
 
     try {
       setCreating(true);
-      await designsService.createFromTemplate(selectedTemplate.id, {
+      await designsService.createFromTemplate({
+        templateId: selectedTemplate.id,
         name: designName.trim(),
         description: designDescription.trim()
       });

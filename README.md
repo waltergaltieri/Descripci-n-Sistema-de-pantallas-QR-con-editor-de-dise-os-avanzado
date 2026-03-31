@@ -152,9 +152,11 @@ PantallasQR/
 
 ```env
 PORT=5000
-DB_PATH=./database.sqlite
-UPLOADS_DIR=./uploads
 NODE_ENV=development
+DB_PROVIDER=sqlite
+SQLITE_PATH=./database.sqlite
+UPLOAD_PROVIDER=local
+UPLOAD_PATH=./uploads
 ```
 
 ### Configuración de Base de Datos

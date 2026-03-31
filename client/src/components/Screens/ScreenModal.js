@@ -7,7 +7,7 @@ const ScreenModal = ({ isOpen, onClose, screen, onSuccess }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    active: true,
+    is_active: true,
     refresh_interval: 30,
     width: 1920,
     height: 1080,
@@ -22,7 +22,7 @@ const ScreenModal = ({ isOpen, onClose, screen, onSuccess }) => {
         setFormData({
           name: screen.name || '',
           description: screen.description || '',
-          active: screen.is_active ?? true,
+          is_active: screen.is_active ?? true,
           refresh_interval: screen.refresh_interval || 30,
           width: screen.width || 1920,
           height: screen.height || 1080,
@@ -32,7 +32,7 @@ const ScreenModal = ({ isOpen, onClose, screen, onSuccess }) => {
         setFormData({
           name: '',
           description: '',
-          active: true,
+          is_active: true,
           refresh_interval: 30,
           width: 1920,
           height: 1080,
@@ -282,14 +282,14 @@ const ScreenModal = ({ isOpen, onClose, screen, onSuccess }) => {
             <div className="flex items-center">
               <input
                 type="checkbox"
-                id="active"
-                name="active"
-                checked={formData.active}
+                id="is_active"
+                name="is_active"
+                checked={formData.is_active}
                 onChange={handleChange}
                 className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                 disabled={loading}
               />
-              <label htmlFor="active" className="ml-2 block text-sm text-gray-900">
+              <label htmlFor="is_active" className="ml-2 block text-sm text-gray-900">
                 Pantalla activa
               </label>
             </div>

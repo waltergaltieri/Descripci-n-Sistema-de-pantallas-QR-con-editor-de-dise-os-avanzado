@@ -195,9 +195,6 @@ function nuclearObserverBlocking() {
     
     // Completely disable ResizeObserver
     window.ResizeObserver = class NuclearResizeObserver {
-      constructor(callback) {
-        // Do nothing - completely disabled
-      }
       observe() {}
       unobserve() {}
       disconnect() {}

@@ -3,12 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import {
   Save,
   ArrowLeft,
-  Plus,
-  Smartphone,
-  Monitor,
-  Tablet,
-  Undo,
-  Redo,
   Settings,
   Loader,
   Eye,
@@ -17,16 +11,14 @@ import {
   Download,
   ChevronDown,
   FileImage,
-  File,
-  Sliders,
-
+  File
 } from 'lucide-react';
 import { designsService } from '../../services/api';
 import { useSocket } from '../../contexts/SocketContext';
 import InternalEditor from './InternalEditor.tsx';
 import DesignConfigModal from '../Designs/Editor/DesignConfigModal';
 import toast from 'react-hot-toast';
-import { internalEditorUtils, polotnoStore, useEditorStore } from '../../store/internalEditorStore';
+import { internalEditorUtils, polotnoStore } from '../../store/internalEditorStore';
 
 
 
@@ -39,7 +31,6 @@ const InternalDesignEditor = () => {
   const [design, setDesign] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [currentEditorData, setCurrentEditorData] = useState(null);
   
   // Estados de modales
   const [configModalOpen, setConfigModalOpen] = useState(false);
@@ -50,11 +41,10 @@ const InternalDesignEditor = () => {
   
   // Estados para exportación
   const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [exportModalType, setExportModalType] = useState('png');
   const exportMenuRef = useRef(null);
   
   // Cerrar menú de exportación al hacer clic fuera
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (exportMenuRef.current && !exportMenuRef.current.contains(event.target)) {
@@ -138,6 +128,7 @@ const InternalDesignEditor = () => {
   // Funciones de exportación JSON y PDF eliminadas - solo SVG permitido
   
   // Función para crear diseño con forma, exportar SVG y limpiar
+  // eslint-disable-next-line no-unused-vars
   const createShapeDesignAndExport = async (shapeType = 'rect') => {
     try {
       // Limpiar el canvas actual
@@ -272,29 +263,7 @@ const InternalDesignEditor = () => {
     }
   };
 
-  useEffect(() => {
-    if (designId) {
-      loadDesign();
-    } else {
-      // Redirigir a designs si no hay ID
-      navigate('/internal-designs');
-    }
-  }, [designId, navigate]);
-
-  // Prevenir salida accidental con cambios sin guardar
-  useEffect(() => {
-    const handleBeforeUnload = (e) => {
-      if (saving) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [saving]);
-
-  const loadDesign = async () => {
+  const loadDesign = useCallback(async () => {
     try {
       setLoading(true);
       const response = await designsService.getById(designId);
@@ -359,11 +328,30 @@ const InternalDesignEditor = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [designId, navigate]);
 
-  const handleEditorDataChange = (newData) => {
-    setCurrentEditorData(newData);
-  };
+  useEffect(() => {
+    if (designId) {
+      loadDesign();
+    } else {
+      // Redirigir a designs si no hay ID
+      navigate('/internal-designs');
+    }
+  }, [designId, loadDesign, navigate]);
+
+  // Prevenir salida accidental con cambios sin guardar
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (saving) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [saving]);
+
 
   // Función para obtener datos actuales del editor Polotno
   const getCurrentEditorData = () => {
@@ -644,7 +632,6 @@ const InternalDesignEditor = () => {
       <div className="flex-1 relative">
         <InternalEditor
           design={design}
-          onDataChange={handleEditorDataChange}
           onSave={handleSave}
           viewportDimensions={getViewportDimensions()}
         />

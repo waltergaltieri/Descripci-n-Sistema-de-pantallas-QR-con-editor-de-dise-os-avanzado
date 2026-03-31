@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, 
   Monitor, 
@@ -201,24 +201,7 @@ const ScreensManager = () => {
     })
   );
 
-  // Escuchar eventos de Socket.io
-  useSocketEvent('screens-updated', () => {
-    loadScreens();
-  });
-
-  useSocketEvent('designs-updated', () => {
-    loadDesigns();
-  });
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    await Promise.all([loadScreens(), loadDesigns()]);
-  };
-
-  const loadScreens = async () => {
+  const loadScreens = useCallback(async () => {
     try {
       setLoading(true);
       const response = await screensService.getAll();
@@ -229,16 +212,27 @@ const ScreensManager = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadDesigns = async () => {
+  const loadDesigns = useCallback(async () => {
     try {
       const response = await designsService.getAll();
       setDesigns(response.data);
     } catch (error) {
       console.error('Error cargando diseños:', error);
     }
-  };
+  }, []);
+
+  const loadData = useCallback(async () => {
+    await Promise.all([loadScreens(), loadDesigns()]);
+  }, [loadDesigns, loadScreens]);
+
+  useSocketEvent('screens-updated', loadScreens, [loadScreens]);
+  useSocketEvent('designs-updated', loadDesigns, [loadDesigns]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleCreateScreen = () => {
     setSelectedScreen(null);

@@ -66,19 +66,30 @@ const ProductSummaryCard = ({ title, value, description, icon: Icon }) => (
   </div>
 );
 
-const ProductCard = ({ onEdit, product }) => (
-  <article className="card overflow-hidden">
+export const ProductCard = ({ onEdit, product }) => {
+  const imageUrl = getFileUrl(product.card_image_url || product.primary_image_url);
+  const [imageUnavailable, setImageUnavailable] = useState(false);
+
+  useEffect(() => {
+    setImageUnavailable(false);
+  }, [imageUrl]);
+
+  const showImage = Boolean(imageUrl) && !imageUnavailable;
+
+  return (
+    <article className="card overflow-hidden">
     <div className="aspect-[16/10] bg-gray-100 flex items-center justify-center overflow-hidden">
-      {product.card_image_url || product.primary_image_url ? (
+      {showImage ? (
         <img
-          src={getFileUrl(product.card_image_url || product.primary_image_url)}
+          src={imageUrl}
           alt={product.name}
           className="w-full h-full object-cover"
+          onError={() => setImageUnavailable(true)}
         />
       ) : (
         <div className="flex flex-col items-center justify-center text-gray-400">
           <Camera className="h-8 w-8 mb-2" />
-          <span className="text-sm">Sin imagen</span>
+          <span className="text-sm">{imageUrl ? 'Imagen no disponible' : 'Sin imagen'}</span>
         </div>
       )}
     </div>
@@ -111,8 +122,9 @@ const ProductCard = ({ onEdit, product }) => (
         </button>
       </div>
     </div>
-  </article>
-);
+    </article>
+  );
+};
 
 const ProductsTable = ({ onEdit, products }) => (
   <div className="card overflow-hidden">

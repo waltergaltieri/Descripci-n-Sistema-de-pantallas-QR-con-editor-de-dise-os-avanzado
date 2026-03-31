@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
@@ -8,8 +8,6 @@ import Dashboard from './components/Dashboard/Dashboard';
 import ScreensManager from './components/Screens/ScreensManager';
 import DesignsManager from './components/Designs/DesignsManager';
 import DesignEditor from './components/Designs/DesignEditor';
-import InternalDesignEditor from './components/InternalEditor/InternalDesignEditor';
-import HiddenInternalEditor from './components/InternalEditor/HiddenInternalEditor';
 import ScreenDisplay from './components/Screens/ScreenDisplay';
 import Layout from './components/Layout/Layout';
 import CarteleriaDashboard from './components/Carteleria/CarteleriaDashboard';
@@ -19,10 +17,27 @@ import MenusManager from './components/Carteleria/MenusManager';
 import LinksManager from './components/Carteleria/LinksManager';
 import PublicMenuPage from './components/Carteleria/Public/PublicMenuPage';
 
+const InternalDesignEditor = lazy(() => import('./components/InternalEditor/InternalDesignEditor'));
+const HiddenInternalEditor = lazy(() => import('./components/InternalEditor/HiddenInternalEditor'));
+
 const withProtectedLayout = (page) => (
   <ProtectedRoute>
     <Layout>{page}</Layout>
   </ProtectedRoute>
+);
+
+const withSuspense = (page) => (
+  <Suspense
+    fallback={
+      <div className="flex min-h-screen items-center justify-center bg-slate-100">
+        <div className="rounded-2xl border border-slate-200 bg-white px-6 py-5 text-sm font-medium text-slate-700 shadow-sm">
+          Cargando editor...
+        </div>
+      </div>
+    }
+  >
+    {page}
+  </Suspense>
 );
 
 function App() {
@@ -40,7 +55,7 @@ function App() {
 
         <Route path="/screen-display/:id" element={<ScreenDisplay />} />
         <Route path="/menu/:slug" element={<PublicMenuPage />} />
-        <Route path="/internal-editor/hidden" element={<HiddenInternalEditor />} />
+        <Route path="/internal-editor/hidden" element={withSuspense(<HiddenInternalEditor />)} />
 
         <Route path="/dashboard" element={withProtectedLayout(<Dashboard />)} />
         <Route path="/screens" element={withProtectedLayout(<ScreensManager />)} />
@@ -67,7 +82,7 @@ function App() {
           path="/internal-designs/editor/:id"
           element={
             <ProtectedRoute>
-              <InternalDesignEditor />
+              {withSuspense(<InternalDesignEditor />)}
             </ProtectedRoute>
           }
         />
@@ -75,7 +90,7 @@ function App() {
           path="/internal-designs/editor"
           element={
             <ProtectedRoute>
-              <InternalDesignEditor />
+              {withSuspense(<InternalDesignEditor />)}
             </ProtectedRoute>
           }
         />

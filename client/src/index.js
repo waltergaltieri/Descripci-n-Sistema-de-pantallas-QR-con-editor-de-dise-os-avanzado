@@ -7,8 +7,15 @@ import { AuthProvider } from './contexts/AuthContext';
 import { SocketProvider } from './contexts/SocketContext';
 import { initResizeSensorFix } from './utils/resizeSensorFix';
 
-// Aplicar fix para ResizeSensor antes de inicializar React
-initResizeSensorFix();
+const shouldInitInternalResizeFix =
+  typeof window !== 'undefined' &&
+  ['/internal-designs/editor', '/internal-editor/hidden'].some((path) =>
+    window.location.pathname.startsWith(path)
+  );
+
+if (shouldInitInternalResizeFix) {
+  initResizeSensorFix();
+}
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

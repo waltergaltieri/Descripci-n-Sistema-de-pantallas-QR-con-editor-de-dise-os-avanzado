@@ -73,7 +73,8 @@ export const designsService = {
   duplicate: (id, name) => api.post(`/designs/${id}/duplicate`, { name }),
   publish: (id) => api.post(`/designs/${id}/publish`),
   getTemplates: () => api.get('/designs/templates/predefined'),
-  createFromTemplate: (data) => api.post('/designs/from-template', data),
+  createFromTemplate: ({ templateId, name, description }) =>
+    api.post('/designs/from-template', { templateId, name, description }),
 };
 
 // Servicios de uploads

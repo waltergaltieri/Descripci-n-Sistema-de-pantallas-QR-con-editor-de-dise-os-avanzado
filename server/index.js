@@ -18,6 +18,7 @@ const autoSvgExportRoutes = require('./routes/autoSvgExport');
 const carteleriaRoutes = require('./routes/carteleria');
 const carteleriaPublicRoutes = require('./routes/carteleriaPublic');
 const { getStorageProviderConfig } = require('./config/storage');
+const { getRuntimeConfigWarnings } = require('./config/runtimeConfig');
 const { createUploadsStaticMiddleware } = require('./utils/uploadsStatic');
 
 const app = express();
@@ -97,10 +98,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Routes
 app.get('/health', (req, res) => {
+  const providerConfig = db.getProviderConfig();
+
   res.json({
     ok: true,
     service: 'pantallas-qr-server',
-    provider: db.getProviderConfig()?.provider || 'unknown'
+    provider: providerConfig?.provider || 'unknown',
+    storageProvider: storageProviderConfig.provider
   });
 });
 
@@ -154,6 +158,9 @@ async function startServer() {
   try {
     await db.initialize();
     console.log('Base de datos inicializada correctamente');
+    for (const warning of getRuntimeConfigWarnings()) {
+      console.warn(`[config] ${warning}`);
+    }
     
     server.listen(PORT, () => {
       console.log(`Servidor ejecutándose en puerto ${PORT}`);

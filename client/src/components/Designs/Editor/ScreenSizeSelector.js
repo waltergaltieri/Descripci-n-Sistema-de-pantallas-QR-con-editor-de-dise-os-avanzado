@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import { Monitor, Smartphone, Tablet, Tv, Square, Maximize } from 'lucide-react';
+import { Monitor, Smartphone, Tv, Square, Maximize } from 'lucide-react';
 
 const ScreenSizeSelector = ({ selectedSize, onSizeChange }) => {
-  const [customSize, setCustomSize] = useState({ width: '', height: '' });
-  const [showCustom, setShowCustom] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('tv');
   const [selectedOrientation, setSelectedOrientation] = useState('landscape');
   const screenSizes = {
@@ -62,17 +60,6 @@ const ScreenSizeSelector = ({ selectedSize, onSizeChange }) => {
     });
   };
 
-  const handleCustomSizeChange = () => {
-    if (customSize.width && customSize.height) {
-      onSizeChange({
-        name: `Personalizado ${customSize.width}x${customSize.height}`,
-        width: parseInt(customSize.width),
-        height: parseInt(customSize.height),
-        orientation: selectedOrientation
-      });
-    }
-  };
-
   const handleOrientationChange = (orientation) => {
     setSelectedOrientation(orientation);
     // Si hay un tamaño seleccionado, actualizar con la nueva orientación
@@ -84,19 +71,6 @@ const ScreenSizeSelector = ({ selectedSize, onSizeChange }) => {
       if (currentSize) {
         handleSizeSelect(currentSize);
       }
-    }
-  };
-
-  const getOrientationIcon = (orientation) => {
-    switch (orientation) {
-      case 'portrait':
-        return '📱';
-      case 'landscape':
-        return '🖥️';
-      case 'square':
-        return '⬜';
-      default:
-        return '📐';
     }
   };
 

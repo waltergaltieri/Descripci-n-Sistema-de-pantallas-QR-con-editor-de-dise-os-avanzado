@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Monitor, Tv, Square, Smartphone, Tablet } from 'lucide-react';
+import { X, Monitor, Tv, Square, Smartphone } from 'lucide-react';
 import ScreenSizeSelector from './ScreenSizeSelector';
 
 const DesignConfigModal = ({ isOpen, onClose, design, onUpdate, readOnly = false }) => {
@@ -16,19 +16,20 @@ const DesignConfigModal = ({ isOpen, onClose, design, onUpdate, readOnly = false
     if (design && isOpen) {
       setDesignName(design.name || '');
       setDescription(design.description || '');
-      
-      const canvasWidth = design.content?.settings?.canvasWidth || design.settings?.canvasWidth || 1920;
-      const canvasHeight = design.content?.settings?.canvasHeight || design.settings?.canvasHeight || 1080;
+
+      const currentSettings = design.content?.settings || {};
+      const canvasWidth = currentSettings.canvasWidth || design.content?.width || 1920;
+      const canvasHeight = currentSettings.canvasHeight || design.content?.height || 1080;
       
       // Determinar orientación
-      const orientation = canvasWidth > canvasHeight ? 'landscape' : 'portrait';
+      const orientation = currentSettings.orientation || (canvasWidth > canvasHeight ? 'landscape' : 'portrait');
       setSelectedOrientation(orientation);
       
       // Establecer el tamaño de pantalla seleccionado
       setSelectedScreenSize({
         width: canvasWidth,
         height: canvasHeight,
-        name: design.settings?.screenSizeName || 'Personalizado',
+        name: currentSettings.screenSizeName || 'Personalizado',
         orientation: orientation
       });
       
@@ -127,13 +128,26 @@ const DesignConfigModal = ({ isOpen, onClose, design, onUpdate, readOnly = false
       ...design,
       name: designName,
       description: description,
-      settings: {
-        ...design.settings,
-        canvasWidth: finalWidth,
-        canvasHeight: finalHeight,
-        screenSizeName: selectedScreenSize?.name || 'Personalizado',
-        category: selectedCategory,
-        orientation: selectedOrientation
+      content: {
+        ...(design.content || {}),
+        width: finalWidth,
+        height: finalHeight,
+        settings: {
+          ...(design.content?.settings || {}),
+          canvasWidth: finalWidth,
+          canvasHeight: finalHeight,
+          screenSizeName: selectedScreenSize?.name || 'Personalizado',
+          category: selectedCategory,
+          orientation: selectedOrientation,
+          backgroundColor: design.content?.settings?.backgroundColor || design.content?.pages?.[0]?.background || '#ffffff'
+        },
+        pages: Array.isArray(design.content?.pages)
+          ? design.content.pages.map((page, index) => ({
+              ...page,
+              width: index === 0 ? finalWidth : page.width || finalWidth,
+              height: index === 0 ? finalHeight : page.height || finalHeight
+            }))
+          : design.content?.pages
       }
     };
 

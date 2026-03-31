@@ -1,11 +1,7 @@
 import { createStore } from 'polotno/model/store';
-import { unstable_registerNextDomDrop } from 'polotno/config';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { subscribeWithSelector } from 'zustand/middleware';
-
-// Configurar Polotno para Next.js
-// unstable_registerNextDomDrop();
 
 // Crear el store principal de Polotno para el editor interno
 export const polotnoStore = createStore({
