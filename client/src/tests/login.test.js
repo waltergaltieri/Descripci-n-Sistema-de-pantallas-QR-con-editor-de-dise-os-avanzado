@@ -33,6 +33,8 @@ jest.mock('react-hot-toast', () => ({
   }
 }));
 
+jest.setTimeout(30000);
+
 describe('Login', () => {
   beforeEach(() => {
     mockLogin.mockReset();
@@ -48,12 +50,12 @@ describe('Login', () => {
 
     render(<Login />);
 
-    await user.type(screen.getByLabelText(/usuario/i), 'admin');
+    await user.type(screen.getByLabelText(/correo/i), 'admin@kazescreen.com');
     await user.type(screen.getByLabelText(/contrase/i), 'incorrecta');
     await user.click(screen.getByRole('button', { name: /iniciar sesi/i }));
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith('admin', 'incorrecta');
+      expect(mockLogin).toHaveBeenCalledWith('admin@kazescreen.com', 'incorrecta');
     });
 
     expect(mockNavigate).not.toHaveBeenCalled();

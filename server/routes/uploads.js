@@ -8,6 +8,52 @@ const { authenticateToken, requireAdmin } = require('../middleware/auth');
 const router = express.Router();
 const storageProvider = createStorageProvider();
 
+const parseInteger = (value, fallback = null) => {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  return Number.isNaN(parsed) ? fallback : parsed;
+};
+
+const getDefaultBusinessAccountId = async () => {
+  const account = await db().get('SELECT id FROM business_accounts ORDER BY id ASC LIMIT 1');
+  return account?.id || null;
+};
+
+const resolveScopedBusinessAccountId = async (req) => {
+  if (req.user?.actorType === 'business_user' && req.user?.businessAccountId) {
+    return req.user.businessAccountId;
+  }
+
+  if (req.user?.actorType === 'super_admin') {
+    const explicitBusinessAccountId = parseInteger(
+      req.query?.businessAccountId ?? req.body?.businessAccountId,
+      null
+    );
+
+    if (explicitBusinessAccountId) {
+      return explicitBusinessAccountId;
+    }
+
+    return getDefaultBusinessAccountId();
+  }
+
+  return null;
+};
+
+const requireScopedBusinessAccountId = async (req, res) => {
+  const businessAccountId = await resolveScopedBusinessAccountId(req);
+
+  if (!businessAccountId) {
+    res.status(403).json({ error: 'No se pudo resolver el negocio asociado al usuario autenticado' });
+    return null;
+  }
+
+  return businessAccountId;
+};
+
 const fileFilter = (req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png|gif|webp|svg/;
   const extname = allowedTypes.test((file.originalname || '').toLowerCase().split('.').pop() || '');
@@ -52,6 +98,11 @@ router.post('/image', authenticateToken, requireAdmin, upload.single('image'), a
   let storedFile = null;
 
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     if (!req.file) {
       return res.status(400).json({ error: 'No se proporciono ningun archivo' });
     }
@@ -60,10 +111,11 @@ router.post('/image', authenticateToken, requireAdmin, upload.single('image'), a
 
     const result = await db().run(
       `
-        INSERT INTO uploads (filename, original_name, mimetype, size, path, url)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO uploads (business_account_id, filename, original_name, mimetype, size, path, url)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `,
       [
+        businessAccountId,
         storedFile.filename,
         storedFile.original_name,
         storedFile.mimetype,
@@ -100,6 +152,11 @@ router.post('/images', authenticateToken, requireAdmin, upload.array('images', 1
   let transactionStarted = false;
 
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'No se proporcionaron archivos' });
     }
@@ -115,10 +172,11 @@ router.post('/images', authenticateToken, requireAdmin, upload.array('images', 1
 
       const result = await db().run(
         `
-          INSERT INTO uploads (filename, original_name, mimetype, size, path, url)
-          VALUES (?, ?, ?, ?, ?, ?)
+          INSERT INTO uploads (business_account_id, filename, original_name, mimetype, size, path, url)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
         `,
         [
+          businessAccountId,
           storedFile.filename,
           storedFile.original_name,
           storedFile.mimetype,
@@ -163,6 +221,11 @@ router.post('/images', authenticateToken, requireAdmin, upload.array('images', 1
 
 router.get('/', authenticateToken, async (req, res) => {
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
     const offset = (page - 1) * limit;
@@ -172,23 +235,25 @@ router.get('/', authenticateToken, async (req, res) => {
       SELECT id, filename, original_name, mimetype, size, url, created_at
       FROM uploads
     `;
-    const params = [];
+    const conditions = ['business_account_id = ?'];
+    const params = [businessAccountId];
 
     if (type) {
-      query += ' WHERE mimetype LIKE ?';
+      conditions.push('mimetype LIKE ?');
       params.push(`${type}%`);
     }
 
+    query += ` WHERE ${conditions.join(' AND ')}`;
     query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
     params.push(limit, offset);
 
     const files = await db().all(query, params);
 
-    let countQuery = 'SELECT COUNT(*) as count FROM uploads';
-    const countParams = [];
+    let countQuery = 'SELECT COUNT(*) as count FROM uploads WHERE business_account_id = ?';
+    const countParams = [businessAccountId];
 
     if (type) {
-      countQuery += ' WHERE mimetype LIKE ?';
+      countQuery += ' AND mimetype LIKE ?';
       countParams.push(`${type}%`);
     }
 
@@ -212,14 +277,22 @@ router.get('/', authenticateToken, async (req, res) => {
 
 router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     const { id } = req.params;
-    const fileToDelete = await db().get('SELECT * FROM uploads WHERE id = ?', [id]);
+    const fileToDelete = await db().get(
+      'SELECT * FROM uploads WHERE id = ? AND business_account_id = ?',
+      [id, businessAccountId]
+    );
 
     if (!fileToDelete) {
       return res.status(404).json({ error: 'Archivo no encontrado' });
     }
 
-    await db().run('DELETE FROM uploads WHERE id = ?', [id]);
+    await db().run('DELETE FROM uploads WHERE id = ? AND business_account_id = ?', [id, businessAccountId]);
 
     try {
       await storageProvider.deleteFile(fileToDelete);
@@ -234,10 +307,18 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     const { id } = req.params;
-    const file = await db().get('SELECT * FROM uploads WHERE id = ?', [id]);
+    const file = await db().get(
+      'SELECT * FROM uploads WHERE id = ? AND business_account_id = ?',
+      [id, businessAccountId]
+    );
 
     if (!file) {
       return res.status(404).json({ error: 'Archivo no encontrado' });

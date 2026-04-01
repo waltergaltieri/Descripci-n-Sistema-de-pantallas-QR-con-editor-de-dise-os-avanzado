@@ -1,8 +1,31 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
+import {
+  getSupabaseBrowserClient,
+  isSupabaseBrowserConfigured
+} from '../services/supabase';
 
 const AuthContext = createContext();
+const TOKEN_STORAGE_KEY = 'token';
+
+const setApiAuthorizationToken = (accessToken) => {
+  if (accessToken) {
+    api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
+    return;
+  }
+
+  delete api.defaults.headers.common.Authorization;
+};
+
+const persistAccessToken = (accessToken) => {
+  if (accessToken) {
+    localStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
+    return;
+  }
+
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+};
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -15,62 +38,130 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [token, setToken] = useState(localStorage.getItem(TOKEN_STORAGE_KEY));
+  const supabaseEnabled = isSupabaseBrowserConfigured();
 
-  // Configurar token en el header de axios si existe
+  const clearAuthState = useCallback(() => {
+    persistAccessToken(null);
+    setToken(null);
+    setUser(null);
+    setApiAuthorizationToken(null);
+  }, []);
+
+  const applyAccessToken = useCallback((accessToken) => {
+    persistAccessToken(accessToken);
+    setToken(accessToken);
+    setApiAuthorizationToken(accessToken);
+  }, []);
+
+  const verifyApplicationUser = useCallback(async (accessToken) => {
+    applyAccessToken(accessToken);
+    const response = await api.get('/auth/verify');
+    const userData = response.data.user;
+    setUser(userData);
+    return userData;
+  }, [applyAccessToken]);
+
   useEffect(() => {
-    if (token) {
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
-      delete api.defaults.headers.common['Authorization'];
-    }
+    setApiAuthorizationToken(token);
   }, [token]);
 
-  // Verificar token al cargar la aplicación
   useEffect(() => {
-    const verifyToken = async () => {
-      if (!token) {
-        setLoading(false);
-        return;
-      }
+    if (!supabaseEnabled) {
+      clearAuthState();
+      setLoading(false);
+      return undefined;
+    }
 
+    let isMounted = true;
+    const supabase = getSupabaseBrowserClient();
+
+    const restoreSupabaseSession = async () => {
       try {
-        const response = await api.get('/auth/verify');
-        setUser(response.data.user);
+        const {
+          data: { session }
+        } = await supabase.auth.getSession();
+
+        if (!session?.access_token) {
+          if (isMounted) {
+            clearAuthState();
+          }
+          return;
+        }
+
+        await verifyApplicationUser(session.access_token);
       } catch (error) {
-        console.error('Error al verificar token:', error);
-        // Token inválido, limpiar
-        localStorage.removeItem('token');
-        setToken(null);
-        setUser(null);
+        console.error('Error al restaurar sesion de Supabase:', error);
+        if (isMounted) {
+          clearAuthState();
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
-    verifyToken();
-  }, [token]);
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const accessToken = session?.access_token || null;
 
-  // Función de login
-  const login = async (username, password) => {
+      if (!accessToken) {
+        if (isMounted) {
+          clearAuthState();
+        }
+        return;
+      }
+
+      if (isMounted) {
+        applyAccessToken(accessToken);
+      }
+    });
+
+    restoreSupabaseSession();
+
+    return () => {
+      isMounted = false;
+      data?.subscription?.unsubscribe?.();
+    };
+  }, [applyAccessToken, clearAuthState, supabaseEnabled, verifyApplicationUser]);
+
+  const login = async (email, password) => {
     try {
       setLoading(true);
-      const response = await api.post('/auth/login', {
-        username,
+
+      if (!supabaseEnabled) {
+        throw new Error('Supabase Auth no esta configurado en el cliente');
+      }
+
+      const supabase = getSupabaseBrowserClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
         password
       });
 
-      const { token: newToken, user: userData } = response.data;
-      
-      // Guardar token en localStorage
-      localStorage.setItem('token', newToken);
-      setToken(newToken);
-      setUser(userData);
-      
-      toast.success('¡Bienvenido!');
-      return { success: true };
+      if (error) {
+        throw error;
+      }
+
+      const accessToken = data?.session?.access_token;
+      if (!accessToken) {
+        throw new Error('Supabase no devolvio un token de acceso valido');
+      }
+
+      const userData = await verifyApplicationUser(accessToken);
+      toast.success('Bienvenido');
+      return { success: true, user: userData };
     } catch (error) {
-      const message = error.response?.data?.error || 'Error al iniciar sesión';
+      try {
+        await getSupabaseBrowserClient().auth.signOut();
+      } catch (signOutError) {
+        console.error('Error al revertir sesion de Supabase:', signOutError);
+      }
+
+      clearAuthState();
+
+      const message =
+        error.response?.data?.error || error.message || 'Error al iniciar sesion';
       toast.error(message);
       return { success: false, error: message };
     } finally {
@@ -78,69 +169,86 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Función de logout
   const logout = async () => {
     try {
-      // Intentar hacer logout en el servidor
+      if (supabaseEnabled) {
+        await getSupabaseBrowserClient().auth.signOut();
+      }
+
       if (token) {
         await api.post('/auth/logout');
       }
     } catch (error) {
       console.error('Error al hacer logout:', error);
     } finally {
-      // Limpiar estado local independientemente del resultado
-      localStorage.removeItem('token');
-      setToken(null);
-      setUser(null);
-      delete api.defaults.headers.common['Authorization'];
-      toast.success('Sesión cerrada');
+      clearAuthState();
+      toast.success('Sesion cerrada');
     }
   };
 
-  // Función para cambiar contraseña
   const changePassword = async (currentPassword, newPassword) => {
     try {
-      await api.post('/auth/change-password', {
-        currentPassword,
-        newPassword
+      if (!supabaseEnabled) {
+        throw new Error('Supabase Auth no esta configurado en el cliente');
+      }
+
+      if (!user?.email) {
+        throw new Error('No se pudo resolver el correo del usuario autenticado');
+      }
+
+      if (!currentPassword || !newPassword) {
+        throw new Error('Contrasena actual y nueva son requeridas');
+      }
+
+      const supabase = getSupabaseBrowserClient();
+      const reauthResult = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword
       });
-      
-      toast.success('Contraseña actualizada exitosamente');
+
+      if (reauthResult.error) {
+        throw reauthResult.error;
+      }
+
+      const updateResult = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (updateResult.error) {
+        throw updateResult.error;
+      }
+
+      toast.success('Contrasena actualizada exitosamente');
       return { success: true };
     } catch (error) {
-      const message = error.response?.data?.error || 'Error al cambiar contraseña';
+      const message =
+        error.response?.data?.error || 'Error al cambiar contrasena';
       toast.error(message);
       return { success: false, error: message };
     }
   };
 
-  // Función para actualizar datos del usuario
   const updateUser = (userData) => {
-    setUser(prevUser => ({ ...prevUser, ...userData }));
+    setUser((prevUser) => ({ ...prevUser, ...userData }));
   };
 
-  // Función para verificar si el usuario tiene un rol específico
   const hasRole = (role) => {
+    if (role === 'admin' && user?.actorType === 'super_admin') {
+      return true;
+    }
+
     return user?.role === role;
   };
 
-  // Función para verificar si el usuario está autenticado
-  const isAuthenticated = () => {
-    return !!user && !!token;
-  };
+  const isAuthenticated = () => Boolean(user && token);
 
-  // Interceptor para manejar errores de autenticación
   useEffect(() => {
     const interceptor = api.interceptors.response.use(
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
-          // Token expirado o inválido
-          localStorage.removeItem('token');
-          setToken(null);
-          setUser(null);
-          delete api.defaults.headers.common['Authorization'];
-          toast.error('Sesión expirada. Por favor, inicia sesión nuevamente.');
+          clearAuthState();
+          toast.error('Sesion expirada. Por favor, inicia sesion nuevamente.');
         }
         return Promise.reject(error);
       }
@@ -149,7 +257,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       api.interceptors.response.eject(interceptor);
     };
-  }, []);
+  }, [clearAuthState]);
 
   const value = {
     user,
@@ -163,9 +271,5 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

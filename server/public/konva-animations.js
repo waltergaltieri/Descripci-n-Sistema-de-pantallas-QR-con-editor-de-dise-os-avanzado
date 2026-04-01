@@ -1,317 +1,338 @@
 /**
- * Sistema de animaciones para Konva
- * Este archivo se carga en el HTML generado y aplica animaciones a los nodos
+ * Sistema de animaciones para Konva.
+ * Este archivo se carga en el HTML generado y aplica animaciones a los nodos.
  */
 
-// Función global para aplicar animaciones
-window.applyKonvaAnimations = function(stage, animationsData) {
-  console.log('🎬 Aplicando', animationsData.length, 'animación(es) con Konva...');
-  
-  animationsData.forEach(({ elementId, animation }) => {
-    console.log('🔍 Buscando nodo con elementId:', elementId);
-    
-    // Obtener todos los nodos del stage (layers y sus hijos)
-    let node = null;
-    
-    // Buscar en todas las capas
-    const layers = stage.getLayers();
-    console.log('📊 Capas encontradas:', layers.length);
-    
-    for (let i = 0; i < layers.length; i++) {
-      const layer = layers[i];
-      const children = layer.getChildren();
-      console.log('👶 Hijos en capa', i, ':', children.length);
-      
-      // Buscar en los hijos de la capa
-      for (let j = 0; j < children.length; j++) {
-        const child = children[j];
-        const childElementId = child.getAttr('elementId');
-        
-        console.log('  - Nodo', j, ':', {
-          elementId: childElementId,
-          id: child.id(),
-          name: child.name(),
-          type: child.getClassName()
-        });
-        
-        if (childElementId === elementId) {
-          node = child;
-          console.log('✅ Nodo encontrado!');
-          break;
-        }
-      }
-      
-      if (node) break;
+function findNodeByElementId(container, elementId) {
+  if (!container || typeof container.getChildren !== 'function') {
+    return null;
+  }
+
+  const children = container.getChildren();
+
+  for (let index = 0; index < children.length; index += 1) {
+    const child = children[index];
+
+    if (child.getAttr && child.getAttr('elementId') === elementId) {
+      return child;
     }
-    
-    if (!node) {
-      console.error('❌ Nodo no encontrado:', elementId);
+
+    const nestedMatch = findNodeByElementId(child, elementId);
+    if (nestedMatch) {
+      return nestedMatch;
+    }
+  }
+
+  return null;
+}
+
+function buildOriginalProps(node) {
+  return {
+    x: node.x(),
+    y: node.y(),
+    scaleX: node.scaleX(),
+    scaleY: node.scaleY(),
+    rotation: node.rotation(),
+    opacity: node.opacity()
+  };
+}
+
+function playTween(config) {
+  const tween = new Konva.Tween(config);
+  tween.play();
+  return tween;
+}
+
+function runEntranceAnimation(node, originalProps, type, durationSec) {
+  switch (type) {
+    case 'fadeIn':
+      node.opacity(0);
+      playTween({
+        node,
+        duration: durationSec,
+        opacity: originalProps.opacity,
+        easing: Konva.Easings.EaseInOut
+      });
+      return;
+
+    case 'slideInLeft':
+      node.x(originalProps.x - 200);
+      playTween({
+        node,
+        duration: durationSec,
+        x: originalProps.x,
+        easing: Konva.Easings.EaseOut
+      });
+      return;
+
+    case 'slideInRight':
+      node.x(originalProps.x + 200);
+      playTween({
+        node,
+        duration: durationSec,
+        x: originalProps.x,
+        easing: Konva.Easings.EaseOut
+      });
+      return;
+
+    case 'slideInUp':
+      node.y(originalProps.y + 200);
+      playTween({
+        node,
+        duration: durationSec,
+        y: originalProps.y,
+        easing: Konva.Easings.EaseOut
+      });
+      return;
+
+    case 'slideInDown':
+      node.y(originalProps.y - 200);
+      playTween({
+        node,
+        duration: durationSec,
+        y: originalProps.y,
+        easing: Konva.Easings.EaseOut
+      });
+      return;
+
+    case 'scaleIn':
+      node.scaleX(0);
+      node.scaleY(0);
+      playTween({
+        node,
+        duration: durationSec,
+        scaleX: originalProps.scaleX,
+        scaleY: originalProps.scaleY,
+        easing: Konva.Easings.EaseOut
+      });
+      return;
+
+    case 'bounceIn':
+      node.scaleX(0);
+      node.scaleY(0);
+      playTween({
+        node,
+        duration: durationSec,
+        scaleX: originalProps.scaleX,
+        scaleY: originalProps.scaleY,
+        easing: Konva.Easings.ElasticEaseOut
+      });
+      return;
+
+    case 'rotateIn':
+      node.rotation(originalProps.rotation - 180);
+      playTween({
+        node,
+        duration: durationSec,
+        rotation: originalProps.rotation,
+        easing: Konva.Easings.EaseOut
+      });
+      return;
+
+    default:
+      return;
+  }
+}
+
+function runContinuousAnimation(node, originalProps, type, durationSec) {
+  switch (type) {
+    case 'pulse':
+      playTween({
+        node,
+        duration: durationSec / 2,
+        scaleX: originalProps.scaleX * 1.05,
+        scaleY: originalProps.scaleY * 1.05,
+        easing: Konva.Easings.EaseInOut,
+        onFinish: function () {
+          playTween({
+            node,
+            duration: durationSec / 2,
+            scaleX: originalProps.scaleX,
+            scaleY: originalProps.scaleY,
+            easing: Konva.Easings.EaseInOut,
+            onFinish: function () {
+              runContinuousAnimation(node, originalProps, type, durationSec);
+            }
+          });
+        }
+      });
+      return;
+
+    case 'bounce':
+      playTween({
+        node,
+        duration: durationSec / 2,
+        y: originalProps.y - 20,
+        easing: Konva.Easings.EaseOut,
+        onFinish: function () {
+          playTween({
+            node,
+            duration: durationSec / 2,
+            y: originalProps.y,
+            easing: Konva.Easings.BounceEaseOut,
+            onFinish: function () {
+              runContinuousAnimation(node, originalProps, type, durationSec);
+            }
+          });
+        }
+      });
+      return;
+
+    case 'rotate':
+      playTween({
+        node,
+        duration: durationSec,
+        rotation: originalProps.rotation + 360,
+        easing: Konva.Easings.Linear,
+        onFinish: function () {
+          node.rotation(originalProps.rotation);
+          runContinuousAnimation(node, originalProps, type, durationSec);
+        }
+      });
+      return;
+
+    case 'swing':
+      playTween({
+        node,
+        duration: durationSec / 2,
+        rotation: originalProps.rotation + 15,
+        easing: Konva.Easings.EaseInOut,
+        onFinish: function () {
+          playTween({
+            node,
+            duration: durationSec / 2,
+            rotation: originalProps.rotation - 15,
+            easing: Konva.Easings.EaseInOut,
+            onFinish: function () {
+              playTween({
+                node,
+                duration: durationSec / 4,
+                rotation: originalProps.rotation,
+                easing: Konva.Easings.EaseInOut,
+                onFinish: function () {
+                  runContinuousAnimation(node, originalProps, type, durationSec);
+                }
+              });
+            }
+          });
+        }
+      });
+      return;
+
+    case 'wobble': {
+      const steps = [
+        { x: originalProps.x - 10, rotation: originalProps.rotation - 5 },
+        { x: originalProps.x + 10, rotation: originalProps.rotation + 5 },
+        { x: originalProps.x - 10, rotation: originalProps.rotation - 5 },
+        { x: originalProps.x, rotation: originalProps.rotation }
+      ];
+
+      const runStep = function (stepIndex) {
+        const step = steps[stepIndex];
+        playTween({
+          node,
+          duration: durationSec / 4,
+          x: step.x,
+          rotation: step.rotation,
+          easing: Konva.Easings.EaseInOut,
+          onFinish: function () {
+            runStep((stepIndex + 1) % steps.length);
+          }
+        });
+      };
+
+      runStep(0);
       return;
     }
-    
-    console.log('✅ Aplicando animación:', animation.type, 'a elemento', elementId);
-    
-    const { type, duration, delay } = animation;
-    const durationSec = duration / 1000;
-    
-    // Guardar propiedades originales
-    const originalProps = {
-      x: node.x(),
-      y: node.y(),
-      scaleX: node.scaleX(),
-      scaleY: node.scaleY(),
-      rotation: node.rotation(),
-      opacity: node.opacity()
-    };
-    
-    // Función para ejecutar la animación
-    function runAnimation() {
-      switch(type) {
-        case 'fadeIn':
-          node.opacity(0);
-          new Konva.Tween({
-            node: node,
-            duration: durationSec,
+
+    case 'flash':
+      playTween({
+        node,
+        duration: durationSec / 2,
+        opacity: 0.3,
+        easing: Konva.Easings.EaseInOut,
+        onFinish: function () {
+          playTween({
+            node,
+            duration: durationSec / 2,
             opacity: originalProps.opacity,
-            easing: Konva.Easings.EaseInOut
-          }).play();
-          break;
-          
-        case 'slideInLeft':
-          node.x(originalProps.x - 200);
-          new Konva.Tween({
-            node: node,
-            duration: durationSec,
-            x: originalProps.x,
-            easing: Konva.Easings.EaseOut
-          }).play();
-          break;
-          
-        case 'slideInRight':
-          node.x(originalProps.x + 200);
-          new Konva.Tween({
-            node: node,
-            duration: durationSec,
-            x: originalProps.x,
-            easing: Konva.Easings.EaseOut
-          }).play();
-          break;
-          
-        case 'slideInUp':
-          node.y(originalProps.y + 200);
-          new Konva.Tween({
-            node: node,
-            duration: durationSec,
-            y: originalProps.y,
-            easing: Konva.Easings.EaseOut
-          }).play();
-          break;
-          
-        case 'slideInDown':
-          node.y(originalProps.y - 200);
-          new Konva.Tween({
-            node: node,
-            duration: durationSec,
-            y: originalProps.y,
-            easing: Konva.Easings.EaseOut
-          }).play();
-          break;
-          
-        case 'scaleIn':
-          node.scaleX(0);
-          node.scaleY(0);
-          new Konva.Tween({
-            node: node,
-            duration: durationSec,
-            scaleX: originalProps.scaleX,
-            scaleY: originalProps.scaleY,
-            easing: Konva.Easings.EaseOut
-          }).play();
-          break;
-          
-        case 'bounceIn':
-          node.scaleX(0);
-          node.scaleY(0);
-          new Konva.Tween({
-            node: node,
-            duration: durationSec,
-            scaleX: originalProps.scaleX,
-            scaleY: originalProps.scaleY,
-            easing: Konva.Easings.ElasticEaseOut
-          }).play();
-          break;
-          
-        case 'rotateIn':
-          node.rotation(originalProps.rotation - 180);
-          new Konva.Tween({
-            node: node,
-            duration: durationSec,
-            rotation: originalProps.rotation,
-            easing: Konva.Easings.EaseOut
-          }).play();
-          break;
-          
-        case 'pulse':
-          new Konva.Tween({
-            node: node,
-            duration: durationSec / 2,
-            scaleX: originalProps.scaleX * 1.05,
-            scaleY: originalProps.scaleY * 1.05,
             easing: Konva.Easings.EaseInOut,
-            onFinish: function() {
-              new Konva.Tween({
-                node: node,
-                duration: durationSec / 2,
-                scaleX: originalProps.scaleX,
-                scaleY: originalProps.scaleY,
-                easing: Konva.Easings.EaseInOut,
-                onFinish: runAnimation // Bucle infinito
-              }).play();
+            onFinish: function () {
+              runContinuousAnimation(node, originalProps, type, durationSec);
             }
-          }).play();
-          break;
-          
-        case 'bounce':
-          new Konva.Tween({
-            node: node,
-            duration: durationSec / 2,
-            y: originalProps.y - 20,
-            easing: Konva.Easings.EaseOut,
-            onFinish: function() {
-              new Konva.Tween({
-                node: node,
-                duration: durationSec / 2,
-                y: originalProps.y,
-                easing: Konva.Easings.BounceEaseOut,
-                onFinish: runAnimation // Bucle infinito
-              }).play();
-            }
-          }).play();
-          break;
-          
-        case 'rotate':
-          new Konva.Tween({
-            node: node,
-            duration: durationSec,
-            rotation: originalProps.rotation + 360,
-            easing: Konva.Easings.Linear,
-            onFinish: function() {
-              node.rotation(originalProps.rotation);
-              runAnimation(); // Bucle infinito
-            }
-          }).play();
-          break;
-          
-        case 'swing':
-          new Konva.Tween({
-            node: node,
-            duration: durationSec / 2,
-            rotation: originalProps.rotation + 15,
+          });
+        }
+      });
+      return;
+
+    case 'shake':
+      playTween({
+        node,
+        duration: durationSec / 4,
+        x: originalProps.x - 10,
+        easing: Konva.Easings.EaseInOut,
+        onFinish: function () {
+          playTween({
+            node,
+            duration: durationSec / 4,
+            x: originalProps.x + 10,
             easing: Konva.Easings.EaseInOut,
-            onFinish: function() {
-              new Konva.Tween({
-                node: node,
-                duration: durationSec / 2,
-                rotation: originalProps.rotation - 15,
+            onFinish: function () {
+              playTween({
+                node,
+                duration: durationSec / 4,
+                x: originalProps.x - 10,
                 easing: Konva.Easings.EaseInOut,
-                onFinish: function() {
-                  new Konva.Tween({
-                    node: node,
+                onFinish: function () {
+                  playTween({
+                    node,
                     duration: durationSec / 4,
-                    rotation: originalProps.rotation,
+                    x: originalProps.x,
                     easing: Konva.Easings.EaseInOut,
-                    onFinish: runAnimation // Bucle infinito
-                  }).play();
+                    onFinish: function () {
+                      runContinuousAnimation(node, originalProps, type, durationSec);
+                    }
+                  });
                 }
-              }).play();
+              });
             }
-          }).play();
-          break;
-          
-        case 'wobble':
-          let wobbleStep = 0;
-          function wobbleAnimation() {
-            const steps = [
-              { x: originalProps.x - 10, rotation: originalProps.rotation - 5 },
-              { x: originalProps.x + 10, rotation: originalProps.rotation + 5 },
-              { x: originalProps.x - 10, rotation: originalProps.rotation - 5 },
-              { x: originalProps.x, rotation: originalProps.rotation }
-            ];
-            
-            if (wobbleStep < steps.length) {
-              new Konva.Tween({
-                node: node,
-                duration: durationSec / 4,
-                x: steps[wobbleStep].x,
-                rotation: steps[wobbleStep].rotation,
-                easing: Konva.Easings.EaseInOut,
-                onFinish: function() {
-                  wobbleStep++;
-                  if (wobbleStep >= steps.length) {
-                    wobbleStep = 0;
-                  }
-                  wobbleAnimation();
-                }
-              }).play();
-            }
-          }
-          wobbleAnimation();
-          break;
-          
-        case 'flash':
-          new Konva.Tween({
-            node: node,
-            duration: durationSec / 2,
-            opacity: 0.3,
-            easing: Konva.Easings.EaseInOut,
-            onFinish: function() {
-              new Konva.Tween({
-                node: node,
-                duration: durationSec / 2,
-                opacity: originalProps.opacity,
-                easing: Konva.Easings.EaseInOut,
-                onFinish: runAnimation // Bucle infinito
-              }).play();
-            }
-          }).play();
-          break;
-          
-        case 'shake':
-          let shakeStep = 0;
-          function shakeAnimation() {
-            const steps = [
-              originalProps.x + 10,
-              originalProps.x - 10,
-              originalProps.x + 10,
-              originalProps.x
-            ];
-            
-            if (shakeStep < steps.length) {
-              new Konva.Tween({
-                node: node,
-                duration: durationSec / 4,
-                x: steps[shakeStep],
-                easing: Konva.Easings.EaseInOut,
-                onFinish: function() {
-                  shakeStep++;
-                  if (shakeStep >= steps.length) {
-                    shakeStep = 0;
-                  }
-                  shakeAnimation();
-                }
-              }).play();
-            }
-          }
-          shakeAnimation();
-          break;
+          });
+        }
+      });
+      return;
+
+    default:
+      runEntranceAnimation(node, originalProps, type, durationSec);
+  }
+}
+
+window.applyKonvaAnimations = function (stage, animationsData) {
+  if (!stage || !Array.isArray(animationsData)) {
+    return;
+  }
+
+  animationsData.forEach(function ({ elementId, animation }) {
+    const layers = stage.getLayers();
+    let node = null;
+
+    for (let index = 0; index < layers.length; index += 1) {
+      node = findNodeByElementId(layers[index], elementId);
+      if (node) {
+        break;
       }
     }
-    
-    // Iniciar la animación con delay
-    if (delay > 0) {
-      setTimeout(runAnimation, delay);
-    } else {
-      runAnimation();
+
+    if (!node || !animation) {
+      console.error('No se pudo aplicar la animacion al elemento:', elementId);
+      return;
     }
+
+    const durationSec = (animation.duration || 1000) / 1000;
+    const delayMs = animation.delay || 0;
+    const originalProps = buildOriginalProps(node);
+
+    window.setTimeout(function () {
+      runContinuousAnimation(node, originalProps, animation.type, durationSec);
+    }, delayMs);
   });
 };

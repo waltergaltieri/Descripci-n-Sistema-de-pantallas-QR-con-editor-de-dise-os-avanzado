@@ -1,27 +1,26 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { Eye, EyeOff, Monitor, Lock, User } from 'lucide-react';
+import { Eye, EyeOff, Monitor, Lock, Mail } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const Login = () => {
   const [formData, setFormData] = useState({
-    username: '',
-    password: '',
+    email: '',
+    password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Obtener la ruta a la que el usuario quería ir antes del login
-  const from = location.state?.from?.pathname || '/dashboard';
+
+  const from = location.state?.from?.pathname;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value
     }));
@@ -29,73 +28,74 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!formData.username || !formData.password) {
+
+    if (!formData.email || !formData.password) {
       toast.error('Por favor, completa todos los campos');
       return;
     }
 
     setIsLoading(true);
-    
+
     try {
-      await login(formData.username, formData.password);
-      toast.success('¡Bienvenido!');
-      navigate(from, { replace: true });
+      const result = await login(formData.email, formData.password);
+
+      if (!result?.success) {
+        return;
+      }
+
+      const destination =
+        from || (result.user?.actorType === 'super_admin' ? '/super-admin/dashboard' : '/dashboard');
+
+      navigate(destination, { replace: true });
     } catch (error) {
       console.error('Error de login:', error);
-      toast.error(error.message || 'Error al iniciar sesión');
+      toast.error(error.message || 'Error al iniciar sesion');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 px-4 py-12 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
-        {/* Header */}
         <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-primary-600 rounded-xl flex items-center justify-center">
+          <div className="mx-auto h-16 w-16 rounded-xl bg-primary-600 flex items-center justify-center">
             <Monitor className="h-8 w-8 text-white" />
           </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            PantallasQR
-          </h2>
+          <h2 className="mt-6 text-3xl font-bold text-gray-900">PantallasQR</h2>
           <p className="mt-2 text-sm text-gray-600">
-            Inicia sesión para acceder al panel de administración
+            Inicia sesion para acceder al panel de administracion
           </p>
         </div>
 
-        {/* Formulario */}
-        <div className="bg-white rounded-lg shadow-lg p-8">
+        <div className="rounded-lg bg-white p-8 shadow-lg">
           <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* Campo de usuario */}
             <div>
-              <label htmlFor="username" className="label">
-                Usuario
+              <label htmlFor="email" className="label">
+                Correo Electronico
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
+                  <Mail className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  autoComplete="username"
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
                   required
                   className="input pl-10"
-                  placeholder="Ingresa tu usuario"
-                  value={formData.username}
+                  placeholder="Ingresa tu correo"
+                  value={formData.email}
                   onChange={handleChange}
                   disabled={isLoading}
                 />
               </div>
             </div>
 
-            {/* Campo de contraseña */}
             <div>
               <label htmlFor="password" className="label">
-                Contraseña
+                Contrasena
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -108,7 +108,7 @@ const Login = () => {
                   autoComplete="current-password"
                   required
                   className="input pl-10 pr-10"
-                  placeholder="Ingresa tu contraseña"
+                  placeholder="Ingresa tu contrasena"
                   value={formData.password}
                   onChange={handleChange}
                   disabled={isLoading}
@@ -128,7 +128,6 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Botón de submit */}
             <div>
               <button
                 type="submit"
@@ -138,28 +137,26 @@ const Login = () => {
                 {isLoading ? (
                   <>
                     <div className="loading-spinner mr-2" />
-                    Iniciando sesión...
+                    Iniciando sesion...
                   </>
                 ) : (
-                  'Iniciar Sesión'
+                  'Iniciar Sesion'
                 )}
               </button>
             </div>
           </form>
 
-          {/* Información adicional */}
           <div className="mt-6 text-center">
             <p className="text-xs text-gray-500">
-              Sistema de gestión de pantallas digitales
+              Sistema de gestion de pantallas digitales
             </p>
           </div>
         </div>
 
-        {/* Footer */}
         <div className="text-center">
           <p className="text-sm text-gray-500">
-            ¿Problemas para acceder?{' '}
-            <button 
+            Problemas para acceder?{' '}
+            <button
               type="button"
               className="font-medium text-primary-600 hover:text-primary-500"
               onClick={() => {

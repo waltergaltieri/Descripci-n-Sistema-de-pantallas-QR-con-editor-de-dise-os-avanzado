@@ -105,6 +105,53 @@ test('screen list route filters active screens with integer flags and returns bo
   cleanupRouterMocks();
 });
 
+test('screen list route scopes screens to the authenticated business account', async () => {
+  const allCalls = [];
+
+  const fakeDbConnection = {
+    async all(sql, params) {
+      allCalls.push({ sql, params });
+      return [];
+    }
+  };
+
+  const router = loadRouterWithMocks({
+    fakeDbConnection,
+    fakeRenderer: { renderWithKonva: async () => '<html></html>' }
+  });
+
+  const routeLayer = router.stack.find(
+    (layer) => layer.route && layer.route.path === '/' && layer.route.methods.get
+  );
+  const handler = routeLayer.route.stack.at(-1).handle;
+
+  const req = {
+    user: {
+      actorType: 'business_user',
+      businessAccountId: 17,
+      role: 'owner'
+    }
+  };
+  const res = {
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(payload) {
+      this.payload = payload;
+      return this;
+    }
+  };
+
+  await handler(req, res);
+
+  assert.equal(allCalls.length, 1);
+  assert.match(allCalls[0].sql, /s\.business_account_id = \?/);
+  assert.deepEqual(allCalls[0].params, [17]);
+
+  cleanupRouterMocks();
+});
+
 test('screen update route accepts legacy active field and emits normalized socket payload', async () => {
   const runCalls = [];
   const emittedEvents = [];
@@ -152,6 +199,11 @@ test('screen update route accepts legacy active field and emits normalized socke
   const handler = routeLayer.route.stack.at(-1).handle;
 
   const req = {
+    user: {
+      actorType: 'business_user',
+      businessAccountId: 12,
+      role: 'owner'
+    },
     params: { id: '12' },
     body: { active: false },
     app: {
@@ -181,6 +233,75 @@ test('screen update route accepts legacy active field and emits normalized socke
   assert.equal(roomEvents[0].payload.screenId, 12);
   assert.equal(roomEvents[0].payload.screen.id, 12);
   assert.equal(jsonBody.is_active, false);
+
+  cleanupRouterMocks();
+});
+
+test('screen create route stores the authenticated business account id', async () => {
+  const runCalls = [];
+
+  const fakeDbConnection = {
+    async get(sql) {
+      if (sql.includes('COALESCE(MAX(display_order)')) {
+        return { next_order: 3 };
+      }
+
+      return {
+        id: 44,
+        name: 'Nueva pantalla',
+        business_account_id: 22,
+        is_active: 1
+      };
+    },
+    async run(sql, params) {
+      runCalls.push({ sql, params });
+      return { lastID: 44 };
+    }
+  };
+
+  const io = { emit() {} };
+
+  const router = loadRouterWithMocks({
+    fakeDbConnection,
+    fakeRenderer: { renderWithKonva: async () => '<html></html>' }
+  });
+
+  const routeLayer = router.stack.find(
+    (layer) => layer.route && layer.route.path === '/' && layer.route.methods.post
+  );
+  const handler = routeLayer.route.stack.at(-1).handle;
+
+  const req = {
+    user: {
+      actorType: 'business_user',
+      businessAccountId: 22,
+      role: 'owner'
+    },
+    body: {
+      name: 'Nueva pantalla'
+    },
+    app: {
+      get() {
+        return io;
+      }
+    }
+  };
+
+  const res = {
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    json(payload) {
+      this.payload = payload;
+      return this;
+    }
+  };
+
+  await handler(req, res);
+
+  assert.match(runCalls[0].sql, /INSERT INTO screens \(business_account_id, name,/);
+  assert.equal(runCalls[0].params[0], 22);
 
   cleanupRouterMocks();
 });
@@ -243,6 +364,11 @@ test('assign design route renders normalized content and emits screen scoped upd
   const handler = routeLayer.route.stack.at(-1).handle;
 
   const req = {
+    user: {
+      actorType: 'business_user',
+      businessAccountId: 5,
+      role: 'owner'
+    },
     params: { id: '5' },
     body: { designId: 9 },
     app: {

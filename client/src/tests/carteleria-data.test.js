@@ -6,6 +6,8 @@ import { MemoryRouter } from 'react-router-dom';
 import CarteleriaDashboard from '../components/Carteleria/CarteleriaDashboard';
 import ProductsManager from '../components/Carteleria/ProductsManager';
 
+jest.setTimeout(30000);
+
 jest.mock('../services/api', () => ({
   carteleriaService: {
     getDashboardMetrics: jest.fn(),

@@ -74,6 +74,10 @@ test('create promotion route accepts minimum_spend without crashing', async () =
       type: 'free_with_minimum_spend',
       target_product_id: 1,
       minimum_spend: 1500
+    },
+    user: {
+      actorType: 'business_user',
+      businessAccountId: 11
     }
   };
 
@@ -95,7 +99,7 @@ test('create promotion route accepts minimum_spend without crashing', async () =
   assert.equal(statusCode, 201);
   assert.equal(jsonBody.id, 77);
   assert.equal(runCalls.length, 1);
-  assert.equal(runCalls[0].params[7], 150000);
+  assert.equal(runCalls[0].params[8], 150000);
 
   cleanupRouterMocks();
 });
@@ -135,6 +139,10 @@ test('list combos route uses postgres-safe aggregation', async () => {
       page: '1',
       limit: '100',
       status: 'active'
+    },
+    user: {
+      actorType: 'business_user',
+      businessAccountId: 11
     }
   };
 
@@ -198,6 +206,10 @@ test('list links route groups joined menu name for postgres', async () => {
       limit: '12',
       search: '',
       status: ''
+    },
+    user: {
+      actorType: 'business_user',
+      businessAccountId: 11
     }
   };
 
@@ -236,7 +248,7 @@ test('create combo route persists countdown flag', async () => {
         return { id: 90 };
       }
 
-      if (sql.includes('SELECT * FROM combos WHERE id = ?')) {
+      if (sql.includes('FROM combos c')) {
         return {
           id: 88,
           name: 'Combo countdown',
@@ -245,6 +257,9 @@ test('create combo route persists countdown flag', async () => {
       }
 
       return { id: 88 };
+    },
+    async all() {
+      return [];
     },
     async exec() {
       return true;
@@ -270,6 +285,10 @@ test('create combo route persists countdown flag', async () => {
       no_expiration: false,
       product_ids: [10],
       menu_ids: [90]
+    },
+    user: {
+      actorType: 'business_user',
+      businessAccountId: 11
     }
   };
 
@@ -293,7 +312,7 @@ test('create combo route persists countdown flag', async () => {
 
   const insertCall = runCalls.find((call) => call.sql.includes('INSERT INTO combos'));
   assert.ok(insertCall);
-  assert.equal(insertCall.params[8], 1);
+  assert.equal(insertCall.params[9], 1);
 
   cleanupRouterMocks();
 });

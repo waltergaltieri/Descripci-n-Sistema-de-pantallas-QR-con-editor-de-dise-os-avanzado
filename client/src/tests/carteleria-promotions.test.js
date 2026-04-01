@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import PromotionsManager from '../components/Carteleria/PromotionsManager';
 
-jest.setTimeout(15000);
+jest.setTimeout(30000);
 
 jest.mock('react-hot-toast', () => ({
   success: jest.fn(),

@@ -12,12 +12,10 @@ const loadProviderConfig = () => {
 test('defaults to sqlite provider with server database path', () => {
   const { getDatabaseProviderConfig } = loadProviderConfig();
   const config = getDatabaseProviderConfig({});
+  const expectedSqlitePath = path.join(path.dirname(providerConfigModulePath), '..', 'database.sqlite');
 
   assert.equal(config.provider, 'sqlite');
-  assert.equal(
-    config.sqlitePath,
-    path.join(process.cwd(), 'server', 'config', '..', 'database.sqlite')
-  );
+  assert.equal(config.sqlitePath, expectedSqlitePath);
 });
 
 test('uses explicit sqlite path when provided', () => {
@@ -40,4 +38,18 @@ test('switches to postgres when database url is configured', () => {
   assert.equal(config.provider, 'postgres');
   assert.equal(config.databaseUrl, 'postgresql://postgres:secret@db.supabase.co:5432/postgres');
   assert.equal(config.ssl, true);
+});
+
+test('builds postgres url from supabase project id and database password', () => {
+  const { getDatabaseProviderConfig } = loadProviderConfig();
+  const config = getDatabaseProviderConfig({
+    SUPABASE_PROJECT_ID: 'qorqkcywoefkficspepx',
+    SUPABASE_DB_PASSWORD: 'r3R88=3M++Tv'
+  });
+
+  assert.equal(config.provider, 'postgres');
+  assert.equal(
+    config.databaseUrl,
+    'postgresql://postgres:r3R88%3D3M%2B%2BTv@db.qorqkcywoefkficspepx.supabase.co:5432/postgres'
+  );
 });

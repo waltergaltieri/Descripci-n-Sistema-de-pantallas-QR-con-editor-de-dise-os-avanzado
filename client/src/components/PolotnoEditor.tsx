@@ -7,6 +7,7 @@ import {
   PaintBucket,
   QrCode,
   Layers,
+  Upload,
   Plus,
   Square,
   Circle,
@@ -36,6 +37,7 @@ import {
   TextSection,
   ElementsSection,
   PhotosSection,
+  UploadSection,
   BackgroundSection,
   LayersSection
 } from 'polotno/side-panel';
@@ -46,6 +48,7 @@ import { designsService } from '../services/api';
 import { polotnoStore } from '../store/editorStore';
 import { normalizeDesignContent } from '../utils/designContent';
 import { configurePolotnoImageDefaults } from '../utils/polotno-image-config';
+import { PolotnoAnimationsPanel } from './PolotnoAnimationsPanel';
 import '@blueprintjs/core/lib/css/blueprint.css';
 import '../vendor/blueprint5-polotno.css';
 import './PolotnoEditor.css';
@@ -54,6 +57,7 @@ type PanelKey =
   | 'templates'
   | 'text'
   | 'elements'
+  | 'upload'
   | 'photos'
   | 'background'
   | 'qr';
@@ -80,6 +84,7 @@ interface PolotnoEditorProps {
 const PANEL_CONTENT = {
   text: TextSection.Panel,
   elements: ElementsSection.Panel,
+  upload: UploadSection.Panel,
   photos: PhotosSection.Panel,
   background: BackgroundSection.Panel,
 } as const;
@@ -94,6 +99,7 @@ const PANEL_META: Record<
   templates: { label: 'Plantillas', icon: LayoutTemplate },
   text: { label: 'Texto', icon: Type },
   elements: { label: 'Elementos', icon: Shapes },
+  upload: { label: 'Subir', icon: Upload },
   photos: { label: 'Imágenes', icon: ImageIcon },
   background: { label: 'Fondo', icon: PaintBucket },
   qr: { label: 'QR', icon: QrCode },
@@ -103,6 +109,7 @@ const TOOL_ORDER: PanelKey[] = [
   'templates',
   'text',
   'elements',
+  'upload',
   'photos',
   'background',
   'qr',
@@ -344,7 +351,9 @@ const PolotnoEditor: React.FC<PolotnoEditorProps> = observer(
     const [templateError, setTemplateError] = useState('');
     const [templatesLoaded, setTemplatesLoaded] = useState(false);
     const [showLayers, setShowLayers] = useState(false);
+    const [showAnimations, setShowAnimations] = useState(false);
     const layersRef = useRef<HTMLDivElement>(null);
+    const animationsRef = useRef<HTMLDivElement>(null);
 
     const selectedElements = polotnoStore.selectedElements || [];
     const selectedCount = selectedElements.length;
@@ -406,22 +415,40 @@ const PolotnoEditor: React.FC<PolotnoEditorProps> = observer(
 
     // ─── Close layers popover on outside click / escape ───
     useEffect(() => {
-      if (!showLayers) return;
+      if (!showLayers && !showAnimations) return;
+
       const handleClick = (e: MouseEvent) => {
-        if (layersRef.current && !layersRef.current.contains(e.target as Node)) {
+        const target = e.target as Node;
+
+        if (showLayers && layersRef.current && !layersRef.current.contains(target)) {
           setShowLayers(false);
         }
+
+        if (showAnimations && animationsRef.current && !animationsRef.current.contains(target)) {
+          setShowAnimations(false);
+        }
       };
+
       const handleKey = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') setShowLayers(false);
+        if (e.key === 'Escape') {
+          setShowLayers(false);
+          setShowAnimations(false);
+        }
       };
+
       document.addEventListener('mousedown', handleClick);
       document.addEventListener('keydown', handleKey);
       return () => {
         document.removeEventListener('mousedown', handleClick);
         document.removeEventListener('keydown', handleKey);
       };
-    }, [showLayers]);
+    }, [showAnimations, showLayers]);
+
+    useEffect(() => {
+      if (selectedCount === 0) {
+        setShowAnimations(false);
+      }
+    }, [selectedCount]);
 
     // ─── Sidebar toggle ───
     const togglePanel = (panelKey: PanelKey) => {
@@ -649,6 +676,24 @@ const PolotnoEditor: React.FC<PolotnoEditorProps> = observer(
                   <button type="button" className="ds-chip" onClick={duplicateSelection}>
                     <Copy className="h-3.5 w-3.5" /> Duplicar
                   </button>
+                  <div className="ds-animations-anchor" ref={animationsRef}>
+                    <button
+                      type="button"
+                      className={`ds-chip ${showAnimations ? 'is-active' : ''}`}
+                      onClick={() => setShowAnimations((current) => !current)}
+                      aria-expanded={showAnimations}
+                    >
+                      <Settings2 className="h-3.5 w-3.5" /> Animaciones
+                    </button>
+                    {showAnimations && (
+                      <div className="ds-animations-popover">
+                        <PolotnoAnimationsPanel
+                          store={polotnoStore}
+                          onClose={() => setShowAnimations(false)}
+                        />
+                      </div>
+                    )}
+                  </div>
                   <button type="button" className="ds-chip" onClick={() => moveSelection('top')}>
                     <BringToFront className="h-3.5 w-3.5" />
                   </button>

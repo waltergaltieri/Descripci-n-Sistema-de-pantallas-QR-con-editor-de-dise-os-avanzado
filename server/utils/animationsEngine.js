@@ -115,17 +115,25 @@ function extractAnimations(designData) {
   }
   
   const firstPage = designData.pages[0];
-  
-  firstPage.children.forEach((child, index) => {
-    if (child.custom && child.custom.animation) {
-      animations.push({
-        elementIndex: index,
-        elementId: child.id,
-        elementType: child.type,
-        animation: child.custom.animation
-      });
-    }
-  });
+
+  const walkChildren = (children = []) => {
+    children.forEach((child) => {
+      if (child?.custom?.animation) {
+        animations.push({
+          elementIndex: animations.length,
+          elementId: child.id,
+          elementType: child.type,
+          animation: child.custom.animation
+        });
+      }
+
+      if (Array.isArray(child?.children) && child.children.length > 0) {
+        walkChildren(child.children);
+      }
+    });
+  };
+
+  walkChildren(firstPage.children || []);
   
   return animations;
 }

@@ -31,6 +31,158 @@ async function getSeparatedSvgs(designId) {
     }
 }
 
+function collectElements(elements, collected = []) {
+    if (!Array.isArray(elements)) {
+        return collected;
+    }
+
+    elements.forEach(element => {
+        if (!element) {
+            return;
+        }
+
+        collected.push(element);
+
+        if (Array.isArray(element.children) && element.children.length > 0) {
+            collectElements(element.children, collected);
+        }
+    });
+
+    return collected;
+}
+
+function normalizeFontWeight(fontWeight) {
+    switch (fontWeight) {
+        case 'normal':
+            return '400';
+        case 'bold':
+            return '700';
+        case 'lighter':
+            return '300';
+        case '100':
+        case '200':
+        case '300':
+        case '400':
+        case '500':
+        case '600':
+        case '700':
+        case '800':
+        case '900':
+            return fontWeight;
+        default:
+            return '400';
+    }
+}
+
+function sortGoogleFontVariantEntries(a, b) {
+    const [italicA, weightA] = a.split(',').map(Number);
+    const [italicB, weightB] = b.split(',').map(Number);
+
+    if (italicA !== italicB) {
+        return italicA - italicB;
+    }
+
+    return weightA - weightB;
+}
+
+function buildGoogleFontQuery(fontToken, variants) {
+    const requests = new Set();
+    let hasItalic = false;
+
+    variants.forEach(variant => {
+        const normalizedWeight = normalizeFontWeight(variant.weight);
+        const isItalic = variant.style === 'italic';
+
+        requests.add(`0,${normalizedWeight}`);
+        if (isItalic) {
+            requests.add(`1,${normalizedWeight}`);
+            hasItalic = true;
+        }
+    });
+
+    requests.add('0,400');
+    requests.add('0,700');
+
+    if (hasItalic) {
+        requests.add('1,400');
+        requests.add('1,700');
+        return `${fontToken}:ital,wght@${Array.from(requests).sort(sortGoogleFontVariantEntries).join(';')}`;
+    }
+
+    const weights = Array.from(requests)
+        .map(entry => entry.split(',')[1])
+        .sort((a, b) => Number(a) - Number(b));
+
+    return `${fontToken}:wght@${weights.join(';')}`;
+}
+
+function getSvgDimensions(svgContent) {
+    const viewBoxMatch = svgContent.match(/viewBox="[^"]*?(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)"/i);
+    if (viewBoxMatch) {
+        return {
+            width: Number.parseFloat(viewBoxMatch[3]),
+            height: Number.parseFloat(viewBoxMatch[4])
+        };
+    }
+
+    const widthMatch = svgContent.match(/\bwidth="(-?\d+(?:\.\d+)?)"/i);
+    const heightMatch = svgContent.match(/\bheight="(-?\d+(?:\.\d+)?)"/i);
+
+    if (widthMatch && heightMatch) {
+        return {
+            width: Number.parseFloat(widthMatch[1]),
+            height: Number.parseFloat(heightMatch[1])
+        };
+    }
+
+    return null;
+}
+
+function sanitizeSvgForImageEmbedding(svgContent) {
+    if (typeof svgContent !== 'string' || !svgContent.includes('transform:')) {
+        return svgContent;
+    }
+
+    const dimensions = getSvgDimensions(svgContent);
+    if (!dimensions) {
+        return svgContent;
+    }
+
+    return svgContent.replace(/<g([^>]*?)style="([^"]*?)"([^>]*)>/gi, (match, before, styleValue, after) => {
+        const transformMatch = styleValue.match(/transform\s*:\s*([^;]+)/i);
+        const flipX = transformMatch ? /scaleX\(\s*-1\s*\)/i.test(transformMatch[1]) : false;
+        const flipY = transformMatch ? /scaleY\(\s*-1\s*\)/i.test(transformMatch[1]) : false;
+
+        const cleanedStyle = styleValue
+            .split(';')
+            .map(part => part.trim())
+            .filter(part => part && !part.toLowerCase().startsWith('transform'))
+            .join('; ');
+
+        let nextAttributes = `${before}${cleanedStyle ? ` style="${cleanedStyle};"` : ''}${after}`;
+
+        if (!flipX && !flipY) {
+            return `<g${nextAttributes}>`;
+        }
+
+        const translateX = flipX ? dimensions.width : 0;
+        const translateY = flipY ? dimensions.height : 0;
+        const scaleX = flipX ? -1 : 1;
+        const scaleY = flipY ? -1 : 1;
+        const svgTransform = `translate(${translateX} ${translateY}) scale(${scaleX} ${scaleY})`;
+
+        if (/\btransform="/i.test(nextAttributes)) {
+            nextAttributes = nextAttributes.replace(/\btransform="([^"]*)"/i, (_, currentTransform) => {
+                return `transform="${`${currentTransform} ${svgTransform}`.trim()}"`;
+            });
+        } else {
+            nextAttributes += ` transform="${svgTransform}"`;
+        }
+
+        return `<g${nextAttributes}>`;
+    });
+}
+
 /**
  * Extrae las fuentes únicas utilizadas en el diseño
  * @param {Object} designData - Datos del diseño
@@ -40,14 +192,13 @@ function extractUniqueFonts(designData) {
     const fontVariants = new Map(); // Mapa para almacenar fuentes con sus variantes
     
     designData.pages.forEach(page => {
-        page.children.forEach(element => {
+        collectElements(page.children || []).forEach(element => {
             if (element.type === 'text' && element.fontFamily) {
                 const fontFamily = element.fontFamily;
                 const fontWeight = element.fontWeight || 'normal';
                 const fontStyle = element.fontStyle || 'normal';
                 
                 // Crear clave única para la variante de fuente
-                const variantKey = `${fontFamily}_${fontWeight}_${fontStyle}`;
                 
                 if (!fontVariants.has(fontFamily)) {
                     fontVariants.set(fontFamily, new Set());
@@ -61,6 +212,7 @@ function extractUniqueFonts(designData) {
     
     const googleFonts = [];
     const customFonts = [];
+    const fontFamilies = [];
     
     // Mapeo de nombres comunes a nombres de Google Fonts
     const googleFontMap = {
@@ -105,16 +257,22 @@ function extractUniqueFonts(designData) {
         'Fredoka One': 'Fredoka+One',
         'Bangers': 'Bangers',
         'Creepster': 'Creepster',
-        'Shadows Into Light': 'Shadows+Into+Light'
+        'Shadows Into Light': 'Shadows+Into+Light',
+        'Bahiana': 'Bahiana'
     };
     
     fontVariants.forEach((variants, fontFamily) => {
+        fontFamilies.push(fontFamily);
+
         if (isSystemFont(fontFamily)) {
             // No necesitamos cargar fuentes del sistema
             return;
         }
         
         if (googleFontMap[fontFamily]) {
+            googleFonts.push(buildGoogleFontQuery(googleFontMap[fontFamily], variants));
+            return;
+
             // Construir string de pesos para Google Fonts
             const weights = new Set();
             variants.forEach(variant => {
@@ -153,7 +311,8 @@ function extractUniqueFonts(designData) {
     
     return {
         googleFonts: [...new Set(googleFonts)],
-        customFonts: [...new Set(customFonts)]
+        customFonts: [...new Set(customFonts)],
+        fontFamilies: [...new Set(fontFamilies)]
     };
 }
 
@@ -444,6 +603,10 @@ function calculateUniversalVerticalCorrection(fontSize, fontFamily = 'Arial') {
 async function renderWithKonva(designData, designName, designId = null) {
     // Obtener SVGs separados si se proporciona el ID del diseño
     const separatedSvgs = designId ? await getSeparatedSvgs(designId) : [];
+    const sanitizedSeparatedSvgs = separatedSvgs.map(svg => ({
+        ...svg,
+        svgData: sanitizeSvgForImageEmbedding(svg.svgData)
+    }));
     
     // Extraer animaciones del diseño
     const animations = extractAnimations(designData);
@@ -500,7 +663,7 @@ async function renderWithKonva(designData, designName, designId = null) {
                     
                     if (figureTypes.includes(child.type) || isMaskedImage || isEmbeddedSvgImage) {
                         // Buscar SVG correspondiente usando el índice de SVG actual
-                        const correspondingSvg = separatedSvgs[svgIndex];
+                        const correspondingSvg = sanitizedSeparatedSvgs[svgIndex];
                         const currentSvgIndex = svgIndex; // Guardar el índice actual antes de incrementar
                         svgIndex++; // Incrementar para el próximo SVG
                         
@@ -625,7 +788,7 @@ async function renderWithKonva(designData, designName, designId = null) {
     });
     
     const replacedElementsComments = replacedElements.map((element, index) => {
-        const correspondingSvg = separatedSvgs[index];
+        const correspondingSvg = sanitizedSeparatedSvgs[index];
         const status = correspondingSvg ? 'reemplazado con SVG' : 'placeholder';
         return `<!-- Elemento ${element.type} - Posición: x=${element.x}, y=${element.y}, rotación=${element.rotation || 0}° - ${status} -->`;
     }).join('\n    ');
@@ -716,8 +879,9 @@ async function renderWithKonva(designData, designName, designId = null) {
         
         // SVGs separados para evitar problemas de escape
         const svgData = {
-            ${separatedSvgs.map((svg, index) => `"svg_${index}": ${JSON.stringify(svg.svgData)}`).join(',\n            ')}
+            ${sanitizedSeparatedSvgs.map((svg, index) => `"svg_${index}": ${JSON.stringify(svg.svgData)}`).join(',\n            ')}
         };
+        const fontFamilies = ${JSON.stringify(fontData.fontFamilies || [])};
         
         console.log('Creando stage con JSON:', konvaJson);
         console.log('SVGs disponibles:', Object.keys(svgData).length);
@@ -797,6 +961,25 @@ async function renderWithKonva(designData, designName, designId = null) {
                 console.log('🎨 Estilo aplicado:', finalStyle);
             });
             
+            const ensureFontsReady = async () => {
+                if (!document.fonts || fontFamilies.length === 0) {
+                    return;
+                }
+
+                try {
+                    await Promise.all(fontFamilies.map(fontFamily =>
+                        document.fonts.load('16px "' + fontFamily + '"')
+                    ));
+                    await document.fonts.ready;
+                    stage.batchDraw();
+                    console.log('ðŸ”¤ Fuentes listas, stage redibujado');
+                } catch (fontError) {
+                    console.warn('âš ï¸ No se pudieron precargar todas las fuentes:', fontError);
+                }
+            };
+
+            ensureFontsReady();
+
             // Manejar elementos SVG embebidos (buscar Groups con isSvgElement)
             const allGroups = stage.find('Group');
             const svgElements = allGroups.filter(group => group.getAttr('isSvgElement'));
@@ -903,5 +1086,7 @@ async function generateKonvaHtml(designId, outputPath) {
 
 module.exports = {
   renderWithKonva,
-  generateKonvaHtml
+  generateKonvaHtml,
+  extractUniqueFonts,
+  sanitizeSvgForImageEmbedding
 };

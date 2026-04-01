@@ -3,6 +3,8 @@ import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 import PolotnoEditor from '../components/PolotnoEditor';
 
+var mockPolotnoStore;
+
 jest.mock('mobx-react-lite', () => ({
   observer: (component) => component
 }));
@@ -39,8 +41,8 @@ jest.mock('../services/api', () => ({
   }
 }));
 
-jest.mock('../store/editorStore', () => ({
-  polotnoStore: {
+jest.mock('../store/editorStore', () => {
+  mockPolotnoStore = {
     selectedElements: [],
     selectedElementsIds: [],
     pages: [{ children: [] }],
@@ -61,8 +63,12 @@ jest.mock('../store/editorStore', () => ({
     deleteElements: jest.fn(),
     selectElements: jest.fn(),
     scale: 0.9
-  }
-}));
+  };
+
+  return {
+    polotnoStore: mockPolotnoStore
+  };
+});
 
 jest.mock('polotno', () => ({
   PolotnoContainer: ({ children, className }) => <div className={className}>{children}</div>,
@@ -92,31 +98,53 @@ jest.mock('polotno/side-panel', () => {
     TextSection: createSection('text'),
     ElementsSection: createSection('elements'),
     PhotosSection: createSection('photos'),
+    UploadSection: createSection('upload'),
     BackgroundSection: createSection('background'),
     LayersSection: createSection('layers')
   };
 });
 
 describe('PolotnoEditor layout de usuario', () => {
+  beforeEach(() => {
+    mockPolotnoStore.selectedElements = [];
+    mockPolotnoStore.selectedElementsIds = [];
+    mockPolotnoStore.activePage.children = [];
+  });
+
   test('muestra un rail estilo Canva con herramientas principales y sin inspector derecho fijo', () => {
     render(<PolotnoEditor />);
 
-    // 6 rail items: Plantillas, Texto, Elementos, Imagenes, Fondo, QR
     expect(screen.getByRole('button', { name: /plantillas/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^texto$/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /elementos/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /imágenes/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /subir/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /im[aá]genes/i })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /fondo/i }).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /^qr$/i })).toBeInTheDocument();
 
-    // No fixed right panel
     expect(screen.queryByRole('button', { name: /propiedades/i })).not.toBeInTheDocument();
   });
 
   test('abre el panel inicial de plantillas cuando se monta', () => {
     render(<PolotnoEditor />);
 
-    // Panel header shows "Plantillas"
     expect(screen.getAllByText(/plantillas/i).length).toBeGreaterThan(0);
+  });
+
+  test('expone acceso a animaciones cuando hay un elemento seleccionado', () => {
+    mockPolotnoStore.selectedElements = [
+      {
+        id: 'text-1',
+        type: 'text',
+        custom: {},
+        set: jest.fn()
+      }
+    ];
+    mockPolotnoStore.selectedElementsIds = ['text-1'];
+    mockPolotnoStore.activePage.children = [{ id: 'text-1', type: 'text' }];
+
+    render(<PolotnoEditor />);
+
+    expect(screen.getByRole('button', { name: /animaciones/i })).toBeInTheDocument();
   });
 });

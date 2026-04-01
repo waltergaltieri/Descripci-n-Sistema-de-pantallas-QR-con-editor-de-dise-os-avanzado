@@ -1,11 +1,11 @@
 const path = require('node:path');
-const bcrypt = require('bcryptjs');
 const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
 const { Pool } = require('pg');
 
 const { getDatabaseProviderConfig } = require('./databaseProviderConfig');
 const { getPostgresSchemaStatements } = require('./postgresSchema');
+const { ensureSupabaseStorageBucket } = require('./storage');
 const {
   createPostgresAdapter,
   runWithDatabaseContext: runWithPostgresDatabaseContext
@@ -14,6 +14,170 @@ const {
 let databaseConnection = null;
 let databaseProviderConfig = null;
 let databaseContextRunner = async (callback) => callback();
+
+const SQLITE_SAAS_SCHEMA_STATEMENTS = [
+  `
+    CREATE TABLE IF NOT EXISTS super_admin_users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      supabase_user_id TEXT UNIQUE NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      full_name TEXT,
+      is_active INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+  `
+    CREATE TABLE IF NOT EXISTS business_accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      legal_name TEXT,
+      address TEXT,
+      contact_phone TEXT,
+      contact_person TEXT,
+      contact_email TEXT,
+      description TEXT,
+      logo_upload_id INTEGER REFERENCES uploads(id) ON DELETE SET NULL,
+      timezone TEXT NOT NULL DEFAULT 'America/Buenos_Aires',
+      currency_code TEXT NOT NULL DEFAULT 'ARS',
+      access_status TEXT NOT NULL DEFAULT 'active' CHECK(access_status IN ('active', 'suspended', 'inactive')),
+      commercial_status TEXT NOT NULL DEFAULT 'current' CHECK(commercial_status IN ('current', 'due_soon', 'overdue')),
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+  `
+    CREATE TABLE IF NOT EXISTS business_users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_account_id INTEGER NOT NULL REFERENCES business_accounts(id) ON DELETE CASCADE,
+      supabase_user_id TEXT UNIQUE NOT NULL,
+      email TEXT NOT NULL,
+      full_name TEXT,
+      role TEXT NOT NULL DEFAULT 'owner' CHECK(role IN ('owner', 'manager', 'editor')),
+      is_active INTEGER DEFAULT 1,
+      last_login_at DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+  `
+    CREATE TABLE IF NOT EXISTS billing_profiles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_account_id INTEGER NOT NULL UNIQUE REFERENCES business_accounts(id) ON DELETE CASCADE,
+      first_payment_date DATE,
+      billing_amount_cents INTEGER NOT NULL DEFAULT 0 CHECK(billing_amount_cents >= 0),
+      billing_currency_code TEXT NOT NULL DEFAULT 'ARS',
+      billing_frequency TEXT NOT NULL DEFAULT 'monthly' CHECK(billing_frequency IN ('monthly')),
+      last_payment_marked_at DATETIME,
+      next_due_date DATE,
+      reminder_days_before INTEGER NOT NULL DEFAULT 7,
+      manual_hold INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+  `
+    CREATE TABLE IF NOT EXISTS billing_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_account_id INTEGER NOT NULL REFERENCES business_accounts(id) ON DELETE CASCADE,
+      event_type TEXT NOT NULL CHECK(event_type IN ('payment_marked', 'access_activated', 'access_suspended', 'access_inactivated', 'note_added')),
+      amount_cents INTEGER,
+      event_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      notes TEXT,
+      created_by_super_admin_id INTEGER REFERENCES super_admin_users(id) ON DELETE SET NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+  `CREATE INDEX IF NOT EXISTS idx_business_accounts_access_status ON business_accounts(access_status, commercial_status)`,
+  `CREATE INDEX IF NOT EXISTS idx_business_users_account ON business_users(business_account_id, is_active)`,
+  `CREATE INDEX IF NOT EXISTS idx_billing_profiles_due_date ON billing_profiles(next_due_date)`,
+  `CREATE INDEX IF NOT EXISTS idx_billing_events_account_date ON billing_events(business_account_id, event_date DESC)`
+];
+
+const normalizeFlag = (value) => {
+  if (value === undefined || value === null) {
+    return false;
+  }
+
+  return value === 1 || value === '1' || value === true;
+};
+
+async function ensureSqliteSaasTables(connection = databaseConnection) {
+  for (const statement of SQLITE_SAAS_SCHEMA_STATEMENTS) {
+    await connection.exec(statement);
+  }
+}
+
+async function ensureDefaultBusinessAccount(connection = databaseConnection, env = process.env) {
+  const existingBusinessAccount = await connection.get(
+    'SELECT id FROM business_accounts ORDER BY id ASC LIMIT 1'
+  );
+
+  if (existingBusinessAccount) {
+    return { businessAccountId: existingBusinessAccount.id, created: false };
+  }
+
+  const legacyBusinessProfile = await connection.get(
+    'SELECT name, legal_name, description, timezone, currency_code FROM business_profile ORDER BY id ASC LIMIT 1'
+  );
+
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const businessAccountResult = await connection.run(
+    `
+      INSERT INTO business_accounts (
+        name,
+        legal_name,
+        description,
+        contact_email,
+        timezone,
+        currency_code,
+        access_status,
+        commercial_status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      legacyBusinessProfile?.name || env.BUSINESS_NAME || 'Mi Local',
+      legacyBusinessProfile?.legal_name || null,
+      legacyBusinessProfile?.description || 'Tenant inicial migrado desde la configuracion legacy',
+      null,
+      legacyBusinessProfile?.timezone || env.BUSINESS_TIMEZONE || 'America/Buenos_Aires',
+      legacyBusinessProfile?.currency_code || env.BUSINESS_CURRENCY || 'ARS',
+      'active',
+      'current'
+    ]
+  );
+
+  const businessAccountId = businessAccountResult.lastID ?? businessAccountResult.lastInsertRowid ?? businessAccountResult.id;
+
+  await connection.run(
+    `
+      INSERT INTO billing_profiles (
+        business_account_id,
+        first_payment_date,
+        billing_amount_cents,
+        billing_currency_code,
+        billing_frequency,
+        next_due_date,
+        reminder_days_before
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      businessAccountId,
+      today,
+      0,
+      legacyBusinessProfile?.currency_code || env.BUSINESS_CURRENCY || 'ARS',
+      'monthly',
+      today,
+      7
+    ]
+  );
+
+  return { businessAccountId, created: true };
+}
 
 async function initializeDatabaseConnection() {
   databaseProviderConfig = getDatabaseProviderConfig();
@@ -61,6 +225,7 @@ async function ensureSqliteTables() {
     await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS designs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_account_id INTEGER REFERENCES business_accounts(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         description TEXT,
         content TEXT NOT NULL,
@@ -100,9 +265,19 @@ async function ensureSqliteTables() {
       }
     }
 
+    try {
+      await databaseConnection.exec(`ALTER TABLE designs ADD COLUMN business_account_id INTEGER REFERENCES business_accounts(id) ON DELETE CASCADE`);
+      console.log('Campo business_account_id agregado a la tabla designs');
+    } catch (error) {
+      if (!error.message.includes('duplicate column name')) {
+        throw error;
+      }
+    }
+
     await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS screens (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_account_id INTEGER REFERENCES business_accounts(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         description TEXT,
         display_order INTEGER DEFAULT 0,
@@ -117,6 +292,7 @@ async function ensureSqliteTables() {
     `);
 
     for (const alterStatement of [
+      `ALTER TABLE screens ADD COLUMN business_account_id INTEGER REFERENCES business_accounts(id) ON DELETE CASCADE`,
       `ALTER TABLE screens ADD COLUMN width INTEGER DEFAULT 1920`,
       `ALTER TABLE screens ADD COLUMN height INTEGER DEFAULT 1080`,
       `ALTER TABLE screens ADD COLUMN design_html TEXT`
@@ -144,6 +320,7 @@ async function ensureSqliteTables() {
     await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS uploads (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_account_id INTEGER REFERENCES business_accounts(id) ON DELETE CASCADE,
         filename TEXT NOT NULL,
         original_name TEXT NOT NULL,
         mimetype TEXT NOT NULL,
@@ -171,7 +348,8 @@ async function ensureSqliteTables() {
     await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS categories (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL UNIQUE,
+        business_account_id INTEGER NOT NULL REFERENCES business_accounts(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
         description TEXT,
         sort_order INTEGER DEFAULT 0,
         is_active INTEGER DEFAULT 1,
@@ -183,6 +361,7 @@ async function ensureSqliteTables() {
     await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_account_id INTEGER NOT NULL REFERENCES business_accounts(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         description TEXT,
         price_cents INTEGER NOT NULL DEFAULT 0 CHECK(price_cents >= 0),
@@ -209,6 +388,7 @@ async function ensureSqliteTables() {
     await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS combos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_account_id INTEGER NOT NULL REFERENCES business_accounts(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         description TEXT,
         conditions_text TEXT,
@@ -237,6 +417,7 @@ async function ensureSqliteTables() {
     await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS promotions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_account_id INTEGER NOT NULL REFERENCES business_accounts(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         type TEXT NOT NULL CHECK(
           type IN (
@@ -288,6 +469,7 @@ async function ensureSqliteTables() {
     await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS menus (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_account_id INTEGER NOT NULL REFERENCES business_accounts(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         local_name TEXT,
         slug TEXT UNIQUE,
@@ -332,6 +514,7 @@ async function ensureSqliteTables() {
     await databaseConnection.exec(`
       CREATE TABLE IF NOT EXISTS persistent_links (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_account_id INTEGER NOT NULL REFERENCES business_accounts(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         description TEXT,
         slug TEXT NOT NULL UNIQUE,
@@ -390,6 +573,8 @@ async function ensureSqliteTables() {
       await databaseConnection.exec(indexStatement);
     }
 
+    await ensureSqliteSaasTables(databaseConnection);
+
     console.log('Tablas SQLite creadas correctamente');
   } catch (error) {
     console.error('Error al crear tablas SQLite:', error);
@@ -423,34 +608,6 @@ async function createTables() {
   await ensureSqliteTables();
 }
 
-async function createDefaultAdmin() {
-  try {
-    const username = process.env.ADMIN_USERNAME || 'admin';
-    const password = process.env.ADMIN_PASSWORD || 'admin123';
-
-    const existingAdmin = await databaseConnection.get(
-      'SELECT id FROM users WHERE username = ?',
-      [username]
-    );
-
-    if (!existingAdmin) {
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      await databaseConnection.run(
-        'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
-        [username, hashedPassword, 'admin']
-      );
-
-      console.log(`Usuario administrador creado: ${username}`);
-    } else {
-      console.log('Usuario administrador ya existe');
-    }
-  } catch (error) {
-    console.error('Error al crear usuario administrador:', error);
-    throw error;
-  }
-}
-
 async function ensureBusinessProfile() {
   try {
     const existingProfile = await databaseConnection.get('SELECT id FROM business_profile LIMIT 1');
@@ -477,8 +634,154 @@ async function ensureBusinessProfile() {
   }
 }
 
+async function ensureSaasDefaults() {
+  try {
+    await ensureDefaultBusinessAccount(databaseConnection, process.env);
+  } catch (error) {
+    console.error('Error al inicializar tenant por defecto:', error);
+    throw error;
+  }
+}
+
+async function ensureStorageDefaults() {
+  try {
+    await ensureSupabaseStorageBucket(process.env);
+  } catch (error) {
+    console.error('Error al asegurar bucket/configuracion de Supabase Storage:', error);
+    throw error;
+  }
+}
+
+async function ensureBusinessScopedOperationalTables() {
+  const defaultBusinessAccount = await databaseConnection.get(
+    'SELECT id FROM business_accounts ORDER BY id ASC LIMIT 1'
+  );
+
+  if (!defaultBusinessAccount?.id) {
+    return;
+  }
+
+  const defaultBusinessAccountId = defaultBusinessAccount.id;
+
+  if (databaseProviderConfig?.provider === 'postgres') {
+    const postgresStatements = [
+      'ALTER TABLE business_accounts ADD COLUMN IF NOT EXISTS logo_upload_id BIGINT REFERENCES uploads(id) ON DELETE SET NULL',
+      'ALTER TABLE uploads ADD COLUMN IF NOT EXISTS business_account_id BIGINT REFERENCES business_accounts(id) ON DELETE CASCADE',
+      'ALTER TABLE designs ADD COLUMN IF NOT EXISTS business_account_id BIGINT REFERENCES business_accounts(id) ON DELETE CASCADE',
+      'ALTER TABLE screens ADD COLUMN IF NOT EXISTS business_account_id BIGINT REFERENCES business_accounts(id) ON DELETE CASCADE',
+      'ALTER TABLE categories ADD COLUMN IF NOT EXISTS business_account_id BIGINT REFERENCES business_accounts(id) ON DELETE CASCADE',
+      'ALTER TABLE products ADD COLUMN IF NOT EXISTS business_account_id BIGINT REFERENCES business_accounts(id) ON DELETE CASCADE',
+      'ALTER TABLE combos ADD COLUMN IF NOT EXISTS business_account_id BIGINT REFERENCES business_accounts(id) ON DELETE CASCADE',
+      'ALTER TABLE promotions ADD COLUMN IF NOT EXISTS business_account_id BIGINT REFERENCES business_accounts(id) ON DELETE CASCADE',
+      'ALTER TABLE menus ADD COLUMN IF NOT EXISTS business_account_id BIGINT REFERENCES business_accounts(id) ON DELETE CASCADE',
+      'ALTER TABLE persistent_links ADD COLUMN IF NOT EXISTS business_account_id BIGINT REFERENCES business_accounts(id) ON DELETE CASCADE',
+      'CREATE INDEX IF NOT EXISTS idx_uploads_business_account ON uploads(business_account_id, created_at DESC)',
+      'CREATE INDEX IF NOT EXISTS idx_designs_business_account ON designs(business_account_id, updated_at DESC)',
+      'CREATE INDEX IF NOT EXISTS idx_screens_business_account ON screens(business_account_id, display_order, created_at)',
+      'CREATE INDEX IF NOT EXISTS idx_categories_business_account ON categories(business_account_id, is_active, sort_order, name)',
+      'CREATE INDEX IF NOT EXISTS idx_products_business_account ON products(business_account_id, status, category_id)',
+      'CREATE INDEX IF NOT EXISTS idx_promotions_business_account ON promotions(business_account_id, status, target_product_id)',
+      'CREATE INDEX IF NOT EXISTS idx_combos_business_account ON combos(business_account_id, status)',
+      'CREATE INDEX IF NOT EXISTS idx_menus_business_account ON menus(business_account_id, status)',
+      'CREATE INDEX IF NOT EXISTS idx_persistent_links_business_account ON persistent_links(business_account_id, status)'
+    ];
+
+    for (const statement of postgresStatements) {
+      await databaseConnection.exec(statement);
+    }
+  } else {
+    const sqliteStatements = [
+      'ALTER TABLE business_accounts ADD COLUMN logo_upload_id INTEGER REFERENCES uploads(id) ON DELETE SET NULL',
+      'ALTER TABLE uploads ADD COLUMN business_account_id INTEGER REFERENCES business_accounts(id) ON DELETE CASCADE',
+      'ALTER TABLE designs ADD COLUMN business_account_id INTEGER REFERENCES business_accounts(id) ON DELETE CASCADE',
+      'ALTER TABLE screens ADD COLUMN business_account_id INTEGER REFERENCES business_accounts(id) ON DELETE CASCADE',
+      'ALTER TABLE categories ADD COLUMN business_account_id INTEGER REFERENCES business_accounts(id) ON DELETE CASCADE',
+      'ALTER TABLE products ADD COLUMN business_account_id INTEGER REFERENCES business_accounts(id) ON DELETE CASCADE',
+      'ALTER TABLE combos ADD COLUMN business_account_id INTEGER REFERENCES business_accounts(id) ON DELETE CASCADE',
+      'ALTER TABLE promotions ADD COLUMN business_account_id INTEGER REFERENCES business_accounts(id) ON DELETE CASCADE',
+      'ALTER TABLE menus ADD COLUMN business_account_id INTEGER REFERENCES business_accounts(id) ON DELETE CASCADE',
+      'ALTER TABLE persistent_links ADD COLUMN business_account_id INTEGER REFERENCES business_accounts(id) ON DELETE CASCADE',
+      'CREATE INDEX IF NOT EXISTS idx_uploads_business_account ON uploads(business_account_id, created_at DESC)',
+      'CREATE INDEX IF NOT EXISTS idx_designs_business_account ON designs(business_account_id, updated_at DESC)',
+      'CREATE INDEX IF NOT EXISTS idx_screens_business_account ON screens(business_account_id, display_order, created_at)',
+      'CREATE INDEX IF NOT EXISTS idx_categories_business_account ON categories(business_account_id, is_active, sort_order, name)',
+      'CREATE INDEX IF NOT EXISTS idx_products_business_account ON products(business_account_id, status, category_id)',
+      'CREATE INDEX IF NOT EXISTS idx_promotions_business_account ON promotions(business_account_id, status, target_product_id)',
+      'CREATE INDEX IF NOT EXISTS idx_combos_business_account ON combos(business_account_id, status)',
+      'CREATE INDEX IF NOT EXISTS idx_menus_business_account ON menus(business_account_id, status)',
+      'CREATE INDEX IF NOT EXISTS idx_persistent_links_business_account ON persistent_links(business_account_id, status)'
+    ];
+
+    for (const statement of sqliteStatements) {
+      try {
+        await databaseConnection.exec(statement);
+      } catch (error) {
+        if (!error.message.includes('duplicate column name')) {
+          throw error;
+        }
+      }
+    }
+  }
+
+  const scopedTables = [
+    'uploads',
+    'designs',
+    'screens',
+    'categories',
+    'products',
+    'combos',
+    'promotions',
+    'menus',
+    'persistent_links'
+  ];
+
+  for (const tableName of scopedTables) {
+    await databaseConnection.run(
+      `UPDATE ${tableName} SET business_account_id = ? WHERE business_account_id IS NULL`,
+      [defaultBusinessAccountId]
+    );
+  }
+
+  await databaseConnection.run(
+    `
+      UPDATE business_accounts
+      SET logo_upload_id = COALESCE(
+        logo_upload_id,
+        (
+          SELECT bp.logo_upload_id
+          FROM business_profile bp
+          ORDER BY bp.id ASC
+          LIMIT 1
+        )
+      )
+      WHERE id = ?
+    `,
+    [defaultBusinessAccountId]
+  );
+
+  if (databaseProviderConfig?.provider === 'postgres') {
+    const notNullStatements = [
+      'ALTER TABLE categories ALTER COLUMN business_account_id SET NOT NULL',
+      'ALTER TABLE designs ALTER COLUMN business_account_id SET NOT NULL',
+      'ALTER TABLE products ALTER COLUMN business_account_id SET NOT NULL',
+      'ALTER TABLE combos ALTER COLUMN business_account_id SET NOT NULL',
+      'ALTER TABLE promotions ALTER COLUMN business_account_id SET NOT NULL',
+      'ALTER TABLE menus ALTER COLUMN business_account_id SET NOT NULL',
+      'ALTER TABLE screens ALTER COLUMN business_account_id SET NOT NULL',
+      'ALTER TABLE persistent_links ALTER COLUMN business_account_id SET NOT NULL'
+    ];
+
+    for (const statement of notNullStatements) {
+      await databaseConnection.exec(statement);
+    }
+  }
+}
+
 async function createSampleDesigns() {
   try {
+    const defaultBusinessAccount = await databaseConnection.get(
+      'SELECT id FROM business_accounts ORDER BY id ASC LIMIT 1'
+    );
     const existingDesigns = await databaseConnection.get('SELECT COUNT(*) as count FROM designs');
 
     if (parseInt(existingDesigns.count, 10) === 0) {
@@ -515,8 +818,13 @@ async function createSampleDesigns() {
       };
 
       await databaseConnection.run(
-        'INSERT INTO designs (name, description, content) VALUES (?, ?, ?)',
-        ['Diseno de Bienvenida', 'Diseno de ejemplo para nuevas pantallas', JSON.stringify(sampleDesign)]
+        'INSERT INTO designs (business_account_id, name, description, content) VALUES (?, ?, ?, ?)',
+        [
+          defaultBusinessAccount?.id || 1,
+          'Diseno de Bienvenida',
+          'Diseno de ejemplo para nuevas pantallas',
+          JSON.stringify(sampleDesign)
+        ]
       );
 
       console.log('Diseno de ejemplo creado');
@@ -536,8 +844,10 @@ async function initialize() {
     console.log(`Conexion a ${databaseProviderConfig.provider} establecida`);
 
     await createTables();
-    await createDefaultAdmin();
     await ensureBusinessProfile();
+    await ensureSaasDefaults();
+    await ensureBusinessScopedOperationalTables();
+    await ensureStorageDefaults();
     await createSampleDesigns();
 
     return true;
@@ -567,5 +877,10 @@ module.exports = {
   initialize,
   close,
   runWithDatabaseContext,
-  getProviderConfig: () => databaseProviderConfig || getDatabaseProviderConfig()
+  getProviderConfig: () => databaseProviderConfig || getDatabaseProviderConfig(),
+  __internals: {
+    ensureSqliteSaasTables,
+    ensureDefaultBusinessAccount,
+    normalizeFlag
+  }
 };

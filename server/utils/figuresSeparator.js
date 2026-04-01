@@ -294,7 +294,7 @@ async function separateDesignFigures(designId, options = {}) {
 
     // Obtener el diseño original
     const originalDesign = await database.get(
-      'SELECT id, name, content FROM designs WHERE id = ?',
+      'SELECT id, name, content, business_account_id FROM designs WHERE id = ?',
       [designId]
     );
 
@@ -371,9 +371,10 @@ async function separateDesignFigures(designId, options = {}) {
       
       // Insertar nuevo diseño en la base de datos
       const result = await database.run(
-        `INSERT INTO designs (name, description, content, thumbnail, created_at, updated_at) 
-         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        `INSERT INTO designs (business_account_id, name, description, content, thumbnail, created_at, updated_at) 
+         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
         [
+          originalDesign.business_account_id,
           designName,
           `Figura separada automáticamente del diseño "${originalDesign.name}"`,
           JSON.stringify(newContent),
@@ -457,7 +458,7 @@ async function separateDesignFiguresInternal(designId, options = {}) {
 
     // Obtener el diseño original
     const originalDesign = await database.get(
-      'SELECT id, name, content FROM designs WHERE id = ?',
+      'SELECT id, name, content, business_account_id FROM designs WHERE id = ?',
       [designId]
     );
 
@@ -543,9 +544,10 @@ async function separateDesignFiguresInternal(designId, options = {}) {
       
       // Insertar nuevo diseño en la base de datos (marcado como interno)
       const result = await database.run(
-        `INSERT INTO designs (name, description, content, thumbnail, is_internal, created_at, updated_at) 
-         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        `INSERT INTO designs (business_account_id, name, description, content, thumbnail, is_internal, created_at, updated_at) 
+         VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
         [
+          originalDesign.business_account_id,
           designName,
           `Figura separada automáticamente (MODO INTERNO) del diseño "${originalDesign.name}"`,
           JSON.stringify(newContent),

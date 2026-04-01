@@ -116,9 +116,97 @@ const slugify = (value = '') =>
     .replace(/^-+|-+$/g, '')
     .slice(0, 80) || 'item';
 
-const ensureMenuExists = async (menuId) => {
+const getDefaultBusinessAccountId = async () => {
+  const account = await db().get('SELECT id FROM business_accounts ORDER BY id ASC LIMIT 1');
+  return account?.id || null;
+};
+
+const resolveScopedBusinessAccountId = async (req) => {
+  if (req.user?.actorType === 'business_user' && req.user?.businessAccountId) {
+    return req.user.businessAccountId;
+  }
+
+  if (req.user?.actorType === 'super_admin') {
+    const explicitBusinessAccountId = parseInteger(
+      req.query?.businessAccountId ?? req.body?.businessAccountId,
+      null
+    );
+
+    if (explicitBusinessAccountId) {
+      return explicitBusinessAccountId;
+    }
+
+    return getDefaultBusinessAccountId();
+  }
+
+  return null;
+};
+
+const requireScopedBusinessAccountId = async (req, res) => {
+  const businessAccountId = await resolveScopedBusinessAccountId(req);
+
+  if (!businessAccountId) {
+    res.status(403).json({ error: 'No se pudo resolver el negocio asociado al usuario autenticado' });
+    return null;
+  }
+
+  return businessAccountId;
+};
+
+const ensureUploadExists = async (uploadId, businessAccountId) => {
+  if (!uploadId) {
+    return null;
+  }
+
+  return db().get(
+    'SELECT id FROM uploads WHERE id = ? AND business_account_id = ?',
+    [uploadId, businessAccountId]
+  );
+};
+
+const ensureCategoryExists = async (categoryId, businessAccountId) => {
+  if (!categoryId) {
+    return null;
+  }
+
+  return db().get(
+    'SELECT id FROM categories WHERE id = ? AND business_account_id = ?',
+    [categoryId, businessAccountId]
+  );
+};
+
+const ensureProductExists = async (productId, businessAccountId) => {
+  if (!productId) {
+    return null;
+  }
+
+  return db().get(
+    'SELECT id FROM products WHERE id = ? AND business_account_id = ?',
+    [productId, businessAccountId]
+  );
+};
+
+const ensureComboExists = async (comboId, businessAccountId) => {
+  if (!comboId) {
+    return null;
+  }
+
+  return db().get(
+    'SELECT id FROM combos WHERE id = ? AND business_account_id = ?',
+    [comboId, businessAccountId]
+  );
+};
+
+const ensureMenuExists = async (menuId, businessAccountId = null) => {
   if (!menuId) {
     return null;
+  }
+
+  if (businessAccountId) {
+    return db().get(
+      'SELECT id FROM menus WHERE id = ? AND business_account_id = ?',
+      [menuId, businessAccountId]
+    );
   }
 
   return db().get('SELECT id FROM menus WHERE id = ?', [menuId]);
@@ -143,7 +231,7 @@ const generateUniqueSlug = async (tableName, baseValue, excludeId = null) => {
   }
 };
 
-const getDashboardMetrics = async () => {
+const getDashboardMetrics = async (businessAccountId) => {
   const [
     totalProducts,
     activeProducts,
@@ -155,15 +243,15 @@ const getDashboardMetrics = async () => {
     activeLinks,
     totalCategories
   ] = await Promise.all([
-    db().get('SELECT COUNT(*) AS count FROM products'),
-    db().get("SELECT COUNT(*) AS count FROM products WHERE status = 'active'"),
-    db().get("SELECT COUNT(*) AS count FROM products WHERE status = 'paused'"),
-    db().get("SELECT COUNT(*) AS count FROM products WHERE status = 'sold_out'"),
-    db().get("SELECT COUNT(*) AS count FROM promotions WHERE status = 'active'"),
-    db().get("SELECT COUNT(*) AS count FROM combos WHERE status = 'active'"),
-    db().get("SELECT COUNT(*) AS count FROM menus WHERE status = 'active'"),
-    db().get("SELECT COUNT(*) AS count FROM persistent_links WHERE status = 'active'"),
-    db().get('SELECT COUNT(*) AS count FROM categories WHERE is_active = 1')
+    db().get('SELECT COUNT(*) AS count FROM products WHERE business_account_id = ?', [businessAccountId]),
+    db().get("SELECT COUNT(*) AS count FROM products WHERE business_account_id = ? AND status = 'active'", [businessAccountId]),
+    db().get("SELECT COUNT(*) AS count FROM products WHERE business_account_id = ? AND status = 'paused'", [businessAccountId]),
+    db().get("SELECT COUNT(*) AS count FROM products WHERE business_account_id = ? AND status = 'sold_out'", [businessAccountId]),
+    db().get("SELECT COUNT(*) AS count FROM promotions WHERE business_account_id = ? AND status = 'active'", [businessAccountId]),
+    db().get("SELECT COUNT(*) AS count FROM combos WHERE business_account_id = ? AND status = 'active'", [businessAccountId]),
+    db().get("SELECT COUNT(*) AS count FROM menus WHERE business_account_id = ? AND status = 'active'", [businessAccountId]),
+    db().get("SELECT COUNT(*) AS count FROM persistent_links WHERE business_account_id = ? AND status = 'active'", [businessAccountId]),
+    db().get('SELECT COUNT(*) AS count FROM categories WHERE business_account_id = ? AND is_active = 1', [businessAccountId])
   ]);
 
   return {
@@ -179,7 +267,7 @@ const getDashboardMetrics = async () => {
   };
 };
 
-const getProductById = async (productId) => {
+const getProductById = async (productId, businessAccountId) => {
   const product = await db().get(
     `
       SELECT
@@ -190,9 +278,9 @@ const getProductById = async (productId) => {
       FROM products p
       LEFT JOIN categories c ON c.id = p.category_id
       LEFT JOIN uploads u ON u.id = p.primary_image_upload_id
-      WHERE p.id = ?
+      WHERE p.id = ? AND p.business_account_id = ?
     `,
-    [productId]
+    [productId, businessAccountId]
   );
 
   if (!product) {
@@ -224,7 +312,7 @@ const getProductById = async (productId) => {
   };
 };
 
-const getPromotionById = async (promotionId) =>
+const getPromotionById = async (promotionId, businessAccountId) =>
   db().get(
     `
       SELECT
@@ -236,12 +324,12 @@ const getPromotionById = async (promotionId) =>
       LEFT JOIN products target ON target.id = pr.target_product_id
       LEFT JOIN combos combo_target ON combo_target.id = pr.target_combo_id
       LEFT JOIN products trigger ON trigger.id = pr.trigger_product_id
-      WHERE pr.id = ?
+      WHERE pr.id = ? AND pr.business_account_id = ?
     `,
-    [promotionId]
+    [promotionId, businessAccountId]
   );
 
-const getComboById = async (comboId) => {
+const getComboById = async (comboId, businessAccountId) => {
   const combo = await db().get(
     `
       SELECT
@@ -249,9 +337,9 @@ const getComboById = async (comboId) => {
         u.url AS image_url
       FROM combos c
       LEFT JOIN uploads u ON u.id = c.image_upload_id
-      WHERE c.id = ?
+      WHERE c.id = ? AND c.business_account_id = ?
     `,
-    [comboId]
+    [comboId, businessAccountId]
   );
 
   if (!combo) {
@@ -336,7 +424,7 @@ const syncComboMenuVisibility = async (comboId, menuIds = []) => {
   }
 };
 
-const getMenuById = async (menuId) => {
+const getMenuById = async (menuId, businessAccountId) => {
   const menu = await db().get(
     `
       SELECT
@@ -344,9 +432,9 @@ const getMenuById = async (menuId) => {
         u.url AS logo_url
       FROM menus m
       LEFT JOIN uploads u ON u.id = m.logo_upload_id
-      WHERE m.id = ?
+      WHERE m.id = ? AND m.business_account_id = ?
     `,
-    [menuId]
+    [menuId, businessAccountId]
   );
 
   if (!menu) {
@@ -413,7 +501,7 @@ const replaceMenuBlocks = async (menuId, blocks = []) => {
   }
 };
 
-const getPersistentLinkById = async (linkId) => {
+const getPersistentLinkById = async (linkId, businessAccountId) => {
   const link = await db().get(
     `
       SELECT
@@ -423,9 +511,9 @@ const getPersistentLinkById = async (linkId) => {
       FROM persistent_links pl
       LEFT JOIN menus m ON m.id = pl.default_menu_id
       LEFT JOIN menus manual ON manual.id = pl.manual_menu_id
-      WHERE pl.id = ?
+      WHERE pl.id = ? AND pl.business_account_id = ?
     `,
-    [linkId]
+    [linkId, businessAccountId]
   );
 
   if (!link) {
@@ -452,7 +540,7 @@ const getPersistentLinkById = async (linkId) => {
   };
 };
 
-const validateScheduleRules = async (rules = []) => {
+const validateScheduleRules = async (rules = [], businessAccountId) => {
   const normalizedRules = [];
 
   for (let index = 0; index < rules.length; index += 1) {
@@ -479,7 +567,7 @@ const validateScheduleRules = async (rules = []) => {
       throw new Error('Cada regla debe tener menú, días y franja horaria.');
     }
 
-    const menu = await ensureMenuExists(normalizedRule.menu_id);
+    const menu = await ensureMenuExists(normalizedRule.menu_id, businessAccountId);
     if (!menu) {
       throw new Error(`El menú ${normalizedRule.menu_id} no existe.`);
     }
@@ -535,7 +623,12 @@ router.use(authenticateToken, requireAdmin);
 
 router.get('/dashboard/metrics', async (req, res) => {
   try {
-    const metrics = await getDashboardMetrics();
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
+    const metrics = await getDashboardMetrics(businessAccountId);
     res.json(metrics);
   } catch (error) {
     console.error('Error al obtener métricas de cartelería:', error);
@@ -545,6 +638,34 @@ router.get('/dashboard/metrics', async (req, res) => {
 
 router.get('/business-profile', async (req, res) => {
   try {
+    const businessAccountId = await resolveScopedBusinessAccountId(req);
+
+    if (businessAccountId) {
+      const profile = await db().get(
+        `
+          SELECT
+            ba.id,
+            ba.name,
+            ba.legal_name,
+            ba.description,
+            ba.contact_phone,
+            ba.contact_person,
+            ba.contact_email,
+            ba.logo_upload_id,
+            ba.timezone,
+            ba.currency_code,
+            u.url AS logo_url
+          FROM business_accounts ba
+          LEFT JOIN uploads u ON u.id = ba.logo_upload_id
+          WHERE ba.id = ?
+          LIMIT 1
+        `,
+        [businessAccountId]
+      );
+
+      return res.json(profile || null);
+    }
+
     const profile = await db().get(
       `
         SELECT
@@ -566,6 +687,88 @@ router.get('/business-profile', async (req, res) => {
 
 router.put('/business-profile', async (req, res) => {
   try {
+    const businessAccountId = await resolveScopedBusinessAccountId(req);
+
+    if (businessAccountId) {
+      const existingProfile = await db().get(
+        'SELECT id, logo_upload_id FROM business_accounts WHERE id = ?',
+        [businessAccountId]
+      );
+
+      if (!existingProfile) {
+        return res.status(404).json({ error: 'Perfil de negocio no encontrado' });
+      }
+
+      const {
+        name,
+        legal_name: legalName,
+        description,
+        logo_upload_id: logoUploadId,
+        timezone,
+        currency_code: currencyCode,
+        contact_phone: contactPhone,
+        contact_person: contactPerson,
+        contact_email: contactEmail
+      } = req.body;
+
+      const normalizedLogoUploadId = hasOwnProperty(req.body, 'logo_upload_id')
+        ? logoUploadId
+          ? parseInteger(logoUploadId, null)
+          : null
+        : existingProfile.logo_upload_id;
+
+      if (normalizedLogoUploadId) {
+        const upload = await ensureUploadExists(normalizedLogoUploadId, businessAccountId);
+        if (!upload) {
+          return res.status(404).json({ error: 'Logo no encontrado para este negocio' });
+        }
+      }
+
+      await db().run(
+        `
+          UPDATE business_accounts
+          SET
+            name = COALESCE(?, name),
+            legal_name = COALESCE(?, legal_name),
+            description = COALESCE(?, description),
+            contact_phone = COALESCE(?, contact_phone),
+            contact_person = COALESCE(?, contact_person),
+            contact_email = COALESCE(?, contact_email),
+            logo_upload_id = ?,
+            timezone = COALESCE(?, timezone),
+            currency_code = COALESCE(?, currency_code),
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `,
+        [
+          name,
+          legalName,
+          description,
+          contactPhone,
+          contactPerson,
+          contactEmail,
+          normalizedLogoUploadId,
+          timezone,
+          currencyCode,
+          businessAccountId
+        ]
+      );
+
+      const updatedProfile = await db().get(
+        `
+          SELECT
+            ba.*,
+            u.url AS logo_url
+          FROM business_accounts ba
+          LEFT JOIN uploads u ON u.id = ba.logo_upload_id
+          WHERE ba.id = ?
+        `,
+        [businessAccountId]
+      );
+
+      return res.json(updatedProfile);
+    }
+
     const existingProfile = await db().get('SELECT id FROM business_profile ORDER BY id ASC LIMIT 1');
 
     if (!existingProfile) {
@@ -592,7 +795,7 @@ router.put('/business-profile', async (req, res) => {
           timezone = COALESCE(?, timezone),
           currency_code = COALESCE(?, currency_code),
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
+        WHERE id = ? AND business_account_id = ?
       `,
       [name, legalName, description, logoUploadId, timezone, currencyCode, existingProfile.id]
     );
@@ -618,16 +821,23 @@ router.put('/business-profile', async (req, res) => {
 
 router.get('/categories', async (req, res) => {
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     const categories = await db().all(
       `
         SELECT
           c.*,
           COUNT(p.id) AS products_count
         FROM categories c
-        LEFT JOIN products p ON p.category_id = c.id
+        LEFT JOIN products p ON p.category_id = c.id AND p.business_account_id = c.business_account_id
+        WHERE c.business_account_id = ?
         GROUP BY c.id
         ORDER BY c.sort_order ASC, c.name ASC
-      `
+      `,
+      [businessAccountId]
     );
 
     res.json(categories);
@@ -639,6 +849,11 @@ router.get('/categories', async (req, res) => {
 
 router.post('/categories', async (req, res) => {
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     const { name, description, sort_order: sortOrder = 0 } = req.body;
 
     if (!name || !String(name).trim()) {
@@ -647,23 +862,50 @@ router.post('/categories', async (req, res) => {
 
     const normalizedName = String(name).trim();
     const existingCategory = await db().get(
-      'SELECT id FROM categories WHERE LOWER(name) = LOWER(?)',
-      [normalizedName]
+      'SELECT id FROM categories WHERE LOWER(name) = LOWER(?) AND business_account_id = ?',
+      [normalizedName, businessAccountId]
     );
 
     if (existingCategory) {
       return res.status(409).json({ error: 'Ya existe una categoría con ese nombre' });
     }
 
+    if (normalizedPrimaryImageUploadId) {
+      const upload = await ensureUploadExists(normalizedPrimaryImageUploadId, businessAccountId);
+      if (!upload) {
+        await db().exec('ROLLBACK');
+        return res.status(404).json({ error: 'Imagen principal no encontrada' });
+      }
+    }
+
+    for (const uploadId of sanitizeUploadIds(galleryUploadIds)) {
+      const upload = await ensureUploadExists(uploadId, businessAccountId);
+      if (!upload) {
+        await db().exec('ROLLBACK');
+        return res.status(404).json({ error: 'Una imagen de galeria no pertenece a este negocio' });
+      }
+    }
+
+    if (imageUploadId) {
+      const upload = await ensureUploadExists(parseInteger(imageUploadId, null), businessAccountId);
+      if (!upload) {
+        await db().exec('ROLLBACK');
+        return res.status(404).json({ error: 'Imagen del combo no encontrada' });
+      }
+    }
+
     const result = await db().run(
       `
-        INSERT INTO categories (name, description, sort_order)
-        VALUES (?, ?, ?)
+        INSERT INTO categories (business_account_id, name, description, sort_order)
+        VALUES (?, ?, ?, ?)
       `,
-      [normalizedName, description || null, parseInteger(sortOrder, 0)]
+      [businessAccountId, normalizedName, description || null, parseInteger(sortOrder, 0)]
     );
 
-    const category = await db().get('SELECT * FROM categories WHERE id = ?', [result.lastID]);
+    const category = await db().get(
+      'SELECT * FROM categories WHERE id = ? AND business_account_id = ?',
+      [result.lastID, businessAccountId]
+    );
     res.status(201).json(category);
   } catch (error) {
     console.error('Error al crear categoría:', error);
@@ -673,18 +915,26 @@ router.post('/categories', async (req, res) => {
 
 router.put('/categories/:id', async (req, res) => {
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     const { id } = req.params;
     const { name, description, sort_order: sortOrder, is_active: isActive } = req.body;
 
-    const category = await db().get('SELECT * FROM categories WHERE id = ?', [id]);
+    const category = await db().get(
+      'SELECT * FROM categories WHERE id = ? AND business_account_id = ?',
+      [id, businessAccountId]
+    );
     if (!category) {
       return res.status(404).json({ error: 'Categoría no encontrada' });
     }
 
     if (name && String(name).trim()) {
       const conflictingCategory = await db().get(
-        'SELECT id FROM categories WHERE LOWER(name) = LOWER(?) AND id != ?',
-        [String(name).trim(), id]
+        'SELECT id FROM categories WHERE LOWER(name) = LOWER(?) AND id != ? AND business_account_id = ?',
+        [String(name).trim(), id, businessAccountId]
       );
 
       if (conflictingCategory) {
@@ -701,7 +951,7 @@ router.put('/categories/:id', async (req, res) => {
           sort_order = COALESCE(?, sort_order),
           is_active = COALESCE(?, is_active),
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
+        WHERE id = ? AND business_account_id = ?
       `,
       [
         name ? String(name).trim() : null,
@@ -712,7 +962,10 @@ router.put('/categories/:id', async (req, res) => {
       ]
     );
 
-    const updatedCategory = await db().get('SELECT * FROM categories WHERE id = ?', [id]);
+    const updatedCategory = await db().get(
+      'SELECT * FROM categories WHERE id = ? AND business_account_id = ?',
+      [id, businessAccountId]
+    );
     res.json(updatedCategory);
   } catch (error) {
     console.error('Error al actualizar categoría:', error);
@@ -722,11 +975,16 @@ router.put('/categories/:id', async (req, res) => {
 
 router.get('/products', async (req, res) => {
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     const page = Math.max(parseInteger(req.query.page, 1), 1);
     const limit = Math.min(Math.max(parseInteger(req.query.limit, 12), 1), 100);
     const offset = (page - 1) * limit;
-    const conditions = [];
-    const params = [];
+    const conditions = ['p.business_account_id = ?'];
+    const params = [businessAccountId];
 
     if (req.query.status && PRODUCT_STATUSES.includes(req.query.status)) {
       conditions.push('p.status = ?');
@@ -803,7 +1061,12 @@ router.get('/products', async (req, res) => {
 
 router.get('/products/:id', async (req, res) => {
   try {
-    const product = await getProductById(req.params.id);
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
+    const product = await getProductById(req.params.id, businessAccountId);
 
     if (!product) {
       return res.status(404).json({ error: 'Producto no encontrado' });
@@ -820,6 +1083,12 @@ router.post('/products', async (req, res) => {
   await db().exec('BEGIN');
 
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      await db().exec('ROLLBACK');
+      return;
+    }
+
     const {
       name,
       description,
@@ -851,7 +1120,7 @@ router.post('/products', async (req, res) => {
       : null;
 
     if (normalizedCategoryId) {
-      const category = await db().get('SELECT id FROM categories WHERE id = ?', [normalizedCategoryId]);
+      const category = await ensureCategoryExists(normalizedCategoryId, businessAccountId);
       if (!category) {
         await db().exec('ROLLBACK');
         return res.status(404).json({ error: 'Categoría no encontrada' });
@@ -861,6 +1130,7 @@ router.post('/products', async (req, res) => {
     const result = await db().run(
       `
         INSERT INTO products (
+          business_account_id,
           name,
           description,
           price_cents,
@@ -868,9 +1138,10 @@ router.post('/products', async (req, res) => {
           category_id,
           primary_image_upload_id
         )
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `,
       [
+        businessAccountId,
         String(name).trim(),
         description || null,
         priceCents,
@@ -883,7 +1154,7 @@ router.post('/products', async (req, res) => {
     await replaceProductImages(result.lastID, sanitizeUploadIds(galleryUploadIds));
     await db().exec('COMMIT');
 
-    const product = await getProductById(result.lastID);
+    const product = await getProductById(result.lastID, businessAccountId);
     res.status(201).json(product);
   } catch (error) {
     await db().exec('ROLLBACK');
@@ -896,8 +1167,17 @@ router.put('/products/:id', async (req, res) => {
   await db().exec('BEGIN');
 
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      await db().exec('ROLLBACK');
+      return;
+    }
+
     const { id } = req.params;
-    const existingProduct = await db().get('SELECT * FROM products WHERE id = ?', [id]);
+    const existingProduct = await db().get(
+      'SELECT * FROM products WHERE id = ? AND business_account_id = ?',
+      [id, businessAccountId]
+    );
 
     if (!existingProduct) {
       await db().exec('ROLLBACK');
@@ -915,10 +1195,31 @@ router.put('/products/:id', async (req, res) => {
 
     if (hasOwnProperty(req.body, 'category_id') && req.body.category_id) {
       const normalizedCategoryId = parseInteger(req.body.category_id, null);
-      const category = await db().get('SELECT id FROM categories WHERE id = ?', [normalizedCategoryId]);
+      const category = await ensureCategoryExists(normalizedCategoryId, businessAccountId);
       if (!category) {
         await db().exec('ROLLBACK');
         return res.status(404).json({ error: 'Categoría no encontrada' });
+      }
+    }
+
+    if (hasOwnProperty(req.body, 'primary_image_upload_id') && req.body.primary_image_upload_id) {
+      const upload = await ensureUploadExists(
+        parseInteger(req.body.primary_image_upload_id, null),
+        businessAccountId
+      );
+      if (!upload) {
+        await db().exec('ROLLBACK');
+        return res.status(404).json({ error: 'Imagen principal no encontrada' });
+      }
+    }
+
+    if (Array.isArray(galleryUploadIds)) {
+      for (const uploadId of sanitizeUploadIds(galleryUploadIds)) {
+        const upload = await ensureUploadExists(uploadId, businessAccountId);
+        if (!upload) {
+          await db().exec('ROLLBACK');
+          return res.status(404).json({ error: 'Una imagen de galeria no pertenece a este negocio' });
+        }
       }
     }
 
@@ -976,9 +1277,9 @@ router.put('/products/:id', async (req, res) => {
         `
           UPDATE products
           SET ${updates.join(', ')}
-          WHERE id = ?
+          WHERE id = ? AND business_account_id = ?
         `,
-        [...updateParams, id]
+        [...updateParams, id, businessAccountId]
       );
     }
 
@@ -988,7 +1289,7 @@ router.put('/products/:id', async (req, res) => {
 
     await db().exec('COMMIT');
 
-    const product = await getProductById(id);
+    const product = await getProductById(id, businessAccountId);
     res.json(product);
   } catch (error) {
     await db().exec('ROLLBACK');
@@ -999,13 +1300,19 @@ router.put('/products/:id', async (req, res) => {
 
 router.get('/menus/options', async (req, res) => {
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     const menus = await db().all(
       `
         SELECT id, name, status
         FROM menus
-        WHERE status IN ('active', 'draft')
+        WHERE business_account_id = ? AND status IN ('active', 'draft')
         ORDER BY updated_at DESC, id DESC
-      `
+      `,
+      [businessAccountId]
     );
 
     res.json(menus);
@@ -1017,11 +1324,16 @@ router.get('/menus/options', async (req, res) => {
 
 router.get('/menus', async (req, res) => {
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     const page = Math.max(parseInteger(req.query.page, 1), 1);
     const limit = Math.min(Math.max(parseInteger(req.query.limit, 12), 1), 100);
     const offset = (page - 1) * limit;
-    const conditions = [];
-    const params = [];
+    const conditions = ['m.business_account_id = ?'];
+    const params = [businessAccountId];
 
     if (req.query.status && MENU_STATUSES.includes(req.query.status)) {
       conditions.push('m.status = ?');
@@ -1080,7 +1392,12 @@ router.get('/menus', async (req, res) => {
 
 router.get('/menus/:id', async (req, res) => {
   try {
-    const menu = await getMenuById(req.params.id);
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
+    const menu = await getMenuById(req.params.id, businessAccountId);
 
     if (!menu) {
       return res.status(404).json({ error: 'Menu no encontrado' });
@@ -1097,6 +1414,12 @@ router.post('/menus', async (req, res) => {
   await db().exec('BEGIN');
 
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      await db().exec('ROLLBACK');
+      return;
+    }
+
     const {
       name,
       local_name: localName,
@@ -1122,11 +1445,20 @@ router.post('/menus', async (req, res) => {
       return res.status(400).json({ error: 'Tema de menú inválido' });
     }
 
+    if (logoUploadId) {
+      const upload = await ensureUploadExists(parseInteger(logoUploadId, null), businessAccountId);
+      if (!upload) {
+        await db().exec('ROLLBACK');
+        return res.status(404).json({ error: 'Logo no encontrado para este negocio' });
+      }
+    }
+
     const slug = await generateUniqueSlug('menus', name);
 
     const result = await db().run(
       `
         INSERT INTO menus (
+          business_account_id,
           name,
           local_name,
           slug,
@@ -1135,9 +1467,10 @@ router.post('/menus', async (req, res) => {
           theme_key,
           settings
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
+        businessAccountId,
         String(name).trim(),
         localName || null,
         slug,
@@ -1151,7 +1484,7 @@ router.post('/menus', async (req, res) => {
     await replaceMenuBlocks(result.lastID, blocks);
     await db().exec('COMMIT');
 
-    const menu = await getMenuById(result.lastID);
+    const menu = await getMenuById(result.lastID, businessAccountId);
     res.status(201).json(menu);
   } catch (error) {
     await db().exec('ROLLBACK');
@@ -1164,7 +1497,16 @@ router.put('/menus/:id', async (req, res) => {
   await db().exec('BEGIN');
 
   try {
-    const existingMenu = await db().get('SELECT * FROM menus WHERE id = ?', [req.params.id]);
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      await db().exec('ROLLBACK');
+      return;
+    }
+
+    const existingMenu = await db().get(
+      'SELECT * FROM menus WHERE id = ? AND business_account_id = ?',
+      [req.params.id, businessAccountId]
+    );
 
     if (!existingMenu) {
       await db().exec('ROLLBACK');
@@ -1191,6 +1533,14 @@ router.put('/menus/:id', async (req, res) => {
       return res.status(400).json({ error: 'Tema de menú inválido' });
     }
 
+    if (hasOwnProperty(req.body, 'logo_upload_id') && logoUploadId) {
+      const upload = await ensureUploadExists(parseInteger(logoUploadId, null), businessAccountId);
+      if (!upload) {
+        await db().exec('ROLLBACK');
+        return res.status(404).json({ error: 'Logo no encontrado para este negocio' });
+      }
+    }
+
     await db().run(
       `
         UPDATE menus
@@ -1202,7 +1552,7 @@ router.put('/menus/:id', async (req, res) => {
           theme_key = COALESCE(?, theme_key),
           settings = ?,
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
+        WHERE id = ? AND business_account_id = ?
       `,
       [
         name ? String(name).trim() : null,
@@ -1218,7 +1568,8 @@ router.put('/menus/:id', async (req, res) => {
           hasOwnProperty(req.body, 'settings') ? settings : parseJsonField(existingMenu.settings, {}),
           {}
         ),
-        req.params.id
+        req.params.id,
+        businessAccountId
       ]
     );
 
@@ -1228,7 +1579,7 @@ router.put('/menus/:id', async (req, res) => {
 
     await db().exec('COMMIT');
 
-    const menu = await getMenuById(req.params.id);
+    const menu = await getMenuById(req.params.id, businessAccountId);
     res.json(menu);
   } catch (error) {
     await db().exec('ROLLBACK');
@@ -1241,14 +1592,26 @@ router.delete('/menus/:id', async (req, res) => {
   await db().exec('BEGIN');
 
   try {
-    const existingMenu = await db().get('SELECT id, name FROM menus WHERE id = ?', [req.params.id]);
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      await db().exec('ROLLBACK');
+      return;
+    }
+
+    const existingMenu = await db().get(
+      'SELECT id, name FROM menus WHERE id = ? AND business_account_id = ?',
+      [req.params.id, businessAccountId]
+    );
 
     if (!existingMenu) {
       await db().exec('ROLLBACK');
       return res.status(404).json({ error: 'Menú no encontrado' });
     }
 
-    await db().run('DELETE FROM menus WHERE id = ?', [req.params.id]);
+    await db().run('DELETE FROM menus WHERE id = ? AND business_account_id = ?', [
+      req.params.id,
+      businessAccountId
+    ]);
     await db().exec('COMMIT');
 
     res.json({
@@ -1265,11 +1628,16 @@ router.delete('/menus/:id', async (req, res) => {
 
 router.get('/promotions', async (req, res) => {
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     const page = Math.max(parseInteger(req.query.page, 1), 1);
     const limit = Math.min(Math.max(parseInteger(req.query.limit, 12), 1), 100);
     const offset = (page - 1) * limit;
-    const conditions = [];
-    const params = [];
+    const conditions = ['pr.business_account_id = ?'];
+    const params = [businessAccountId];
 
     if (req.query.status && PROMOTION_STATUSES.includes(req.query.status)) {
       conditions.push('pr.status = ?');
@@ -1333,6 +1701,11 @@ router.get('/promotions', async (req, res) => {
 
 router.post('/promotions', async (req, res) => {
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     const {
       name,
       type,
@@ -1371,21 +1744,21 @@ router.post('/promotions', async (req, res) => {
     }
 
     if (resolvedTargetProductId) {
-      const targetProduct = await db().get('SELECT id FROM products WHERE id = ?', [resolvedTargetProductId]);
+      const targetProduct = await ensureProductExists(resolvedTargetProductId, businessAccountId);
       if (!targetProduct) {
         return res.status(404).json({ error: 'Producto objetivo no encontrado' });
       }
     }
 
     if (resolvedTargetComboId) {
-      const targetCombo = await db().get('SELECT id FROM combos WHERE id = ?', [resolvedTargetComboId]);
+      const targetCombo = await ensureComboExists(resolvedTargetComboId, businessAccountId);
       if (!targetCombo) {
         return res.status(404).json({ error: 'Combo objetivo no encontrado' });
       }
     }
 
     if (triggerProductId) {
-      const triggerProduct = await db().get('SELECT id FROM products WHERE id = ?', [triggerProductId]);
+      const triggerProduct = await ensureProductExists(parseInteger(triggerProductId, null), businessAccountId);
       if (!triggerProduct) {
         return res.status(404).json({ error: 'Producto disparador no encontrado' });
       }
@@ -1399,6 +1772,7 @@ router.post('/promotions', async (req, res) => {
     const result = await db().run(
       `
         INSERT INTO promotions (
+          business_account_id,
           name,
           type,
           status,
@@ -1414,9 +1788,10 @@ router.post('/promotions', async (req, res) => {
           ends_at,
           no_expiration
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
+        businessAccountId,
         String(name).trim(),
         type,
         status,
@@ -1436,7 +1811,7 @@ router.post('/promotions', async (req, res) => {
       ]
     );
 
-    const promotion = await getPromotionById(result.lastID);
+    const promotion = await getPromotionById(result.lastID, businessAccountId);
     res.status(201).json(promotion);
   } catch (error) {
     console.error('Error al crear promoción:', error);
@@ -1446,7 +1821,12 @@ router.post('/promotions', async (req, res) => {
 
 router.get('/promotions/:id', async (req, res) => {
   try {
-    const promotion = await getPromotionById(req.params.id);
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
+    const promotion = await getPromotionById(req.params.id, businessAccountId);
 
     if (!promotion) {
       return res.status(404).json({ error: 'Promoción no encontrada' });
@@ -1461,7 +1841,15 @@ router.get('/promotions/:id', async (req, res) => {
 
 router.put('/promotions/:id', async (req, res) => {
   try {
-    const existingPromotion = await db().get('SELECT * FROM promotions WHERE id = ?', [req.params.id]);
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
+    const existingPromotion = await db().get(
+      'SELECT * FROM promotions WHERE id = ? AND business_account_id = ?',
+      [req.params.id, businessAccountId]
+    );
 
     if (!existingPromotion) {
       return res.status(404).json({ error: 'Promoción no encontrada' });
@@ -1505,14 +1893,14 @@ router.put('/promotions/:id', async (req, res) => {
     }
 
     if (resolvedTargetProductId) {
-      const targetProduct = await db().get('SELECT id FROM products WHERE id = ?', [resolvedTargetProductId]);
+      const targetProduct = await ensureProductExists(resolvedTargetProductId, businessAccountId);
       if (!targetProduct) {
         return res.status(404).json({ error: 'Producto objetivo no encontrado' });
       }
     }
 
     if (resolvedTargetComboId) {
-      const targetCombo = await db().get('SELECT id FROM combos WHERE id = ?', [resolvedTargetComboId]);
+      const targetCombo = await ensureComboExists(resolvedTargetComboId, businessAccountId);
       if (!targetCombo) {
         return res.status(404).json({ error: 'Combo objetivo no encontrado' });
       }
@@ -1525,7 +1913,7 @@ router.put('/promotions/:id', async (req, res) => {
       : existingPromotion.trigger_product_id;
 
     if (resolvedTriggerProductId) {
-      const triggerProduct = await db().get('SELECT id FROM products WHERE id = ?', [resolvedTriggerProductId]);
+      const triggerProduct = await ensureProductExists(resolvedTriggerProductId, businessAccountId);
       if (!triggerProduct) {
         return res.status(404).json({ error: 'Producto disparador no encontrado' });
       }
@@ -1556,7 +1944,7 @@ router.put('/promotions/:id', async (req, res) => {
           ends_at = ?,
           no_expiration = ?,
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
+        WHERE id = ? AND business_account_id = ?
       `,
       [
         name ? String(name).trim() : null,
@@ -1589,11 +1977,12 @@ router.put('/promotions/:id', async (req, res) => {
             ? 1
             : 0
           : existingPromotion.no_expiration,
-        req.params.id
+        req.params.id,
+        businessAccountId
       ]
     );
 
-    const promotion = await getPromotionById(req.params.id);
+    const promotion = await getPromotionById(req.params.id, businessAccountId);
     res.json(promotion);
   } catch (error) {
     console.error('Error al actualizar promoción:', error);
@@ -1603,11 +1992,16 @@ router.put('/promotions/:id', async (req, res) => {
 
 router.get('/combos', async (req, res) => {
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     const page = Math.max(parseInteger(req.query.page, 1), 1);
     const limit = Math.min(Math.max(parseInteger(req.query.limit, 12), 1), 100);
     const offset = (page - 1) * limit;
-    const conditions = [];
-    const params = [];
+    const conditions = ['c.business_account_id = ?'];
+    const params = [businessAccountId];
 
     if (req.query.status && LINKABLE_STATUSES.includes(req.query.status)) {
       conditions.push('c.status = ?');
@@ -1674,6 +2068,12 @@ router.post('/combos', async (req, res) => {
   await db().exec('BEGIN');
 
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      await db().exec('ROLLBACK');
+      return;
+    }
+
     const {
       name,
       description,
@@ -1716,7 +2116,7 @@ router.post('/combos', async (req, res) => {
     }
 
     for (const productId of productIds) {
-      const product = await db().get('SELECT id FROM products WHERE id = ?', [productId]);
+      const product = await ensureProductExists(parseInteger(productId, null), businessAccountId);
       if (!product) {
         await db().exec('ROLLBACK');
         return res.status(404).json({ error: `Producto ${productId} no encontrado` });
@@ -1724,16 +2124,25 @@ router.post('/combos', async (req, res) => {
     }
 
     for (const menuId of menuIds) {
-      const menu = await db().get('SELECT id FROM menus WHERE id = ?', [menuId]);
+      const menu = await ensureMenuExists(parseInteger(menuId, null), businessAccountId);
       if (!menu) {
         await db().exec('ROLLBACK');
         return res.status(404).json({ error: `Menú ${menuId} no encontrado` });
       }
     }
 
+    if (imageUploadId) {
+      const upload = await ensureUploadExists(parseInteger(imageUploadId, null), businessAccountId);
+      if (!upload) {
+        await db().exec('ROLLBACK');
+        return res.status(404).json({ error: 'La imagen del combo no pertenece a este negocio' });
+      }
+    }
+
     const result = await db().run(
       `
         INSERT INTO combos (
+          business_account_id,
           name,
           description,
           conditions_text,
@@ -1745,9 +2154,10 @@ router.post('/combos', async (req, res) => {
           has_countdown,
           no_expiration
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
+        businessAccountId,
         String(name).trim(),
         description || null,
         conditionsText || null,
@@ -1765,7 +2175,7 @@ router.post('/combos', async (req, res) => {
     await syncComboMenuVisibility(result.lastID, sanitizeUploadIds(menuIds));
     await db().exec('COMMIT');
 
-    const combo = await db().get('SELECT * FROM combos WHERE id = ?', [result.lastID]);
+    const combo = await getComboById(result.lastID, businessAccountId);
     res.status(201).json(combo);
   } catch (error) {
     await db().exec('ROLLBACK');
@@ -1776,7 +2186,12 @@ router.post('/combos', async (req, res) => {
 
 router.get('/combos/:id', async (req, res) => {
   try {
-    const combo = await getComboById(req.params.id);
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
+    const combo = await getComboById(req.params.id, businessAccountId);
 
     if (!combo) {
       return res.status(404).json({ error: 'Combo no encontrado' });
@@ -1793,7 +2208,16 @@ router.put('/combos/:id', async (req, res) => {
   await db().exec('BEGIN');
 
   try {
-    const existingCombo = await db().get('SELECT * FROM combos WHERE id = ?', [req.params.id]);
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      await db().exec('ROLLBACK');
+      return;
+    }
+
+    const existingCombo = await db().get(
+      'SELECT * FROM combos WHERE id = ? AND business_account_id = ?',
+      [req.params.id, businessAccountId]
+    );
 
     if (!existingCombo) {
       await db().exec('ROLLBACK');
@@ -1833,7 +2257,7 @@ router.put('/combos/:id', async (req, res) => {
 
     if (normalizedProductIds) {
       for (const productId of normalizedProductIds) {
-        const product = await db().get('SELECT id FROM products WHERE id = ?', [productId]);
+        const product = await ensureProductExists(productId, businessAccountId);
         if (!product) {
           await db().exec('ROLLBACK');
           return res.status(404).json({ error: `Producto ${productId} no encontrado` });
@@ -1843,11 +2267,19 @@ router.put('/combos/:id', async (req, res) => {
 
     if (normalizedMenuIds) {
       for (const menuId of normalizedMenuIds) {
-        const menu = await db().get('SELECT id FROM menus WHERE id = ?', [menuId]);
+        const menu = await ensureMenuExists(menuId, businessAccountId);
         if (!menu) {
           await db().exec('ROLLBACK');
           return res.status(404).json({ error: `Menú ${menuId} no encontrado` });
         }
+      }
+    }
+
+    if (hasOwnProperty(req.body, 'image_upload_id') && imageUploadId) {
+      const upload = await ensureUploadExists(parseInteger(imageUploadId, null), businessAccountId);
+      if (!upload) {
+        await db().exec('ROLLBACK');
+        return res.status(404).json({ error: 'La imagen del combo no pertenece a este negocio' });
       }
     }
 
@@ -1912,7 +2344,8 @@ router.put('/combos/:id', async (req, res) => {
             ? 1
             : 0
           : existingCombo.no_expiration,
-        req.params.id
+        req.params.id,
+        businessAccountId
       ]
     );
 
@@ -1926,7 +2359,7 @@ router.put('/combos/:id', async (req, res) => {
 
     await db().exec('COMMIT');
 
-    const combo = await getComboById(req.params.id);
+    const combo = await getComboById(req.params.id, businessAccountId);
     res.json(combo);
   } catch (error) {
     await db().exec('ROLLBACK');
@@ -1937,11 +2370,16 @@ router.put('/combos/:id', async (req, res) => {
 
 router.get('/links', async (req, res) => {
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     const page = Math.max(parseInteger(req.query.page, 1), 1);
     const limit = Math.min(Math.max(parseInteger(req.query.limit, 12), 1), 100);
     const offset = (page - 1) * limit;
-    const conditions = [];
-    const params = [];
+    const conditions = ['pl.business_account_id = ?'];
+    const params = [businessAccountId];
 
     if (req.query.status && LINK_STATUSES.includes(req.query.status)) {
       conditions.push('pl.status = ?');
@@ -2002,7 +2440,12 @@ router.get('/links', async (req, res) => {
 
 router.get('/links/:id', async (req, res) => {
   try {
-    const link = await getPersistentLinkById(req.params.id);
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
+    const link = await getPersistentLinkById(req.params.id, businessAccountId);
 
     if (!link) {
       return res.status(404).json({ error: 'Link persistente no encontrado' });
@@ -2019,6 +2462,12 @@ router.post('/links', async (req, res) => {
   await db().exec('BEGIN');
 
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      await db().exec('ROLLBACK');
+      return;
+    }
+
     const {
       name,
       description,
@@ -2041,7 +2490,7 @@ router.post('/links', async (req, res) => {
     }
 
     if (defaultMenuId) {
-      const defaultMenu = await ensureMenuExists(defaultMenuId);
+      const defaultMenu = await ensureMenuExists(defaultMenuId, businessAccountId);
       if (!defaultMenu) {
         await db().exec('ROLLBACK');
         return res.status(404).json({ error: 'El menú por defecto no existe' });
@@ -2049,19 +2498,20 @@ router.post('/links', async (req, res) => {
     }
 
     if (manualMenuId) {
-      const manualMenu = await ensureMenuExists(manualMenuId);
+      const manualMenu = await ensureMenuExists(manualMenuId, businessAccountId);
       if (!manualMenu) {
         await db().exec('ROLLBACK');
         return res.status(404).json({ error: 'El menú manual no existe' });
       }
     }
 
-    const normalizedRules = await validateScheduleRules(rules);
+    const normalizedRules = await validateScheduleRules(rules, businessAccountId);
     const slug = await generateUniqueSlug('persistent_links', name);
 
     const result = await db().run(
       `
         INSERT INTO persistent_links (
+          business_account_id,
           name,
           description,
           slug,
@@ -2071,9 +2521,10 @@ router.post('/links', async (req, res) => {
           status,
           qr_config
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
+        businessAccountId,
         String(name).trim(),
         description || null,
         slug,
@@ -2088,7 +2539,7 @@ router.post('/links', async (req, res) => {
     await replaceLinkRules(result.lastID, normalizedRules);
     await db().exec('COMMIT');
 
-    const link = await getPersistentLinkById(result.lastID);
+    const link = await getPersistentLinkById(result.lastID, businessAccountId);
     res.status(201).json(link);
   } catch (error) {
     await db().exec('ROLLBACK');
@@ -2101,7 +2552,16 @@ router.put('/links/:id', async (req, res) => {
   await db().exec('BEGIN');
 
   try {
-    const existingLink = await db().get('SELECT * FROM persistent_links WHERE id = ?', [req.params.id]);
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      await db().exec('ROLLBACK');
+      return;
+    }
+
+    const existingLink = await db().get(
+      'SELECT * FROM persistent_links WHERE id = ? AND business_account_id = ?',
+      [req.params.id, businessAccountId]
+    );
 
     if (!existingLink) {
       await db().exec('ROLLBACK');
@@ -2125,7 +2585,7 @@ router.put('/links/:id', async (req, res) => {
     }
 
     if (defaultMenuId) {
-      const defaultMenu = await ensureMenuExists(defaultMenuId);
+      const defaultMenu = await ensureMenuExists(defaultMenuId, businessAccountId);
       if (!defaultMenu) {
         await db().exec('ROLLBACK');
         return res.status(404).json({ error: 'El menú por defecto no existe' });
@@ -2133,14 +2593,16 @@ router.put('/links/:id', async (req, res) => {
     }
 
     if (manualMenuId) {
-      const manualMenu = await ensureMenuExists(manualMenuId);
+      const manualMenu = await ensureMenuExists(manualMenuId, businessAccountId);
       if (!manualMenu) {
         await db().exec('ROLLBACK');
         return res.status(404).json({ error: 'El menú manual no existe' });
       }
     }
 
-    const normalizedRules = Array.isArray(rules) ? await validateScheduleRules(rules) : null;
+    const normalizedRules = Array.isArray(rules)
+      ? await validateScheduleRules(rules, businessAccountId)
+      : null;
 
     await db().run(
       `
@@ -2154,7 +2616,7 @@ router.put('/links/:id', async (req, res) => {
           status = COALESCE(?, status),
           qr_config = ?,
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
+        WHERE id = ? AND business_account_id = ?
       `,
       [
         name ? String(name).trim() : null,
@@ -2179,7 +2641,8 @@ router.put('/links/:id', async (req, res) => {
           hasOwnProperty(req.body, 'qr_config') ? qrConfig : parseJsonField(existingLink.qr_config, {}),
           {}
         ),
-        req.params.id
+        req.params.id,
+        businessAccountId
       ]
     );
 
@@ -2189,7 +2652,7 @@ router.put('/links/:id', async (req, res) => {
 
     await db().exec('COMMIT');
 
-    const link = await getPersistentLinkById(req.params.id);
+    const link = await getPersistentLinkById(req.params.id, businessAccountId);
     res.json(link);
   } catch (error) {
     await db().exec('ROLLBACK');

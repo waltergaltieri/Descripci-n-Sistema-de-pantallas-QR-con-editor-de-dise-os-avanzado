@@ -250,6 +250,176 @@ const collectQrElements = (pages = [], existing = {}) => {
   );
 };
 
+const browserAtob = () => {
+  if (typeof window !== 'undefined' && typeof window.atob === 'function') {
+    return window.atob.bind(window);
+  }
+
+  return null;
+};
+
+const browserBtoa = () => {
+  if (typeof window !== 'undefined' && typeof window.btoa === 'function') {
+    return window.btoa.bind(window);
+  }
+
+  return null;
+};
+
+const decodeBase64Svg = (value) => {
+  const atobFn = browserAtob();
+  if (atobFn) {
+    return decodeURIComponent(
+      Array.from(atobFn(value), (char) => `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`).join('')
+    );
+  }
+
+  return Buffer.from(value, 'base64').toString('utf8');
+};
+
+const encodeBase64Svg = (markup) => {
+  const btoaFn = browserBtoa();
+  if (btoaFn) {
+    return btoaFn(
+      encodeURIComponent(markup).replace(/%([0-9A-F]{2})/g, (_, code) => String.fromCharCode(Number.parseInt(code, 16)))
+    );
+  }
+
+  return Buffer.from(markup, 'utf8').toString('base64');
+};
+
+const decodeSvgDataUrl = (value) => {
+  if (typeof value !== 'string' || !value.startsWith('data:image/svg+xml')) {
+    return null;
+  }
+
+  const [prefix, payload = ''] = value.split(',', 2);
+  const isBase64 = /;base64/i.test(prefix);
+
+  try {
+    const markup = isBase64
+      ? decodeBase64Svg(payload)
+      : decodeURIComponent(payload);
+
+    return {
+      isBase64,
+      markup
+    };
+  } catch (error) {
+    return null;
+  }
+};
+
+const encodeSvgDataUrl = (markup, isBase64) =>
+  isBase64
+    ? `data:image/svg+xml;base64,${encodeBase64Svg(markup)}`
+    : `data:image/svg+xml,${encodeURIComponent(markup)}`;
+
+const getSvgDimensions = (svgMarkup) => {
+  const viewBoxMatch = svgMarkup.match(/viewBox="[^"]*?(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)"/i);
+  if (viewBoxMatch) {
+    return {
+      width: Number.parseFloat(viewBoxMatch[3]),
+      height: Number.parseFloat(viewBoxMatch[4])
+    };
+  }
+
+  const widthMatch = svgMarkup.match(/\bwidth="(-?\d+(?:\.\d+)?)"/i);
+  const heightMatch = svgMarkup.match(/\bheight="(-?\d+(?:\.\d+)?)"/i);
+
+  if (widthMatch && heightMatch) {
+    return {
+      width: Number.parseFloat(widthMatch[1]),
+      height: Number.parseFloat(heightMatch[1])
+    };
+  }
+
+  return null;
+};
+
+const applyFlipToMaskMarkup = (svgMarkup, flipX, flipY) => {
+  if ((!flipX && !flipY) || typeof svgMarkup !== 'string') {
+    return svgMarkup;
+  }
+
+  const dimensions = getSvgDimensions(svgMarkup);
+  const openTagMatch = svgMarkup.match(/<svg\b[^>]*>/i);
+  const closingTagIndex = svgMarkup.lastIndexOf('</svg>');
+
+  if (!dimensions || !openTagMatch || closingTagIndex === -1 || openTagMatch.index === undefined) {
+    return svgMarkup;
+  }
+
+  const openTag = openTagMatch[0];
+  const innerMarkup = svgMarkup.slice(openTagMatch.index + openTag.length, closingTagIndex);
+  const defsBlocks = innerMarkup.match(/<defs[\s\S]*?<\/defs>/gi) || [];
+  const drawableMarkup = innerMarkup.replace(/<defs[\s\S]*?<\/defs>/gi, '').trim();
+
+  if (!drawableMarkup) {
+    return svgMarkup;
+  }
+
+  const translateX = flipX ? dimensions.width : 0;
+  const translateY = flipY ? dimensions.height : 0;
+  const scaleX = flipX ? -1 : 1;
+  const scaleY = flipY ? -1 : 1;
+
+  return `${svgMarkup.slice(0, openTagMatch.index)}${openTag}${defsBlocks.join('')}<g transform="translate(${translateX} ${translateY}) scale(${scaleX} ${scaleY})">${drawableMarkup}</g></svg>`;
+};
+
+const normalizeMaskedImageFlips = (children = []) => children.map((child) => {
+  const normalizedChild = {
+    ...child
+  };
+
+  if (Array.isArray(child.children)) {
+    normalizedChild.children = normalizeMaskedImageFlips(child.children);
+  }
+
+  if (
+    normalizedChild.type === 'image' &&
+    typeof normalizedChild.clipSrc === 'string' &&
+    normalizedChild.clipSrc.trim() !== '' &&
+    (normalizedChild.flipX || normalizedChild.flipY)
+  ) {
+    const normalization = getMaskedImageFlipNormalization(normalizedChild);
+
+    if (normalization) {
+      normalizedChild.clipSrc = normalization.clipSrc;
+      normalizedChild.flipX = normalization.flipX;
+      normalizedChild.flipY = normalization.flipY;
+    }
+  }
+
+  return normalizedChild;
+});
+
+export const getMaskedImageFlipNormalization = (element) => {
+  if (
+    !element ||
+    element.type !== 'image' ||
+    typeof element.clipSrc !== 'string' ||
+    element.clipSrc.trim() === '' ||
+    (!element.flipX && !element.flipY)
+  ) {
+    return null;
+  }
+
+  const decodedSvg = decodeSvgDataUrl(element.clipSrc);
+  if (!decodedSvg) {
+    return null;
+  }
+
+  return {
+    clipSrc: encodeSvgDataUrl(
+      applyFlipToMaskMarkup(decodedSvg.markup, Boolean(element.flipX), Boolean(element.flipY)),
+      decodedSvg.isBase64
+    ),
+    flipX: false,
+    flipY: false
+  };
+};
+
 export const normalizeDesignContent = (input, options = {}) => {
   const rawContent = parseJsonContent(input) || {};
   const editorJson = isPlainObject(rawContent.json) ? rawContent.json : rawContent;
@@ -285,7 +455,7 @@ export const normalizeDesignContent = (input, options = {}) => {
     width: toPositiveNumber(page.width) || resolvedWidth,
     height: toPositiveNumber(page.height) || resolvedHeight,
     background: page.background || backgroundColor,
-    children: normalizeChildrenIds(page.children || [])
+    children: normalizeChildrenIds(normalizeMaskedImageFlips(page.children || []))
   }));
 
   const settings = {

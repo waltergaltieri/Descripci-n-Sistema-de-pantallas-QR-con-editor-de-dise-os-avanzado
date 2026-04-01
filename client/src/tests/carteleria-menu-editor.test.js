@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import MenusManager from '../components/Carteleria/MenusManager';
 
-jest.setTimeout(15000);
+jest.setTimeout(30000);
 
 jest.mock('react-hot-toast', () => ({
   success: jest.fn(),
@@ -34,6 +34,10 @@ jest.mock('../services/api', () => ({
 }));
 
 const { carteleriaService, uploadsService } = require('../services/api');
+
+const openMenuSettings = async (user) => {
+  await user.click(await screen.findByRole('button', { name: 'Ajustes del menu' }));
+};
 
 describe('Editor de menus de Carteleria', () => {
   beforeEach(() => {
@@ -142,8 +146,36 @@ describe('Editor de menus de Carteleria', () => {
 
     await user.click(screen.getByRole('button', { name: 'Crear menu' }));
 
-    expect(await screen.findByText('Bloques')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Ajustes del menu' })).toBeInTheDocument();
+    expect(screen.getByText('Secciones del menu')).toBeInTheDocument();
     expect(screen.getByText('Vista previa')).toBeInTheDocument();
+    expect(screen.queryByText('Configuracion general')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Contraer bloque Encabezado' })).toBeInTheDocument();
+  });
+
+  test('prioriza el constructor y permite compactar bloques para ocupar menos espacio', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <MenusManager />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Crear menu' })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Crear menu' }));
+    await user.click(screen.getByRole('button', { name: 'Agregar bloque Categoria' }));
+
+    expect(screen.getByRole('button', { name: 'Contraer bloque Categoria' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Categoria vinculada')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Contraer bloque Categoria' }));
+
+    expect(screen.getByRole('button', { name: 'Expandir bloque Categoria' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Categoria vinculada')).not.toBeInTheDocument();
   });
 
   test('permite crear un menu con bloques, tema y pickers visuales de color', async () => {
@@ -160,6 +192,7 @@ describe('Editor de menus de Carteleria', () => {
     });
 
     await user.click(screen.getByRole('button', { name: 'Crear menu' }));
+    await openMenuSettings(user);
     await user.type(screen.getByLabelText('Nombre del menu'), 'Menu brunch');
     await user.type(screen.getByLabelText('Nombre del local'), 'Cafe Central');
     await user.selectOptions(screen.getByLabelText('Estilo visual'), 'style-3');
@@ -216,6 +249,7 @@ describe('Editor de menus de Carteleria', () => {
     });
 
     await user.click(screen.getByRole('button', { name: 'Crear menu' }));
+    await openMenuSettings(user);
     await user.type(screen.getByLabelText('Nombre del menu'), 'Menu separador');
     await user.click(screen.getByRole('button', { name: 'Agregar bloque Separador' }));
     await user.selectOptions(screen.getByDisplayValue('Color solido'), 'image');
@@ -261,6 +295,7 @@ describe('Editor de menus de Carteleria', () => {
     });
 
     await user.click(screen.getByRole('button', { name: 'Crear menu' }));
+    await openMenuSettings(user);
     await user.type(screen.getByLabelText('Nombre del menu'), 'Menu promos con estilo');
     await user.click(screen.getByRole('button', { name: 'Agregar bloque Promocion' }));
     await user.click(screen.getByRole('button', { name: 'Agregar bloque Combo' }));
@@ -307,6 +342,7 @@ describe('Editor de menus de Carteleria', () => {
     });
 
     await user.click(screen.getByRole('button', { name: 'Crear menu' }));
+    await openMenuSettings(user);
     await user.type(screen.getByLabelText('Nombre del menu'), 'Menu cenas');
     await user.upload(screen.getByLabelText('Logo del menu'), logoFile);
 

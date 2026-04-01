@@ -16,6 +16,12 @@ import PromotionsManager from './components/Carteleria/PromotionsManager';
 import MenusManager from './components/Carteleria/MenusManager';
 import LinksManager from './components/Carteleria/LinksManager';
 import PublicMenuPage from './components/Carteleria/Public/PublicMenuPage';
+import { useAuth } from './contexts/AuthContext';
+import SuperAdminRoute from './components/SuperAdmin/SuperAdminRoute';
+import SuperAdminLayout from './components/SuperAdmin/SuperAdminLayout';
+import SuperAdminDashboard from './components/SuperAdmin/SuperAdminDashboard';
+import ClientsManager from './components/SuperAdmin/ClientsManager';
+import ClientDetail from './components/SuperAdmin/ClientDetail';
 
 const InternalDesignEditor = lazy(() => import('./components/InternalEditor/InternalDesignEditor'));
 const HiddenInternalEditor = lazy(() => import('./components/InternalEditor/HiddenInternalEditor'));
@@ -40,6 +46,23 @@ const withSuspense = (page) => (
   </Suspense>
 );
 
+const withSuperAdminLayout = (page) => (
+  <SuperAdminRoute>
+    <SuperAdminLayout>{page}</SuperAdminLayout>
+  </SuperAdminRoute>
+);
+
+const HomeRedirect = () => {
+  const { user } = useAuth();
+
+  return (
+    <Navigate
+      to={user?.actorType === 'super_admin' ? '/super-admin/dashboard' : '/dashboard'}
+      replace
+    />
+  );
+};
+
 function App() {
   return (
     <div className="App">
@@ -56,6 +79,18 @@ function App() {
         <Route path="/screen-display/:id" element={<ScreenDisplay />} />
         <Route path="/menu/:slug" element={<PublicMenuPage />} />
         <Route path="/internal-editor/hidden" element={withSuspense(<HiddenInternalEditor />)} />
+        <Route
+          path="/super-admin/dashboard"
+          element={withSuperAdminLayout(<SuperAdminDashboard />)}
+        />
+        <Route
+          path="/super-admin/clients"
+          element={withSuperAdminLayout(<ClientsManager />)}
+        />
+        <Route
+          path="/super-admin/clients/:id"
+          element={withSuperAdminLayout(<ClientDetail />)}
+        />
 
         <Route path="/dashboard" element={withProtectedLayout(<Dashboard />)} />
         <Route path="/screens" element={withProtectedLayout(<ScreensManager />)} />
@@ -111,7 +146,7 @@ function App() {
         <Route path="/carteleria/menus" element={withProtectedLayout(<MenusManager />)} />
         <Route path="/carteleria/links" element={withProtectedLayout(<LinksManager />)} />
 
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<HomeRedirect />} />
 
         <Route
           path="*"

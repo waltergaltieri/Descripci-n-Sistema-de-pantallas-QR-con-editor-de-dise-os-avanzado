@@ -473,7 +473,9 @@
   padding: 4px 16px;
   border-bottom: 1px solid var(--ds-border);
   background: var(--ds-surface);
-  overflow: hidden;
+  position: relative;
+  z-index: 6;
+  overflow: visible;
 }
 
 /* Left block: pinned, never shrinks */
@@ -512,6 +514,7 @@
   flex-flow: row nowrap;
   align-items: center;
   gap: 4px;
+  overflow: visible;
 }
 
 .ds-ctx-divider {
@@ -598,15 +601,17 @@
 /* ══════════════════════════════════════════════════════
    LAYERS POPOVER
    ══════════════════════════════════════════════════════ */
-.ds-layers-anchor {
+.ds-layers-anchor,
+.ds-animations-anchor {
   position: relative;
 }
 
-.ds-layers-popover {
+.ds-layers-popover,
+.ds-animations-popover {
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
-  z-index: 50;
+  z-index: 60;
   width: 300px;
   max-height: 360px;
   display: flex;
@@ -616,6 +621,11 @@
   background: var(--ds-surface);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
   overflow: hidden;
+}
+
+.ds-animations-popover {
+  width: 320px;
+  overflow: visible;
 }
 
 .ds-layers-popover-header {

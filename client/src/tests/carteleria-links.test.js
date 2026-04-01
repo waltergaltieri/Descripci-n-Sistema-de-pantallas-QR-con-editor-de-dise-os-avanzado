@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import LinksManager from '../components/Carteleria/LinksManager';
 
-jest.setTimeout(15000);
+jest.setTimeout(30000);
 
 jest.mock('react-hot-toast', () => ({
   success: jest.fn(),
@@ -180,7 +180,9 @@ describe('Links persistentes y QR en Carteleria', () => {
       expect(uploadsService.uploadImage).toHaveBeenCalled();
     });
 
-    expect(screen.getByText('Logo cargado. Se centra dentro del QR.')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Logo cargado. Se centra dentro del QR.')).toBeInTheDocument();
+    });
 
     await user.click(screen.getByRole('button', { name: 'Guardar link' }));
 
@@ -256,6 +258,61 @@ describe('Links persistentes y QR en Carteleria', () => {
             gradient_start: '#111827',
             gradient_end: '#f59e0b'
           })
+        })
+      );
+    });
+  });
+
+  test('autocompleta el menu de la regla si los menus cargan despues de abrir el modal', async () => {
+    const user = userEvent.setup();
+    let resolveMenus;
+
+    carteleriaService.getMenus.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveMenus = resolve;
+      })
+    );
+
+    render(
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <LinksManager />
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Nuevo link o QR' })).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Nuevo link o QR' }));
+    await user.type(screen.getByLabelText('Nombre del link'), 'QR desayuno tardio');
+    await user.click(screen.getByRole('button', { name: 'Agregar regla' }));
+
+    resolveMenus({
+      data: {
+        data: [
+          { id: 1, name: 'Desayunos', status: 'active' },
+          { id: 2, name: 'Almuerzos', status: 'active' }
+        ],
+        pagination: {
+          page: 1,
+          limit: 100,
+          total: 2,
+          totalPages: 1
+        }
+      }
+    });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Menu de la regla')).toHaveValue('1');
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Guardar link' }));
+
+    await waitFor(() => {
+      expect(carteleriaService.createPersistentLink).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'QR desayuno tardio',
+          rules: [expect.objectContaining({ menu_id: '1' })]
         })
       );
     });

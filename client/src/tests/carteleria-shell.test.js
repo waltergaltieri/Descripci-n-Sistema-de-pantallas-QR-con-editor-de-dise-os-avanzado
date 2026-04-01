@@ -31,6 +31,31 @@ jest.mock('../components/Auth/PublicRoute', () => ({
   default: ({ children }) => children
 }));
 
+jest.mock('../components/SuperAdmin/SuperAdminRoute', () => ({
+  __esModule: true,
+  default: ({ children }) => children
+}));
+
+jest.mock('../components/SuperAdmin/SuperAdminLayout', () => ({
+  __esModule: true,
+  default: ({ children }) => <div>{children}</div>
+}));
+
+jest.mock('../components/SuperAdmin/SuperAdminDashboard', () => ({
+  __esModule: true,
+  default: () => <div>Dashboard Super Admin</div>
+}));
+
+jest.mock('../components/SuperAdmin/ClientsManager', () => ({
+  __esModule: true,
+  default: () => <div>Clientes Super Admin</div>
+}));
+
+jest.mock('../components/SuperAdmin/ClientDetail', () => ({
+  __esModule: true,
+  default: () => <div>Detalle Cliente Super Admin</div>
+}));
+
 jest.mock('../components/Auth/Login', () => ({
   __esModule: true,
   default: () => <div>Login</div>

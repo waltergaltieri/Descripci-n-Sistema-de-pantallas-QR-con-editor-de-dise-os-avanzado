@@ -25,6 +25,7 @@ import DesignConfigModal from './Editor/DesignConfigModal';
 import {
   buildResolutionLabel,
   decorateAssignedScreens,
+  getMaskedImageFlipNormalization,
   getContentSnapshot,
   mergeEditorContentWithDesign,
   normalizeDesignContent
@@ -276,6 +277,7 @@ const DesignEditor = () => {
   const exportMenuRef = useRef(null);
   const designRef = useRef(null);
   const savedSnapshotRef = useRef('');
+  const normalizingMaskedFlipsRef = useRef(false);
 
   const [design, setDesign] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -336,6 +338,38 @@ const DesignEditor = () => {
     });
   }, []);
 
+  const applyLiveMaskedImageFlipNormalization = useCallback(() => {
+    const updates = [];
+
+    const visit = (elements = []) => {
+      elements.forEach((element) => {
+        const normalization = getMaskedImageFlipNormalization(element);
+        if (normalization) {
+          updates.push({ element, normalization });
+        }
+
+        if (Array.isArray(element?.children) && element.children.length > 0) {
+          visit(element.children);
+        }
+      });
+    };
+
+    polotnoStore.pages.forEach((page) => visit(page?.children || []));
+
+    if (!updates.length) {
+      return false;
+    }
+
+    normalizingMaskedFlipsRef.current = true;
+    polotnoStore.history.transaction(() => {
+      updates.forEach(({ element, normalization }) => {
+        element.set(normalization);
+      });
+    });
+
+    return true;
+  }, []);
+
   const loadDesign = useCallback(async () => {
     if (!designId) {
       navigate('/designs');
@@ -370,6 +404,18 @@ const DesignEditor = () => {
     }
 
     const unsubscribe = polotnoStore.on('change', (json) => {
+      if (normalizingMaskedFlipsRef.current) {
+        normalizingMaskedFlipsRef.current = false;
+        const normalizedJson = polotnoStore.toJSON();
+        syncDirtyState(normalizedJson);
+        syncHistoryState();
+        return;
+      }
+
+      if (applyLiveMaskedImageFlipNormalization()) {
+        return;
+      }
+
       syncDirtyState(json);
       syncHistoryState();
     });
@@ -382,7 +428,7 @@ const DesignEditor = () => {
         unsubscribe();
       }
     };
-  }, [design, syncDirtyState, syncHistoryState]);
+  }, [applyLiveMaskedImageFlipNormalization, design, syncDirtyState, syncHistoryState]);
 
   useEffect(() => {
     const handleBeforeUnload = (event) => {

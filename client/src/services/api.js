@@ -1,8 +1,9 @@
 import axios from 'axios';
+import { resolveApiBaseUrl, resolveServerBaseUrl } from '../utils/runtimeUrls';
 
 // Configuración base de axios
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
+  baseURL: resolveApiBaseUrl(),
   timeout: 600000, // Aumentado a 10 minutos para operaciones complejas
   maxContentLength: 100 * 1024 * 1024, // 100MB
   maxBodyLength: 100 * 1024 * 1024, // 100MB
@@ -45,10 +46,20 @@ api.interceptors.response.use(
 
 // Servicios de autenticación
 export const authService = {
-  login: (credentials) => api.post('/auth/login', credentials),
   logout: () => api.post('/auth/logout'),
   verify: () => api.get('/auth/verify'),
   changePassword: (data) => api.post('/auth/change-password', data),
+};
+
+export const superAdminService = {
+  getDashboard: (params) => api.get('/super-admin/dashboard', { params }),
+  getClients: (params) => api.get('/super-admin/clients', { params }),
+  getClientById: (id, params) => api.get(`/super-admin/clients/${id}`, { params }),
+  createClient: (data) => api.post('/super-admin/clients', data),
+  updateClient: (id, data) => api.put(`/super-admin/clients/${id}`, data),
+  resetClientPassword: (id, data) => api.post(`/super-admin/clients/${id}/reset-password`, data),
+  markPayment: (id, data) => api.post(`/super-admin/clients/${id}/mark-payment`, data),
+  updateAccessStatus: (id, data) => api.post(`/super-admin/clients/${id}/access-status`, data),
 };
 
 // Servicios de pantallas
@@ -193,8 +204,7 @@ export const getFileUrl = (path) => {
   }
   
   // Construir URL relativa al servidor usando la misma base que consume la API
-  const apiBaseUrl = process.env.REACT_APP_SERVER_URL || process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-  const baseUrl = apiBaseUrl.replace(/\/api\/?$/, '');
+  const baseUrl = resolveServerBaseUrl();
   return `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
 };
 

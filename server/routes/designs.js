@@ -11,6 +11,52 @@ const {
 
 const router = express.Router();
 
+const parseInteger = (value, fallback = null) => {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  return Number.isNaN(parsed) ? fallback : parsed;
+};
+
+const getDefaultBusinessAccountId = async () => {
+  const account = await db().get('SELECT id FROM business_accounts ORDER BY id ASC LIMIT 1');
+  return account?.id || null;
+};
+
+const resolveScopedBusinessAccountId = async (req) => {
+  if (req.user?.actorType === 'business_user' && req.user?.businessAccountId) {
+    return req.user.businessAccountId;
+  }
+
+  if (req.user?.actorType === 'super_admin') {
+    const explicitBusinessAccountId = parseInteger(
+      req.query?.businessAccountId ?? req.body?.businessAccountId,
+      null
+    );
+
+    if (explicitBusinessAccountId) {
+      return explicitBusinessAccountId;
+    }
+
+    return getDefaultBusinessAccountId();
+  }
+
+  return null;
+};
+
+const requireScopedBusinessAccountId = async (req, res) => {
+  const businessAccountId = await resolveScopedBusinessAccountId(req);
+
+  if (!businessAccountId) {
+    res.status(403).json({ error: 'No se pudo resolver el negocio asociado al usuario autenticado' });
+    return null;
+  }
+
+  return businessAccountId;
+};
+
 async function generateAndSaveHtml(designId, content, designName) {
   try {
     const normalizedContent = normalizeDesignContent(content);
@@ -29,7 +75,16 @@ async function generateAndSaveHtml(designId, content, designName) {
   }
 }
 
-async function getAssignedScreensMap() {
+async function getAssignedScreensMap(businessAccountId = null) {
+  const conditions = [];
+  const params = [];
+
+  if (businessAccountId) {
+    conditions.push('d.business_account_id = ?');
+    conditions.push('s.business_account_id = ?');
+    params.push(businessAccountId, businessAccountId);
+  }
+
   const assignments = await db().all(`
     SELECT
       da.design_id,
@@ -37,7 +92,9 @@ async function getAssignedScreensMap() {
       s.name
     FROM design_assignments da
     JOIN screens s ON s.id = da.screen_id
-  `);
+    JOIN designs d ON d.id = da.design_id
+    ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''}
+  `, params);
 
   return assignments.reduce((map, row) => {
     if (!map.has(row.design_id)) {
@@ -53,25 +110,41 @@ async function getAssignedScreensMap() {
   }, new Map());
 }
 
-async function getAssignedScreensForDesign(designId) {
+async function getAssignedScreensForDesign(designId, businessAccountId = null) {
+  const conditions = ['da.design_id = ?'];
+  const params = [designId];
+
+  if (businessAccountId) {
+    conditions.push('s.business_account_id = ?');
+    params.push(businessAccountId);
+  }
+
   return db().all(`
     SELECT
       s.id,
       s.name
     FROM design_assignments da
     JOIN screens s ON s.id = da.screen_id
-    WHERE da.design_id = ?
-  `, [designId]);
+    WHERE ${conditions.join(' AND ')}
+  `, params);
 }
 
-async function getDecoratedDesignById(designId) {
-  const design = await db().get('SELECT * FROM designs WHERE id = ?', [designId]);
+async function getDecoratedDesignById(designId, businessAccountId = null) {
+  const conditions = ['id = ?'];
+  const params = [designId];
+
+  if (businessAccountId) {
+    conditions.push('business_account_id = ?');
+    params.push(businessAccountId);
+  }
+
+  const design = await db().get(`SELECT * FROM designs WHERE ${conditions.join(' AND ')}`, params);
 
   if (!design) {
     return null;
   }
 
-  const assignedScreens = await getAssignedScreensForDesign(designId);
+  const assignedScreens = await getAssignedScreensForDesign(designId, businessAccountId);
   return decorateDesignRecord(design, assignedScreens);
 }
 
@@ -79,18 +152,27 @@ const syncContentDimensions = (content) => normalizeDesignContent(content);
 
 router.get('/', optionalAuth, async (req, res) => {
   try {
+    const businessAccountId = await resolveScopedBusinessAccountId(req);
+    const params = [];
+    const conditions = ['(d.is_internal = 0 OR d.is_internal IS NULL)'];
+
+    if (businessAccountId) {
+      conditions.unshift('d.business_account_id = ?');
+      params.push(businessAccountId);
+    }
+
     const result = await db().all(`
       SELECT 
         d.*,
         COUNT(da.screen_id) as assigned_screens_count
       FROM designs d
       LEFT JOIN design_assignments da ON d.id = da.design_id
-      WHERE d.is_internal = 0 OR d.is_internal IS NULL
+      WHERE ${conditions.join(' AND ')}
       GROUP BY d.id
       ORDER BY d.updated_at DESC
-    `);
+    `, params);
 
-    const assignmentsMap = await getAssignedScreensMap();
+    const assignmentsMap = await getAssignedScreensMap(businessAccountId);
     const parsedResult = result.map((design) =>
       decorateDesignRecord(design, assignmentsMap.get(design.id) || [])
     );
@@ -104,17 +186,23 @@ router.get('/', optionalAuth, async (req, res) => {
 
 router.get('/all-including-internal', authenticateToken, requireAdmin, async (req, res) => {
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     const result = await db().all(`
       SELECT 
         d.*,
         COUNT(da.screen_id) as assigned_screens_count
       FROM designs d
       LEFT JOIN design_assignments da ON d.id = da.design_id
+      WHERE d.business_account_id = ?
       GROUP BY d.id
       ORDER BY d.updated_at DESC
-    `);
+    `, [businessAccountId]);
 
-    const assignmentsMap = await getAssignedScreensMap();
+    const assignmentsMap = await getAssignedScreensMap(businessAccountId);
     const parsedResult = result.map((design) =>
       decorateDesignRecord(design, assignmentsMap.get(design.id) || [])
     );
@@ -135,10 +223,11 @@ router.get('/templates/predefined', async (req, res) => {
   }
 });
 
-router.get('/:id', async (req, res) => {
+router.get('/:id', optionalAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const design = await getDecoratedDesignById(id);
+    const businessAccountId = await resolveScopedBusinessAccountId(req);
+    const design = await getDecoratedDesignById(id, businessAccountId);
 
     if (!design) {
       return res.status(404).json({ error: 'Diseño no encontrado' });
@@ -153,6 +242,11 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     const { name, description, content, thumbnail } = req.body;
 
     if (!name) {
@@ -165,11 +259,11 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
 
     const syncedContent = syncContentDimensions(content);
     const result = await db().run(`
-      INSERT INTO designs (name, description, content, thumbnail)
-      VALUES (?, ?, ?, ?)
-    `, [name, description, JSON.stringify(syncedContent), thumbnail]);
+      INSERT INTO designs (business_account_id, name, description, content, thumbnail)
+      VALUES (?, ?, ?, ?, ?)
+    `, [businessAccountId, name, description, JSON.stringify(syncedContent), thumbnail]);
 
-    const newDesign = await getDecoratedDesignById(result.lastID);
+    const newDesign = await getDecoratedDesignById(result.lastID, businessAccountId);
 
     if (newDesign?.content) {
       await generateAndSaveHtml(result.lastID, newDesign.content, newDesign.name);
@@ -188,6 +282,11 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
 router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     const { name, description, content, thumbnail } = req.body;
 
     const syncedContent = content ? syncContentDimensions(content) : null;
@@ -199,20 +298,21 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
         content = COALESCE(?, content),
         thumbnail = COALESCE(?, thumbnail),
         updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
+      WHERE id = ? AND business_account_id = ?
     `, [
       name,
       description,
       syncedContent ? JSON.stringify(syncedContent) : null,
       thumbnail,
-      id
+      id,
+      businessAccountId
     ]);
 
     if (result.changes === 0) {
       return res.status(404).json({ error: 'Diseño no encontrado' });
     }
 
-    const updatedDesign = await getDecoratedDesignById(id);
+    const updatedDesign = await getDecoratedDesignById(id, businessAccountId);
 
     if (syncedContent) {
       await generateAndSaveHtml(id, syncedContent, updatedDesign.name);
@@ -231,8 +331,15 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
 router.post('/:id/publish', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
 
-    const design = await db().get('SELECT * FROM designs WHERE id = ?', [id]);
+    const design = await db().get(
+      'SELECT * FROM designs WHERE id = ? AND business_account_id = ?',
+      [id, businessAccountId]
+    );
 
     if (!design) {
       return res.status(404).json({ error: 'Diseño no encontrado' });
@@ -268,29 +375,34 @@ router.post('/:id/publish', authenticateToken, requireAdmin, async (req, res) =>
       }
 
       await db().run(
-        'UPDATE designs SET updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [id]
+        'UPDATE designs SET updated_at = CURRENT_TIMESTAMP WHERE id = ? AND business_account_id = ?',
+        [id, businessAccountId]
       );
 
-      const updatedDesign = await getDecoratedDesignById(id);
+      const updatedDesign = await getDecoratedDesignById(id, businessAccountId);
       const io = req.app.get('io');
 
       io.emit('designs-updated', { action: 'published', design: updatedDesign });
 
       const assignedScreens = await db().all(
-        'SELECT screen_id FROM design_assignments WHERE design_id = ?',
-        [id]
+        `
+          SELECT da.screen_id
+          FROM design_assignments da
+          INNER JOIN screens s ON s.id = da.screen_id
+          WHERE da.design_id = ? AND s.business_account_id = ?
+        `,
+        [id, businessAccountId]
       );
 
       const designWithHtml = await db().get(
-        'SELECT html_content FROM designs WHERE id = ?',
-        [id]
+        'SELECT html_content FROM designs WHERE id = ? AND business_account_id = ?',
+        [id, businessAccountId]
       );
 
       for (const row of assignedScreens) {
         await db().run(
-          'UPDATE screens SET design_html = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-          [designWithHtml.html_content, row.screen_id]
+          'UPDATE screens SET design_html = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND business_account_id = ?',
+          [designWithHtml.html_content, row.screen_id, businessAccountId]
         );
 
         io.to(`screen-${row.screen_id}`).emit('design-content-updated', {
@@ -323,8 +435,15 @@ router.post('/:id/duplicate', authenticateToken, requireAdmin, async (req, res) 
   try {
     const { id } = req.params;
     const { name } = req.body;
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
 
-    const original = await db().get('SELECT * FROM designs WHERE id = ?', [id]);
+    const original = await db().get(
+      'SELECT * FROM designs WHERE id = ? AND business_account_id = ?',
+      [id, businessAccountId]
+    );
 
     if (!original) {
       return res.status(404).json({ error: 'Diseño no encontrado' });
@@ -334,16 +453,17 @@ router.post('/:id/duplicate', authenticateToken, requireAdmin, async (req, res) 
     const duplicatedContent = JSON.stringify(normalizeDesignContent(original.content));
 
     const result = await db().run(`
-      INSERT INTO designs (name, description, content, thumbnail)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO designs (business_account_id, name, description, content, thumbnail)
+      VALUES (?, ?, ?, ?, ?)
     `, [
+      businessAccountId,
       duplicateName,
       original.description,
       duplicatedContent,
       original.thumbnail
     ]);
 
-    const duplicatedDesign = await getDecoratedDesignById(result.lastID);
+    const duplicatedDesign = await getDecoratedDesignById(result.lastID, businessAccountId);
 
     const io = req.app.get('io');
     io.emit('designs-updated', { action: 'created', design: duplicatedDesign });
@@ -358,10 +478,19 @@ router.post('/:id/duplicate', authenticateToken, requireAdmin, async (req, res) 
 router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
 
     const assignmentCheck = await db().get(
-      'SELECT COUNT(*) as count FROM design_assignments WHERE design_id = ?',
-      [id]
+      `
+        SELECT COUNT(*) as count
+        FROM design_assignments da
+        INNER JOIN screens s ON s.id = da.screen_id
+        WHERE da.design_id = ? AND s.business_account_id = ?
+      `,
+      [id, businessAccountId]
     );
 
     if (Number.parseInt(assignmentCheck.count, 10) > 0) {
@@ -371,8 +500,8 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
     }
 
     const result = await db().run(
-      'DELETE FROM designs WHERE id = ?',
-      [id]
+      'DELETE FROM designs WHERE id = ? AND business_account_id = ?',
+      [id, businessAccountId]
     );
 
     if (result.changes === 0) {
@@ -391,6 +520,11 @@ router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
 
 router.post('/from-template', authenticateToken, requireAdmin, async (req, res) => {
   try {
+    const businessAccountId = await requireScopedBusinessAccountId(req, res);
+    if (!businessAccountId) {
+      return;
+    }
+
     const { templateId, name, description } = req.body;
 
     if (!templateId || !name) {
@@ -405,11 +539,11 @@ router.post('/from-template', authenticateToken, requireAdmin, async (req, res) 
 
     const normalizedContent = normalizeDesignContent(template.content);
     const result = await db().run(`
-      INSERT INTO designs (name, description, content, thumbnail)
-      VALUES (?, ?, ?, ?)
-    `, [name, description, JSON.stringify(normalizedContent), template.thumbnail]);
+      INSERT INTO designs (business_account_id, name, description, content, thumbnail)
+      VALUES (?, ?, ?, ?, ?)
+    `, [businessAccountId, name, description, JSON.stringify(normalizedContent), template.thumbnail]);
 
-    const newDesign = await getDecoratedDesignById(result.lastID);
+    const newDesign = await getDecoratedDesignById(result.lastID, businessAccountId);
 
     const io = req.app.get('io');
     io.emit('designs-updated', { action: 'created', design: newDesign });
@@ -421,9 +555,10 @@ router.post('/from-template', authenticateToken, requireAdmin, async (req, res) 
   }
 });
 
-router.get('/:id/separated-svgs', async (req, res) => {
+router.get('/:id/separated-svgs', optionalAuth, async (req, res) => {
   try {
     const designId = parseInt(req.params.id, 10);
+    const businessAccountId = await resolveScopedBusinessAccountId(req);
 
     if (Number.isNaN(designId)) {
       return res.status(400).json({
@@ -432,9 +567,17 @@ router.get('/:id/separated-svgs', async (req, res) => {
       });
     }
 
+    const conditions = ['id = ?'];
+    const params = [designId];
+
+    if (businessAccountId) {
+      conditions.push('business_account_id = ?');
+      params.push(businessAccountId);
+    }
+
     const design = await db().get(
-      'SELECT id, name, separated_svgs FROM designs WHERE id = ?',
-      [designId]
+      `SELECT id, name, separated_svgs FROM designs WHERE ${conditions.join(' AND ')}`,
+      params
     );
 
     if (!design) {
@@ -470,10 +613,11 @@ router.get('/:id/separated-svgs', async (req, res) => {
   }
 });
 
-router.get('/:id/separated-svgs/:svgIndex', async (req, res) => {
+router.get('/:id/separated-svgs/:svgIndex', optionalAuth, async (req, res) => {
   try {
     const designId = parseInt(req.params.id, 10);
     const svgIndex = parseInt(req.params.svgIndex, 10);
+    const businessAccountId = await resolveScopedBusinessAccountId(req);
 
     if (Number.isNaN(designId) || Number.isNaN(svgIndex)) {
       return res.status(400).json({
@@ -482,9 +626,17 @@ router.get('/:id/separated-svgs/:svgIndex', async (req, res) => {
       });
     }
 
+    const conditions = ['id = ?'];
+    const params = [designId];
+
+    if (businessAccountId) {
+      conditions.push('business_account_id = ?');
+      params.push(businessAccountId);
+    }
+
     const design = await db().get(
-      'SELECT id, name, separated_svgs FROM designs WHERE id = ?',
-      [designId]
+      `SELECT id, name, separated_svgs FROM designs WHERE ${conditions.join(' AND ')}`,
+      params
     );
 
     if (!design) {

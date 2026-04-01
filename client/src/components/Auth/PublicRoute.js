@@ -3,6 +3,9 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import LoadingSpinner from '../UI/LoadingSpinner';
 
+const getDefaultRouteForUser = (user) =>
+  user?.actorType === 'super_admin' ? '/super-admin/dashboard' : '/dashboard';
+
 const PublicRoute = ({ children }) => {
   const { user, loading } = useAuth();
   
@@ -18,7 +21,7 @@ const PublicRoute = ({ children }) => {
   }
   
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={getDefaultRouteForUser(user)} replace />;
   }
   
   return children;

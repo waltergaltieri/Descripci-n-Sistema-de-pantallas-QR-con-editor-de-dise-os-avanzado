@@ -17,6 +17,7 @@ const figuresSeparationRoutes = require('./routes/figuresSeparation');
 const autoSvgExportRoutes = require('./routes/autoSvgExport');
 const carteleriaRoutes = require('./routes/carteleria');
 const carteleriaPublicRoutes = require('./routes/carteleriaPublic');
+const superAdminRoutes = require('./routes/superAdmin');
 const { getStorageProviderConfig } = require('./config/storage');
 const { getRuntimeConfigWarnings } = require('./config/runtimeConfig');
 const { createUploadsStaticMiddleware } = require('./utils/uploadsStatic');
@@ -117,6 +118,7 @@ app.use('/api/figures-separation', figuresSeparationRoutes);
 app.use('/api/auto-svg-export', autoSvgExportRoutes);
 app.use('/api/carteleria/public', carteleriaPublicRoutes);
 app.use('/api/carteleria', carteleriaRoutes);
+app.use('/api/super-admin', superAdminRoutes);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

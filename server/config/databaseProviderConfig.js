@@ -1,5 +1,16 @@
 const path = require('node:path');
 
+const buildSupabaseDatabaseUrl = (env) => {
+  const projectId = env.SUPABASE_PROJECT_ID?.trim();
+  const databasePassword = env.SUPABASE_DB_PASSWORD;
+
+  if (!projectId || !databasePassword) {
+    return '';
+  }
+
+  return `postgresql://postgres:${encodeURIComponent(databasePassword)}@db.${projectId}.supabase.co:5432/postgres`;
+};
+
 const normalizeProvider = (value) => {
   if (!value) {
     return null;
@@ -11,7 +22,8 @@ const normalizeProvider = (value) => {
 
 const getDatabaseProviderConfig = (env = process.env) => {
   const explicitProvider = normalizeProvider(env.DB_PROVIDER);
-  const databaseUrl = env.DATABASE_URL || env.SUPABASE_DB_URL || '';
+  const databaseUrl =
+    env.DATABASE_URL || env.SUPABASE_DB_URL || buildSupabaseDatabaseUrl(env);
   const provider =
     explicitProvider || (databaseUrl ? 'postgres' : 'sqlite');
 

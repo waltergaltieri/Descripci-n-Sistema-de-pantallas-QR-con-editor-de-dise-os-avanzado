@@ -1,6 +1,10 @@
 import axios from 'axios';
+import {
+  resolveApiBaseUrl,
+  resolveWebSocketBaseUrl,
+} from '../../utils/runtimeUrls';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = resolveApiBaseUrl();
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -323,7 +327,7 @@ export class PublicationWebSocket {
   
   connect() {
     try {
-      const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:3001';
+      const wsUrl = resolveWebSocketBaseUrl();
       this.ws = new WebSocket(`${wsUrl}/publications`);
       
       this.ws.onopen = () => {

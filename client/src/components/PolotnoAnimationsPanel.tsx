@@ -3,7 +3,6 @@ import { observer } from 'mobx-react-lite';
 import { Button, Card, HTMLSelect, NumericInput } from '@blueprintjs/core';
 import './PolotnoEditor.css';
 
-// Tipos de animaciones disponibles (siempre en bucle)
 const ANIMATION_TYPES = {
   entrance: [
     { value: 'fadeIn', label: 'Aparecer gradualmente', duration: 1000 },
@@ -36,59 +35,38 @@ export const PolotnoAnimationsPanel: React.FC<AnimationsPanelProps> = observer((
   const [selectedAnimation, setSelectedAnimation] = useState('');
   const [duration, setDuration] = useState(2000);
   const [delay, setDelay] = useState(0);
-  
-  const selectedElements = store.selectedElements;
+
+  const selectedElements = store.selectedElements || [];
   const hasSelection = selectedElements.length > 0;
-  
-  // Obtener la animación actual del primer elemento seleccionado
-  const currentAnimation = hasSelection && selectedElements[0].custom?.animation;
-  
+  const currentAnimation = hasSelection ? selectedElements[0].custom?.animation : null;
+
   const handleApplyAnimation = () => {
     if (!selectedAnimation || !hasSelection) return;
-    
+
     const animationConfig = {
       type: selectedAnimation,
-      duration: duration,
-      delay: delay,
-      loop: true // Siempre en bucle
+      duration,
+      delay,
+      loop: true
     };
-    
+
     store.history.transaction(() => {
       selectedElements.forEach((element: any) => {
-        console.log('📝 Guardando animación en elemento:', element.id);
-        console.log('   Custom actual:', element.custom);
-        
-        // Guardar la animación en el custom data del elemento
         element.set({
           custom: {
             ...element.custom,
             animation: animationConfig
           }
         });
-        
-        // Verificar que se guardó
-        console.log('   Custom después:', element.custom);
-        console.log('   Animación guardada:', element.custom?.animation);
       });
     });
-    
-    console.log(`✅ Animación ${selectedAnimation} configurada para ${selectedElements.length} elemento(s)`);
-    console.log('💡 La animación se verá cuando publiques el diseño y lo asignes a una pantalla');
-    
-    // Verificar en el JSON completo
-    setTimeout(() => {
-      const json = store.toJSON();
-      const element = json.pages[0].children.find((c: any) => c.id === selectedElements[0].id);
-      console.log('🔍 Verificación en JSON:', element?.custom);
-    }, 100);
   };
-  
+
   const handleRemoveAnimation = () => {
     if (!hasSelection) return;
-    
+
     store.history.transaction(() => {
       selectedElements.forEach((element: any) => {
-        // Remover del custom data
         element.set({
           custom: {
             ...element.custom,
@@ -97,37 +75,36 @@ export const PolotnoAnimationsPanel: React.FC<AnimationsPanelProps> = observer((
         });
       });
     });
-    
-    console.log(`🗑️ Animación removida de ${selectedElements.length} elemento(s)`);
   };
-  
+
   const currentAnimations = ANIMATION_TYPES[selectedCategory];
-  
+
   return (
     <Card style={{ width: '320px', padding: '16px', maxHeight: '500px', overflowY: 'auto' }}>
       <h4 style={{ margin: '0 0 16px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span>🎬 Animaciones</span>
-        <Button minimal small icon="cross" onClick={onClose} />
+        <span>Animaciones</span>
+        <Button minimal small icon="cross" onClick={onClose} aria-label="Cerrar animaciones" />
       </h4>
-      
+
       {!hasSelection ? (
         <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
           <p>Selecciona un elemento para aplicar animaciones</p>
         </div>
       ) : (
         <>
-          {/* Mostrar animación actual */}
           {currentAnimation && (
-            <div style={{ 
-              marginBottom: '16px', 
-              padding: '12px', 
-              backgroundColor: '#e8f5e9', 
-              borderRadius: '4px',
-              border: '1px solid #4caf50'
-            }}>
+            <div
+              style={{
+                marginBottom: '16px',
+                padding: '12px',
+                backgroundColor: '#e8f5e9',
+                borderRadius: '4px',
+                border: '1px solid #4caf50'
+              }}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <strong style={{ color: '#2e7d32' }}>Animación activa:</strong>
+                  <strong style={{ color: '#2e7d32' }}>Animacion activa:</strong>
                   <div style={{ fontSize: '14px', marginTop: '4px' }}>
                     {currentAnimation.type} ({currentAnimation.duration}ms)
                   </div>
@@ -137,15 +114,15 @@ export const PolotnoAnimationsPanel: React.FC<AnimationsPanelProps> = observer((
                   intent="danger"
                   icon="trash"
                   onClick={handleRemoveAnimation}
-                  title="Eliminar animación"
+                  title="Eliminar animacion"
                 />
               </div>
             </div>
           )}
-          
+
           <div style={{ marginBottom: '12px' }}>
             <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 'bold' }}>
-              Categoría:
+              Categoria:
             </label>
             <HTMLSelect
               value={selectedCategory}
@@ -155,36 +132,38 @@ export const PolotnoAnimationsPanel: React.FC<AnimationsPanelProps> = observer((
               }}
               fill
             >
-              <option value="continuous">Continuas (Bucle)</option>
+              <option value="continuous">Continuas (bucle)</option>
               <option value="entrance">Entrada</option>
             </HTMLSelect>
           </div>
-          
+
           <div style={{ marginBottom: '12px' }}>
             <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 'bold' }}>
-              Animación:
+              Animacion:
             </label>
             <HTMLSelect
               value={selectedAnimation}
               onChange={(e) => {
                 setSelectedAnimation(e.target.value);
-                const anim = currentAnimations.find(a => a.value === e.target.value);
-                if (anim) {
-                  setDuration(anim.duration);
+                const animation = currentAnimations.find((item) => item.value === e.target.value);
+                if (animation) {
+                  setDuration(animation.duration);
                 }
               }}
               fill
             >
-              <option value="">Seleccionar animación...</option>
-              {currentAnimations.map((anim) => (
-                <option key={anim.value} value={anim.value}>{anim.label}</option>
+              <option value="">Seleccionar animacion...</option>
+              {currentAnimations.map((animation) => (
+                <option key={animation.value} value={animation.value}>
+                  {animation.label}
+                </option>
               ))}
             </HTMLSelect>
           </div>
-          
+
           <div style={{ marginBottom: '12px' }}>
             <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 'bold' }}>
-              Duración (ms):
+              Duracion (ms):
             </label>
             <NumericInput
               value={duration}
@@ -192,10 +171,11 @@ export const PolotnoAnimationsPanel: React.FC<AnimationsPanelProps> = observer((
               min={100}
               max={10000}
               stepSize={100}
+              majorStepSize={1000}
               fill
             />
           </div>
-          
+
           <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: 'bold' }}>
               Retraso inicial (ms):
@@ -206,37 +186,33 @@ export const PolotnoAnimationsPanel: React.FC<AnimationsPanelProps> = observer((
               min={0}
               max={10000}
               stepSize={100}
+              majorStepSize={1000}
               fill
             />
           </div>
-          
-          <div style={{ 
-            padding: '12px', 
-            backgroundColor: '#d1ecf1', 
-            borderRadius: '4px', 
-            marginBottom: '16px',
-            fontSize: '12px',
-            color: '#0c5460',
-            border: '1px solid #bee5eb'
-          }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>ℹ️ Importante:</div>
-            Las animaciones se verán cuando <strong>publiques el diseño</strong> y lo asignes a una pantalla. 
-            En el editor solo se configuran. Se reproducen en <strong>bucle infinito</strong> en las pantallas.
-          </div>
-          
-          <Button
-            intent="primary"
-            onClick={handleApplyAnimation}
-            disabled={!selectedAnimation}
-            fill
-            icon="tick"
+
+          <div
+            style={{
+              padding: '12px',
+              backgroundColor: '#d1ecf1',
+              borderRadius: '4px',
+              marginBottom: '16px',
+              fontSize: '12px',
+              color: '#0c5460',
+              border: '1px solid #bee5eb'
+            }}
           >
-            Aplicar Animación
+            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>Importante:</div>
+            Las animaciones se veran cuando publiques el diseno y lo asignes a una pantalla.
+            En el editor solo se configuran.
+          </div>
+
+          <Button intent="primary" onClick={handleApplyAnimation} disabled={!selectedAnimation} fill icon="tick">
+            Aplicar animacion
           </Button>
-          
-          {/* Presets rápidos */}
+
           <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #ddd' }}>
-            <h5 style={{ margin: '0 0 12px 0', fontSize: '14px' }}>⚡ Presets rápidos:</h5>
+            <h5 style={{ margin: '0 0 12px 0', fontSize: '14px' }}>Presets rapidos:</h5>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               <Button
                 small
@@ -247,7 +223,7 @@ export const PolotnoAnimationsPanel: React.FC<AnimationsPanelProps> = observer((
                   setDelay(0);
                 }}
               >
-                💓 Pulso
+                Pulso
               </Button>
               <Button
                 small
@@ -258,7 +234,7 @@ export const PolotnoAnimationsPanel: React.FC<AnimationsPanelProps> = observer((
                   setDelay(0);
                 }}
               >
-                🏀 Rebote
+                Rebote
               </Button>
               <Button
                 small
@@ -269,7 +245,7 @@ export const PolotnoAnimationsPanel: React.FC<AnimationsPanelProps> = observer((
                   setDelay(0);
                 }}
               >
-                🔄 Rotar
+                Rotar
               </Button>
               <Button
                 small
@@ -280,7 +256,7 @@ export const PolotnoAnimationsPanel: React.FC<AnimationsPanelProps> = observer((
                   setDelay(0);
                 }}
               >
-                🎪 Balanceo
+                Balanceo
               </Button>
             </div>
           </div>

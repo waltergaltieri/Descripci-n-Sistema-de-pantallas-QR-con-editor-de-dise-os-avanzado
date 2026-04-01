@@ -81,6 +81,7 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+.tmp-vercel/
 
 # Build artifacts
 build/

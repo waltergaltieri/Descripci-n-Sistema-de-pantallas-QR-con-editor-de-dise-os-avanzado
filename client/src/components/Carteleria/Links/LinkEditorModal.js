@@ -67,6 +67,43 @@ const LinkEditorModal = ({ baseUrl, isOpen, linkItem, menus, onClose, onSuccess 
     }
   }, [isOpen, linkItem]);
 
+  useEffect(() => {
+    if (!isOpen || menus.length === 0) {
+      return;
+    }
+
+    const fallbackMenuId = menus[0]?.id ? String(menus[0].id) : '';
+
+    if (!fallbackMenuId) {
+      return;
+    }
+
+    setFormData((current) => {
+      let rulesChanged = false;
+
+      const nextRules = current.rules.map((rule) => {
+        if (rule.menu_id) {
+          return rule;
+        }
+
+        rulesChanged = true;
+        return {
+          ...rule,
+          menu_id: fallbackMenuId
+        };
+      });
+
+      if (!rulesChanged) {
+        return current;
+      }
+
+      return {
+        ...current,
+        rules: nextRules
+      };
+    });
+  }, [isOpen, menus]);
+
   const stableSlugPreview = useMemo(
     () => (linkItem?.slug ? linkItem.slug : slugify(formData.name)),
     [formData.name, linkItem?.slug]
@@ -77,6 +114,20 @@ const LinkEditorModal = ({ baseUrl, isOpen, linkItem, menus, onClose, onSuccess 
 
     if (!formData.name.trim()) {
       toast.error('El nombre del link es obligatorio');
+      return;
+    }
+
+    const invalidRuleIndex = formData.rules.findIndex(
+      (rule) =>
+        rule.is_active !== false &&
+        (!String(rule.menu_id || '').trim() ||
+          !String(rule.days_of_week || '').trim() ||
+          !String(rule.start_time || '').trim() ||
+          !String(rule.end_time || '').trim())
+    );
+
+    if (invalidRuleIndex >= 0) {
+      toast.error(`Completa menu, dias y horario en la regla ${invalidRuleIndex + 1}.`);
       return;
     }
 

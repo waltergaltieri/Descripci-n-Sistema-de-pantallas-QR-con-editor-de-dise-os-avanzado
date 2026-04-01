@@ -1,3 +1,5 @@
+import { resolveServerBaseUrl } from './runtimeUrls';
+
 export const resolveFileUrl = (path) => {
   if (!path) {
     return null;
@@ -28,11 +30,7 @@ export const resolveFileUrl = (path) => {
     return null;
   }
 
-  const apiBaseUrl =
-    process.env.REACT_APP_SERVER_URL ||
-    process.env.REACT_APP_API_URL ||
-    'http://localhost:5000/api';
-  const baseUrl = apiBaseUrl.replace(/\/api\/?$/, '');
+  const baseUrl = resolveServerBaseUrl();
 
   return `${baseUrl}${normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`}`;
 };
